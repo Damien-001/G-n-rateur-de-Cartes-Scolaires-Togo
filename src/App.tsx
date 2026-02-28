@@ -373,6 +373,7 @@ export default function App() {
       {isFormOpen && (
         <StudentForm 
           student={editingStudent}
+          schoolInfo={schoolInfo}
           onSubmit={handleAddStudent}
           onCancel={() => {
             setIsFormOpen(false);
