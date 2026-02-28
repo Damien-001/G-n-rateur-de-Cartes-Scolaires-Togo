@@ -174,23 +174,61 @@ export default function App() {
                     className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
+                
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL du Logo</label>
-                  <input 
-                    type="text" 
-                    value={schoolInfo.logoUrl}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, logoUrl: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Logo de l'école</label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {schoolInfo.logoUrl ? (
+                        <img src={schoolInfo.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                      ) : (
+                        <SchoolIcon className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setSchoolInfo({ ...schoolInfo, logoUrl: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Signature (Optionnel)</label>
-                  <input 
-                    type="text" 
-                    value={schoolInfo.signatureUrl}
-                    onChange={(e) => setSchoolInfo({ ...schoolInfo, signatureUrl: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Signature / Cachet</label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {schoolInfo.signatureUrl ? (
+                        <img src={schoolInfo.signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                      ) : (
+                        <Edit2 className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setSchoolInfo({ ...schoolInfo, signatureUrl: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
             </section>
