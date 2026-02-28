@@ -1,0 +1,5 @@
+{
+  "name": "Générateur de Cartes Scolaires Togo",
+  "description": "Application de gestion et génération de cartes scolaires pour examens au Togo, optimisée pour impression A4.",
+  "requestFramePermissions": []
+}
