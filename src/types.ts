@@ -5,6 +5,8 @@ export interface Student {
   matricule: string;
   className: string;
   schoolYear: string;
+  birthDate?: string;
+  birthPlace?: string;
   examCenter?: string;
   photoUrl?: string;
   qrCodeData?: string;

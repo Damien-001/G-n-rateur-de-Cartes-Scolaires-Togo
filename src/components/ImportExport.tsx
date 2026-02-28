@@ -26,6 +26,8 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
           matricule: row.matricule || '',
           className: row.className || row.classe || '',
           schoolYear: row.schoolYear || row.annee || '2025-2026',
+          birthDate: row.birthDate || row.date_naissance || '',
+          birthPlace: row.birthPlace || row.lieu_naissance || '',
           examCenter: row.examCenter || row.centre || '',
           photoUrl: row.photoUrl || row.photo || '',
         }));
@@ -37,8 +39,8 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
 
   const downloadTemplate = () => {
     const template = [
-      ['lastName', 'firstName', 'matricule', 'className', 'schoolYear', 'examCenter', 'photoUrl'],
-      ['KOFFI', 'Jean', '2024-TG-001', 'Terminale C', '2025-2026', 'Lycée de Tokoin', ''],
+      ['lastName', 'firstName', 'matricule', 'className', 'schoolYear', 'birthDate', 'birthPlace', 'examCenter', 'photoUrl'],
+      ['KOFFI', 'Jean', '2024-TG-001', 'Terminale C', '2025-2026', '12/05/2008', 'Lomé', 'Lycée de Tokoin', ''],
     ];
     const csv = Papa.unparse(template);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

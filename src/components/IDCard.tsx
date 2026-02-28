@@ -93,6 +93,17 @@ export const IDCard: React.FC<IDCardProps> = ({ student, schoolInfo, showCutting
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-1">
+              <div>
+                <p className="text-[5pt] text-gray-500 uppercase font-bold">Né(e) le</p>
+                <p className="text-[7pt] font-semibold">{student.birthDate || '----'}</p>
+              </div>
+              <div>
+                <p className="text-[5pt] text-gray-500 uppercase font-bold">à</p>
+                <p className="text-[7pt] font-semibold truncate">{student.birthPlace || '----'}</p>
+              </div>
+            </div>
+
             {student.examCenter && (
               <div>
                 <p className="text-[5pt] text-gray-500 uppercase font-bold">Centre d'examen</p>
