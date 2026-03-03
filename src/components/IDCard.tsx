@@ -52,10 +52,10 @@ export const IDCard: React.FC<IDCardProps> = ({ student, schoolInfo, showCutting
       </div>
 
       {/* Body */}
-      <div className="p-2 flex gap-3 h-[40.4mm]">
-        {/* Photo */}
-        <div className="flex flex-col gap-1 items-center">
-          <div className="w-[22mm] h-[28mm] bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden">
+      <div className="p-[3mm] flex gap-[4mm] h-[40.4mm]">
+        {/* Photo & QR */}
+        <div className="flex flex-col gap-[1.5mm] items-center w-[24mm] shrink-0">
+          <div className="w-[22mm] h-[26mm] bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden rounded-sm">
             {student.photoUrl ? (
               <img 
                 src={student.photoUrl} 
@@ -67,70 +67,70 @@ export const IDCard: React.FC<IDCardProps> = ({ student, schoolInfo, showCutting
               <User className="w-10 h-10 text-gray-400" />
             )}
           </div>
-          <div className="text-[6pt] font-bold text-emerald-800">
+          <div className="text-[6.5pt] font-bold text-emerald-800 leading-none tracking-wider">
             {student.matricule}
+          </div>
+          
+          {/* QR Code */}
+          <div className="bg-white p-[0.5mm] border border-gray-100 mt-auto">
+            <QRCodeSVG 
+              value={student.qrCodeData || `${student.matricule}-${student.lastName}`}
+              size={28}
+              level="L"
+            />
           </div>
         </div>
 
         {/* Info */}
-        <div className="flex-1 flex flex-col justify-between py-0.5">
-          <div className="space-y-1">
+        <div className="flex-1 flex flex-col justify-between overflow-hidden">
+          <div className="space-y-[2mm]">
             <div>
-              <p className="text-[5pt] text-gray-500 uppercase font-bold">Nom & Prénoms</p>
-              <p className="text-[9pt] font-bold text-gray-900 leading-tight">
+              <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">Nom & Prénoms</p>
+              <p className="text-[9.5pt] font-bold text-gray-900 leading-tight uppercase">
                 {student.lastName} {student.firstName}
               </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-[2mm]">
               <div>
-                <p className="text-[5pt] text-gray-500 uppercase font-bold">Classe</p>
-                <p className="text-[7pt] font-semibold">{student.className}</p>
+                <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">Classe</p>
+                <p className="text-[7.5pt] font-semibold text-gray-800">{student.className}</p>
               </div>
               <div>
-                <p className="text-[5pt] text-gray-500 uppercase font-bold">Année Scolaire</p>
-                <p className="text-[7pt] font-semibold">{student.schoolYear}</p>
+                <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">Année Scolaire</p>
+                <p className="text-[7.5pt] font-semibold text-gray-800">{student.schoolYear}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-[2mm]">
               <div>
-                <p className="text-[5pt] text-gray-500 uppercase font-bold">Né(e) le</p>
-                <p className="text-[7pt] font-semibold">{student.birthDate || '----'}</p>
+                <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">Né(e) le</p>
+                <p className="text-[7.5pt] font-semibold text-gray-800">{student.birthDate || '----'}</p>
               </div>
               <div>
-                <p className="text-[5pt] text-gray-500 uppercase font-bold">à</p>
-                <p className="text-[7pt] font-semibold truncate">{student.birthPlace || '----'}</p>
+                <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">à</p>
+                <p className="text-[7.5pt] font-semibold text-gray-800 truncate">{student.birthPlace || '----'}</p>
               </div>
             </div>
 
             {student.examCenter && (
               <div>
-                <p className="text-[5pt] text-gray-500 uppercase font-bold">Centre d'examen</p>
-                <p className="text-[7pt] font-semibold truncate">{student.examCenter}</p>
+                <p className="text-[5pt] text-gray-400 uppercase font-bold leading-none mb-[0.5mm]">Centre d'examen</p>
+                <p className="text-[7pt] font-semibold text-gray-800 truncate leading-tight">{student.examCenter}</p>
               </div>
             )}
           </div>
 
-          <div className="flex justify-between items-end">
-            {/* QR Code */}
-            <div className="bg-white p-0.5 border border-gray-100">
-              <QRCodeSVG 
-                value={student.qrCodeData || `${student.matricule}-${student.lastName}`}
-                size={35}
-                level="L"
-              />
-            </div>
-
+          <div className="flex justify-end items-end">
             {/* Signature/Stamp Placeholder */}
             <div className="text-right">
-               <p className="text-[5pt] italic text-gray-400 mb-1">Le Proviseur</p>
-               <div className="h-8 w-16 border-b border-gray-200 relative">
+               <p className="text-[5pt] italic text-gray-400 mb-[0.5mm]">Le Proviseur</p>
+               <div className="h-[8mm] w-[18mm] border-b border-gray-200 relative">
                  {schoolInfo.signatureUrl && (
                    <img 
                     src={schoolInfo.signatureUrl} 
                     alt="Signature" 
-                    className="absolute inset-0 w-full h-full object-contain opacity-80"
+                    className="absolute inset-0 w-full h-full object-contain opacity-90"
                     referrerPolicy="no-referrer"
                    />
                  )}
