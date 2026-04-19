@@ -7,16 +7,16 @@ import type { DbStudent, DbSchoolInfo } from './supabase';
 function dbToStudent(row: DbStudent): Student {
   return {
     id: row.id,
-    firstName: row.first_name,
-    lastName: row.last_name,
-    matricule: row.matricule,
-    className: row.class_name,
-    schoolYear: row.school_year,
-    birthDate: row.birth_date,
-    birthPlace: row.birth_place,
-    examCenter: row.exam_center,
-    photoUrl: row.photo_url,
-    qrCodeData: row.qr_code_data,
+    firstName: row.first_name ?? '',
+    lastName: row.last_name ?? '',
+    matricule: row.matricule ?? '',
+    className: row.class_name ?? '',
+    schoolYear: row.school_year ?? '',
+    birthDate: row.birth_date ?? '',
+    birthPlace: row.birth_place ?? '',
+    examCenter: row.exam_center ?? '',
+    photoUrl: row.photo_url ?? '',
+    qrCodeData: row.qr_code_data ?? '',
   };
 }
 
@@ -24,16 +24,16 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
   return {
     id: student.id,
     user_id: userId,
-    first_name: student.firstName,
-    last_name: student.lastName,
-    matricule: student.matricule,
-    class_name: student.className,
-    school_year: student.schoolYear,
-    birth_date: student.birthDate,
-    birth_place: student.birthPlace,
-    exam_center: student.examCenter,
-    photo_url: student.photoUrl,
-    qr_code_data: student.qrCodeData,
+    first_name: student.firstName || '',
+    last_name: student.lastName || '',
+    matricule: student.matricule || '',
+    class_name: student.className || '',
+    school_year: student.schoolYear || '',
+    birth_date: student.birthDate || null,
+    birth_place: student.birthPlace || null,
+    exam_center: student.examCenter || null,
+    photo_url: student.photoUrl || null,
+    qr_code_data: student.qrCodeData || null,
   };
 }
 
