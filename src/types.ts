@@ -32,3 +32,16 @@ export const PRINT_CONFIG = {
   cols: 2,
   rows: 5,
 };
+
+export const CLASSES_LIST = [
+  "CP1", "CP2", "CE1", "CE2", "CM1", "CM2",
+  "6ème", "5ème", "4ème", "3ème",
+  "2nde A4", "2nde C", "2nde S",
+  "1ère A4", "1ère C", "1ère D", "1ère G1", "1ère G2", "1ère G3",
+  "Tle A4", "Tle C", "Tle D", "Tle G1", "Tle G2", "Tle G3"
+];
+
+export const SCHOOL_YEARS = [
+  "2023-2024", "2024-2025", "2025-2026", "2026-2027", "2027-2028"
+];
+

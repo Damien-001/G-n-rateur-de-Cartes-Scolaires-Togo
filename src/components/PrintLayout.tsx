@@ -15,11 +15,11 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ students, schoolInfo }
   }
 
   return (
-    <div className="print-container bg-gray-100 min-h-screen p-8 print:p-0 print:bg-white">
+    <div className="print-container bg-[#f3f4f6] min-h-screen p-8 print:p-0 print:bg-[#ffffff]">
       {pages.map((pageStudents, pageIdx) => (
         <div 
           key={pageIdx}
-          className="a4-page bg-white shadow-2xl mx-auto mb-8 relative print:shadow-none print:mb-0 print:break-after-page"
+          className="a4-page bg-[#ffffff] shadow-2xl mx-auto mb-8 relative print:shadow-none print:mb-0 print:break-after-page"
           style={{
             width: `${PRINT_CONFIG.paperWidth}mm`,
             height: `${PRINT_CONFIG.paperHeight}mm`,

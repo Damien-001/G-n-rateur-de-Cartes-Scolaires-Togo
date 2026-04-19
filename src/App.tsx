@@ -13,13 +13,17 @@ import {
   List as ListIcon,
   Download,
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  FileDown,
+  Loader2
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO } from './types';
 import { StudentForm } from './components/StudentForm';
 import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function App() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,6 +33,38 @@ export default function App() {
   const [view, setView] = useState<'manage' | 'preview'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const generatePDF = async () => {
+    setIsExporting(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pages = document.querySelectorAll('.a4-page');
+      
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        const canvas = await html2canvas(page, {
+          scale: 2, // High resolution
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        if (i > 0) pdf.addPage();
+        
+        // A4 dimensions in mm: 210 x 297
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      }
+      
+      pdf.save(`cartes_scolaires_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Une erreur est survenue lors de la génération du PDF.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Load from local storage
   useEffect(() => {
@@ -103,11 +139,29 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <button 
+              onClick={generatePDF}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-5 py-2 border-2 border-[#047857] text-[#047857] rounded-full font-bold hover:bg-emerald-50 transition-all disabled:opacity-50"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Génération...
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-5 h-5" />
+                  Télécharger PDF
+                </>
+              )}
+            </button>
+            <button 
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-full font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+              disabled={isExporting}
+              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200 disabled:opacity-50"
             >
               <Printer className="w-5 h-5" />
-              Imprimer / PDF
+              Imprimer
             </button>
           </div>
         </div>

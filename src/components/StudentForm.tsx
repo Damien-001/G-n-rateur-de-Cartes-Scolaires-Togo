@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, SchoolInfo } from '../types';
+import { Student, SchoolInfo, CLASSES_LIST, SCHOOL_YEARS } from '../types';
 import { X, Upload, Plus, Trash2, Edit2 } from 'lucide-react';
 import { IDCard } from './IDCard';
 
@@ -88,35 +88,40 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Classe</label>
-                <input
+                <select
                   required
-                  type="text"
                   value={formData.className}
                   onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  placeholder="Ex: Terminale C"
-                />
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                >
+                  <option value="">Sélectionner une classe</option>
+                  {CLASSES_LIST.map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Année Scolaire</label>
-                <input
+                <select
                   required
-                  type="text"
                   value={formData.schoolYear}
                   onChange={(e) => setFormData({ ...formData, schoolYear: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  placeholder="Ex: 2025-2026"
-                />
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                >
+                  {SCHOOL_YEARS.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Date Naiss.</label>
                   <input
-                    type="text"
+                    required
+                    type="date"
                     value={formData.birthDate}
                     onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="Ex: 12/05/2008"
                   />
                 </div>
                 <div>
