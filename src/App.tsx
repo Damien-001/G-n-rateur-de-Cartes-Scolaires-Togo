@@ -19,6 +19,7 @@ import {
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
+import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { StudentForm } from './components/StudentForm';
 import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
@@ -39,7 +40,31 @@ export default function App({ session, onLogout }: AppProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Timer d'inactivité — déconnexion après 10 min ───────────────────────────
+  useEffect(() => {
+    const handleTimeout = async () => {
+      setShowInactivityWarning(false);
+      await logout();
+      onLogout();
+    };
+
+    // Avertissement 1 minute avant la déconnexion (à 9 min d'inactivité)
+    const handleWarning = () => {
+      setShowInactivityWarning(true);
+      warningTimer.current = setTimeout(() => setShowInactivityWarning(false), 60000);
+    };
+
+    startInactivityTimer(handleTimeout, handleWarning);
+
+    return () => {
+      stopInactivityTimer();
+      if (warningTimer.current) clearTimeout(warningTimer.current);
+    };
+  }, [onLogout]);
 
   const handlePrint = () => {
     window.print();
@@ -149,7 +174,6 @@ export default function App({ session, onLogout }: AppProps) {
       </div>
     );
   }
-
   if (view === 'preview') {
     return (
       <div className="min-h-screen bg-gray-900">
@@ -193,6 +217,23 @@ export default function App({ session, onLogout }: AppProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Bandeau d'avertissement inactivité */}
+      {showInactivityWarning && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white px-4 py-3 flex items-center justify-between shadow-lg no-print">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⏱️</span>
+            <p className="text-sm font-bold">
+              Inactivité détectée — vous serez déconnecté dans <strong>1 minute</strong>.
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowInactivityWarning(false); }}
+            className="text-white font-bold text-sm underline hover:no-underline ml-4"
+          >
+            Rester connecté
+          </button>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
