@@ -151,9 +151,19 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Photo de l'élève</label>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-20 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="relative w-16 h-20 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {formData.photoUrl ? (
-                      <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <>
+                        <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, photoUrl: '' })}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
+                          title="Supprimer la photo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </>
                     ) : (
                       <Upload className="w-6 h-6 text-gray-400" />
                     )}
