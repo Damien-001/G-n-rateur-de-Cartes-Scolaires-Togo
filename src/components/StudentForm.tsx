@@ -29,7 +29,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
     e.preventDefault();
     onSubmit({
       ...formData,
-      id: student?.id || Math.random().toString(36).substr(2, 9),
+      id: student?.id || crypto.randomUUID(),
     } as Student);
   };
 

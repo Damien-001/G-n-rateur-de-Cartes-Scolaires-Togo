@@ -68,15 +68,40 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
 }
 
 export async function upsertStudent(student: Student, userId: string): Promise<Student> {
-  const row = studentToDb(student, userId);
-  const { data, error } = await supabase
-    .from('students')
-    .upsert(row, { onConflict: 'id' })
-    .select()
-    .single();
+  // Si l'élève existe déjà (édition), on fait un update ciblé
+  // Sinon on fait un insert et Supabase génère l'UUID
+  const isNew = !student.id || student.id === '';
 
-  if (error) throw new Error(error.message);
-  return dbToStudent(data as DbStudent);
+  if (isNew) {
+    const { data, error } = await supabase
+      .from('students')
+      .insert({
+        user_id: userId,
+        first_name: student.firstName,
+        last_name: student.lastName,
+        matricule: student.matricule,
+        class_name: student.className,
+        school_year: student.schoolYear,
+        birth_date: student.birthDate || null,
+        birth_place: student.birthPlace || null,
+        exam_center: student.examCenter || null,
+        photo_url: student.photoUrl || null,
+        qr_code_data: student.qrCodeData || null,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return dbToStudent(data as DbStudent);
+  } else {
+    const row = studentToDb(student, userId);
+    const { data, error } = await supabase
+      .from('students')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return dbToStudent(data as DbStudent);
+  }
 }
 
 /** Import en masse depuis CSV — laisse Supabase générer les IDs */
