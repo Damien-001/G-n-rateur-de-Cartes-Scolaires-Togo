@@ -11,19 +11,18 @@ interface StudentFormProps {
 }
 
 export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState<Partial<Student>>(
-    student || {
-      firstName: '',
-      lastName: '',
-      matricule: '',
-      className: '',
-      schoolYear: '2025-2026',
-      birthDate: '',
-      birthPlace: '',
-      examCenter: '',
-      photoUrl: '',
-    }
-  );
+  const [formData, setFormData] = useState<Partial<Student>>({
+    firstName:  student?.firstName  ?? '',
+    lastName:   student?.lastName   ?? '',
+    matricule:  student?.matricule  ?? '',
+    className:  student?.className  ?? '',
+    schoolYear: student?.schoolYear ?? '2025-2026',
+    birthDate:  student?.birthDate  ?? '',
+    birthPlace: student?.birthPlace ?? '',
+    examCenter: student?.examCenter ?? '',
+    photoUrl:   student?.photoUrl   ?? '',
+    qrCodeData: student?.qrCodeData ?? '',
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
