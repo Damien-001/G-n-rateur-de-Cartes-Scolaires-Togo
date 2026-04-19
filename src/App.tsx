@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Plus, 
   Printer, 
@@ -9,23 +8,29 @@ import {
   Edit2, 
   Search, 
   School as SchoolIcon,
-  LayoutGrid,
-  List as ListIcon,
   Download,
   ChevronRight,
   CheckCircle2,
   FileDown,
+  Palette,
+  LogOut,
   Loader2
 } from 'lucide-react';
-import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO } from './types';
+import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
+import { Session, logout } from './lib/auth';
+import { fetchStudents, upsertStudent, deleteStudent, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
 import { StudentForm } from './components/StudentForm';
 import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
-export default function App() {
+
+interface AppProps {
+  session: Session;
+  onLogout: () => void;
+}
+
+export default function App({ session, onLogout }: AppProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(DEFAULT_SCHOOL_INFO);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -33,67 +38,81 @@ export default function App() {
   const [view, setView] = useState<'manage' | 'preview'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const generatePDF = async () => {
-    setIsExporting(true);
-    try {
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pages = document.querySelectorAll('.a4-page');
-      
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i] as HTMLElement;
-        const canvas = await html2canvas(page, {
-          scale: 2, // High resolution
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff'
-        });
-        
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        if (i > 0) pdf.addPage();
-        
-        // A4 dimensions in mm: 210 x 297
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-      }
-      
-      pdf.save(`cartes_scolaires_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      alert('Une erreur est survenue lors de la génération du PDF.');
-    } finally {
-      setIsExporting(false);
-    }
+  const handlePrint = () => {
+    window.print();
   };
 
-  // Load from local storage
-  useEffect(() => {
-    const savedStudents = localStorage.getItem('togo_students');
-    const savedSchool = localStorage.getItem('togo_school');
-    if (savedStudents) setStudents(JSON.parse(savedStudents));
-    if (savedSchool) setSchoolInfo(JSON.parse(savedSchool));
-  }, []);
+  const generatePDF = () => {
+    const originalTitle = document.title;
+    document.title = `cartes_scolaires_${new Date().toISOString().split('T')[0]}`;
+    window.print();
+    setTimeout(() => { document.title = originalTitle; }, 1000);
+  };
 
-  // Save to local storage
+  // ── Chargement initial depuis Supabase ──────────────────────────────────────
   useEffect(() => {
-    localStorage.setItem('togo_students', JSON.stringify(students));
-    localStorage.setItem('togo_school', JSON.stringify(schoolInfo));
-  }, [students, schoolInfo]);
+    setLoading(true);
+    Promise.all([
+      fetchStudents(session.userId),
+      fetchSchoolInfo(session.userId),
+    ]).then(([fetchedStudents, fetchedSchool]) => {
+      setStudents(fetchedStudents);
+      setSchoolInfo(fetchedSchool ?? DEFAULT_SCHOOL_INFO);
+    }).catch(console.error)
+      .finally(() => setLoading(false));
+  }, [session.userId]);
 
-  const handleAddStudent = (student: Student) => {
-    if (editingStudent) {
-      setStudents(students.map(s => s.id === student.id ? student : s));
-    } else {
-      setStudents([...students, student]);
+  // ── Sauvegarde school_info avec debounce (évite trop d'appels) ──────────────
+  useEffect(() => {
+    if (loading) return;
+    if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
+    schoolInfoSaveTimer.current = setTimeout(() => {
+      saveSchoolInfo(schoolInfo, session.userId).catch(console.error);
+    }, 800);
+    return () => {
+      if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
+    };
+  }, [schoolInfo, session.userId, loading]);
+
+  // ── CRUD Élèves ─────────────────────────────────────────────────────────────
+  const handleAddStudent = async (student: Student) => {
+    try {
+      const saved = await upsertStudent(student, session.userId);
+      if (editingStudent) {
+        setStudents(students.map(s => s.id === saved.id ? saved : s));
+      } else {
+        setStudents([...students, saved]);
+      }
+    } catch (err) {
+      console.error('Erreur sauvegarde élève:', err);
+      alert('Erreur lors de la sauvegarde. Vérifiez votre connexion.');
     }
     setIsFormOpen(false);
     setEditingStudent(undefined);
   };
 
-  const handleDeleteStudent = (id: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) {
+  const handleDeleteStudent = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) return;
+    try {
+      await deleteStudent(id);
       setStudents(students.filter(s => s.id !== id));
       setSelectedStudents(selectedStudents.filter(sid => sid !== id));
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+      alert('Erreur lors de la suppression.');
+    }
+  };
+
+  const handleImport = async (newStudents: Student[]) => {
+    try {
+      const saved = await insertStudents(newStudents, session.userId);
+      setStudents(prev => [...prev, ...saved]);
+    } catch (err) {
+      console.error('Erreur import:', err);
+      alert('Erreur lors de l\'import : ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     }
   };
 
@@ -102,8 +121,9 @@ export default function App() {
     setIsFormOpen(true);
   };
 
-  const handleImport = (newStudents: Student[]) => {
-    setStudents([...students, ...newStudents]);
+  const handleLogout = async () => {
+    await logout();
+    onLogout();
   };
 
   const toggleSelect = (id: string) => {
@@ -119,6 +139,16 @@ export default function App() {
   const studentsToPrint = selectedStudents.length > 0 
     ? students.filter(s => selectedStudents.includes(s.id))
     : students;
+
+  // Écran de chargement initial
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-500 font-medium">Chargement des données...</p>
+      </div>
+    );
+  }
 
   if (view === 'preview') {
     return (
@@ -140,32 +170,21 @@ export default function App() {
           <div className="flex items-center gap-3">
             <button 
               onClick={generatePDF}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-5 py-2 border-2 border-[#047857] text-[#047857] rounded-full font-bold hover:bg-emerald-50 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 border-2 border-[#047857] text-[#047857] rounded-full font-bold hover:bg-emerald-50 transition-all"
             >
-              {isExporting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Génération...
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-5 h-5" />
-                  Télécharger PDF
-                </>
-              )}
+              <FileDown className="w-5 h-5" />
+              Télécharger PDF
             </button>
             <button 
-              onClick={() => window.print()}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200 disabled:opacity-50"
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200"
             >
               <Printer className="w-5 h-5" />
               Imprimer
             </button>
           </div>
         </div>
-        <div className="pt-20 pb-12">
+        <div className="pt-20 pb-12 print:pt-0 print:pb-0">
           <PrintLayout students={studentsToPrint} schoolInfo={schoolInfo} />
         </div>
       </div>
@@ -187,7 +206,15 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* User info */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                {session.fullName.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-gray-700 max-w-[120px] truncate">{session.fullName}</span>
+            </div>
+
             <button 
               onClick={() => setView('preview')}
               disabled={students.length === 0}
@@ -202,6 +229,13 @@ export default function App() {
             >
               <Plus className="w-5 h-5" />
               Ajouter
+            </button>
+            <button
+              onClick={handleLogout}
+              title="Se déconnecter"
+              className="flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -287,6 +321,79 @@ export default function App() {
               </div>
             </section>
 
+            {/* Color Customization */}
+            <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-5">
+                <Palette className="w-5 h-5 text-emerald-600" />
+                <h2 className="font-bold text-gray-900">Couleurs de la carte</h2>
+              </div>
+
+              {/* Presets */}
+              <div className="mb-5">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3">Thèmes prédéfinis</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      title={preset.name}
+                      onClick={() => setSchoolInfo({ ...schoolInfo, cardColors: preset.colors })}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div
+                        className="w-full h-8 rounded-lg border-2 transition-all group-hover:scale-105"
+                        style={{
+                          background: `linear-gradient(135deg, ${preset.colors.headerBg} 60%, ${preset.colors.footerBar} 100%)`,
+                          borderColor: schoolInfo.cardColors?.headerBg === preset.colors.headerBg
+                            ? preset.colors.headerBg
+                            : 'transparent',
+                          boxShadow: schoolInfo.cardColors?.headerBg === preset.colors.headerBg
+                            ? `0 0 0 2px ${preset.colors.headerBg}40`
+                            : 'none',
+                        }}
+                      />
+                      <span className="text-[10px] text-gray-500 font-medium">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom pickers */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase">Personnaliser</p>
+                {[
+                  { key: 'headerBg' as keyof CardColors, label: 'Fond du header' },
+                  { key: 'headerText' as keyof CardColors, label: 'Texte du header' },
+                  { key: 'footerBar' as keyof CardColors, label: 'Barre du bas' },
+                  { key: 'matriculeText' as keyof CardColors, label: 'Couleur matricule' },
+                ].map(({ key, label }) => {
+                  const currentColors = { ...DEFAULT_CARD_COLORS, ...schoolInfo.cardColors };
+                  return (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600 font-medium">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-mono">{currentColors[key]}</span>
+                        <label className="cursor-pointer">
+                          <div
+                            className="w-7 h-7 rounded-md border-2 border-gray-200 overflow-hidden shadow-sm hover:scale-110 transition-transform"
+                            style={{ backgroundColor: currentColors[key] }}
+                          />
+                          <input
+                            type="color"
+                            value={currentColors[key]}
+                            onChange={(e) => setSchoolInfo({
+                              ...schoolInfo,
+                              cardColors: { ...currentColors, [key]: e.target.value }
+                            })}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
               <div className="flex items-center gap-2 mb-6">
                 <Download className="w-5 h-5 text-emerald-600" />
@@ -347,13 +454,8 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <AnimatePresence mode="popLayout">
-                {filteredStudents.map((student) => (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
+              {filteredStudents.map((student) => (
+                  <div
                     key={student.id}
                     className={`group relative bg-white rounded-2xl p-4 border transition-all hover:shadow-md ${
                       selectedStudents.includes(student.id) ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-gray-200'
@@ -402,9 +504,8 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
-              </AnimatePresence>
 
               {filteredStudents.length === 0 && (
                 <div className="col-span-full py-12 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-200">
