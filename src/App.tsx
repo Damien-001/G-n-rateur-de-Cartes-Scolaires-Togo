@@ -307,9 +307,19 @@ export default function App({ session, onLogout }: AppProps) {
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Logo de l'école</label>
                   <div className="flex items-center gap-3 mt-1">
-                    <div className="w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="relative w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                       {schoolInfo.logoUrl ? (
-                        <img src={schoolInfo.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                        <>
+                          <img src={schoolInfo.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => setSchoolInfo({ ...schoolInfo, logoUrl: undefined })}
+                            className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
+                            title="Supprimer le logo"
+                          >
+                            <span style={{ fontSize: 10, lineHeight: 1 }}>✕</span>
+                          </button>
+                        </>
                       ) : (
                         <SchoolIcon className="w-6 h-6 text-gray-300" />
                       )}
@@ -335,9 +345,19 @@ export default function App({ session, onLogout }: AppProps) {
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Signature / Cachet</label>
                   <div className="flex items-center gap-3 mt-1">
-                    <div className="w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="relative w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                       {schoolInfo.signatureUrl ? (
-                        <img src={schoolInfo.signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                        <>
+                          <img src={schoolInfo.signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => setSchoolInfo({ ...schoolInfo, signatureUrl: undefined })}
+                            className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
+                            title="Supprimer la signature"
+                          >
+                            <span style={{ fontSize: 10, lineHeight: 1 }}>✕</span>
+                          </button>
+                        </>
                       ) : (
                         <Edit2 className="w-6 h-6 text-gray-300" />
                       )}
