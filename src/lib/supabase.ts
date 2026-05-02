@@ -46,7 +46,6 @@ export interface DbStudent {
   birth_place?: string;
   exam_center?: string;
   photo_url?: string;
-  qr_code_data?: string;
   expiration_date?: string;
   created_at?: string;
   updated_at?: string;

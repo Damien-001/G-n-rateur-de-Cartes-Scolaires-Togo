@@ -1,5 +1,4 @@
 import React from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
 
 interface IDCardProps {
@@ -149,7 +148,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
         boxSizing: 'border-box',
       }}>
 
-        {/* Left column: photo + matricule + QR */}
+        {/* Left column: photo + matricule */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -195,20 +194,6 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             lineHeight: 1,
           }}>
             {student.matricule}
-          </div>
-
-          {/* QR Code */}
-          <div style={{
-            backgroundColor: '#ffffff',
-            padding: 1,
-            border: `1px solid ${GRAY_BG}`,
-            marginTop: 'auto',
-          }}>
-            <QRCodeCanvas
-              value={student.qrCodeData || `${student.matricule}-${student.lastName}`}
-              size={32}
-              level="L"
-            />
           </div>
         </div>
 

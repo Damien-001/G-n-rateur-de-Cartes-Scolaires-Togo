@@ -119,7 +119,6 @@ Stocke les informations des étudiants.
 | `exam_center` | TEXT | Centre d'examen |
 | `expiration_date` | TEXT | Date d'expiration |
 | `photo_url` | TEXT | URL de la photo |
-| `qr_code_data` | TEXT | Données du QR code |
 | `created_at` | TIMESTAMPTZ | Date de création |
 | `updated_at` | TIMESTAMPTZ | Date de modification |
 

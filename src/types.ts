@@ -9,7 +9,6 @@ export interface Student {
   birthPlace?: string;
   examCenter?: string;
   photoUrl?: string;
-  qrCodeData?: string;
   expirationDate?: string;
 }
 

@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS public.students (
   exam_center     TEXT,
   expiration_date TEXT,
   photo_url       TEXT,
-  qr_code_data    TEXT,
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now()
 );

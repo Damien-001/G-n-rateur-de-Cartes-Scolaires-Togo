@@ -70,7 +70,6 @@ Supabase Project
 │       ├── exam_center (TEXT)
 │       ├── expiration_date (TEXT)
 │       ├── photo_url (TEXT)
-│       ├── qr_code_data (TEXT)
 │       ├── created_at (TIMESTAMPTZ)
 │       └── updated_at (TIMESTAMPTZ)
 │

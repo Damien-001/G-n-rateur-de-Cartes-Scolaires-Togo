@@ -16,7 +16,6 @@ function dbToStudent(row: DbStudent): Student {
     birthPlace: row.birth_place ?? '',
     examCenter: row.exam_center ?? '',
     photoUrl: row.photo_url ?? '',
-    qrCodeData: row.qr_code_data ?? '',
     expirationDate: row.expiration_date ?? '',
   };
 }
@@ -34,7 +33,6 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     birth_place: student.birthPlace || null,
     exam_center: student.examCenter || null,
     photo_url: student.photoUrl || null,
-    qr_code_data: student.qrCodeData || null,
     expiration_date: student.expirationDate || null,
   };
 }
@@ -62,7 +60,7 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     
     const fetchPromise = supabase
       .from('students')
-      .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, qr_code_data, expiration_date')
+      .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(100); // Limiter à 100 étudiants pour le chargement initial
@@ -107,7 +105,6 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
         birth_place: student.birthPlace || null,
         exam_center: student.examCenter || null,
         photo_url: student.photoUrl || null,
-        qr_code_data: student.qrCodeData || null,
         expiration_date: student.expirationDate || null,
       })
       .select()
@@ -139,7 +136,6 @@ export async function insertStudents(students: Student[], userId: string): Promi
     birth_place: s.birthPlace || null,
     exam_center: s.examCenter || null,
     photo_url: s.photoUrl || null,
-    qr_code_data: s.qrCodeData || null,
     expiration_date: s.expirationDate || null,
   }));
 
