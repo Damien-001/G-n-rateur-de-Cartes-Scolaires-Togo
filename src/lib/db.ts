@@ -17,6 +17,7 @@ function dbToStudent(row: DbStudent): Student {
     examCenter: row.exam_center ?? '',
     photoUrl: row.photo_url ?? '',
     qrCodeData: row.qr_code_data ?? '',
+    expirationDate: row.expiration_date ?? '',
   };
 }
 
@@ -34,6 +35,7 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     exam_center: student.examCenter || null,
     photo_url: student.photoUrl || null,
     qr_code_data: student.qrCodeData || null,
+    expiration_date: student.expirationDate || null,
   };
 }
 
@@ -42,6 +44,7 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
     name: row.name,
     logoUrl: row.logo_url,
     signatureUrl: row.signature_url,
+    stampUrl: row.stamp_url,
     cardColors: row.card_colors ?? DEFAULT_CARD_COLORS,
   };
 }
@@ -50,19 +53,37 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
 
 export async function fetchStudents(userId: string): Promise<Student[]> {
   try {
-    const { data, error } = await supabase
+    const startTime = performance.now();
+    
+    // Timeout augmenté à 15 secondes pour connexions lentes
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout fetchStudents')), 15000)
+    );
+    
+    const fetchPromise = supabase
       .from('students')
-      .select('*')
+      .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, qr_code_data, expiration_date')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(100); // Limiter à 100 étudiants pour le chargement initial
+
+    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (error) {
       console.error('fetchStudents error:', error.message);
       return [];
     }
+    
+    const endTime = performance.now();
+    console.log(`✅ Chargement de ${data?.length || 0} étudiants en ${(endTime - startTime).toFixed(0)}ms`);
+    
     return (data as DbStudent[]).map(dbToStudent);
-  } catch (e) {
-    console.error('fetchStudents exception:', e);
+  } catch (e: any) {
+    if (e.message === 'Timeout fetchStudents') {
+      console.error('⏱️ Timeout lors du chargement des étudiants (>15s)');
+    } else {
+      console.error('fetchStudents exception:', e);
+    }
     return [];
   }
 }
@@ -87,6 +108,7 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
         exam_center: student.examCenter || null,
         photo_url: student.photoUrl || null,
         qr_code_data: student.qrCodeData || null,
+        expiration_date: student.expirationDate || null,
       })
       .select()
       .single();
@@ -118,6 +140,7 @@ export async function insertStudents(students: Student[], userId: string): Promi
     exam_center: s.examCenter || null,
     photo_url: s.photoUrl || null,
     qr_code_data: s.qrCodeData || null,
+    expiration_date: s.expirationDate || null,
   }));
 
   const { data, error } = await supabase
@@ -142,20 +165,37 @@ export async function deleteStudent(id: string): Promise<void> {
 
 export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null> {
   try {
-    const { data, error } = await supabase
+    const startTime = performance.now();
+    
+    // Timeout augmenté à 10 secondes pour connexions lentes
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 10000)
+    );
+    
+    const fetchPromise = supabase
       .from('school_info')
-      .select('*')
+      .select('name, logo_url, signature_url, stamp_url, card_colors')
       .eq('user_id', userId)
       .maybeSingle();
+
+    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (error) {
       console.error('fetchSchoolInfo error:', error.message);
       return null;
     }
+    
+    const endTime = performance.now();
+    console.log(`✅ Chargement des infos école en ${(endTime - startTime).toFixed(0)}ms`);
+    
     if (!data) return null;
     return dbToSchoolInfo(data as DbSchoolInfo);
-  } catch (e) {
-    console.error('fetchSchoolInfo exception:', e);
+  } catch (e: any) {
+    if (e.message === 'Timeout fetchSchoolInfo') {
+      console.error('⏱️ Timeout lors du chargement des infos école (>10s)');
+    } else {
+      console.error('fetchSchoolInfo exception:', e);
+    }
     return null;
   }
 }
@@ -167,17 +207,32 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       name: info.name,
       logo_url: info.logoUrl,
       signature_url: info.signatureUrl,
+      stamp_url: info.stampUrl,
       card_colors: info.cardColors ?? DEFAULT_CARD_COLORS,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
-      .from('school_info')
-      .upsert(row, { onConflict: 'user_id' });
+    // Timeout augmenté à 10 secondes
+    const { error } = await Promise.race([
+      supabase
+        .from('school_info')
+        .upsert(row, { onConflict: 'user_id' }),
+      new Promise<{ error: any }>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      )
+    ]);
 
-    if (error) console.error('saveSchoolInfo error:', error.message);
-  } catch (e) {
-    console.error('saveSchoolInfo exception:', e);
+    if (error) {
+      console.error('saveSchoolInfo error:', error.message);
+      throw error;
+    }
+  } catch (e: any) {
+    if (e.message === 'Timeout') {
+      console.warn('⚠️ saveSchoolInfo timeout - les données seront sauvegardées plus tard');
+    } else {
+      console.error('saveSchoolInfo exception:', e);
+    }
+    // Ne pas propager l'erreur pour ne pas bloquer l'interface
   }
 }
 

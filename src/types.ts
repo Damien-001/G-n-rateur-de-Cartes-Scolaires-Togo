@@ -10,6 +10,7 @@ export interface Student {
   examCenter?: string;
   photoUrl?: string;
   qrCodeData?: string;
+  expirationDate?: string;
 }
 
 export interface CardColors {

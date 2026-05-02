@@ -47,6 +47,7 @@ export interface DbStudent {
   exam_center?: string;
   photo_url?: string;
   qr_code_data?: string;
+  expiration_date?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -57,6 +58,7 @@ export interface DbSchoolInfo {
   name: string;
   logo_url?: string;
   signature_url?: string;
+  stamp_url?: string;
   card_colors?: {
     headerBg: string;
     headerText: string;

@@ -13,14 +13,14 @@ interface PrintLayoutProps {
 // Horizontal margin: (794 - 2*350) / 3 = ~31px gap between/around
 // Vertical margin: (1123 - 5*198) / 6 = ~30px gap between/around
 
-export const PrintLayout: React.FC<PrintLayoutProps> = ({ students, schoolInfo }) => {
+export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({ students, schoolInfo }) => {
   const pages: Student[][] = [];
   for (let i = 0; i < students.length; i += 10) {
     pages.push(students.slice(i, i + 10));
   }
 
   return (
-    <div className="print-container" style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: 32 }}>
+    <div className="print-container print-layout-container" style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: 32 }}>
       {pages.map((pageStudents, pageIdx) => (
         <div
           key={pageIdx}
@@ -58,4 +58,4 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ students, schoolInfo }
       ))}
     </div>
   );
-};
+});

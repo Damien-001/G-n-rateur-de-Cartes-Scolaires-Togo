@@ -10,6 +10,7 @@ create table if not exists public.school_info (
   name          text not null default 'ÉCOLE NATIONALE DU TOGO',
   logo_url      text,
   signature_url text,
+  stamp_url     text,
   card_colors   jsonb default '{"headerBg":"#047857","headerText":"#ffffff","footerBar":"#059669","matriculeText":"#065f46"}'::jsonb,
   updated_at    timestamptz default now(),
   unique(user_id)
@@ -29,6 +30,7 @@ create table if not exists public.students (
   exam_center  text,
   photo_url    text,
   qr_code_data text,
+  expiration_date text,
   created_at   timestamptz default now(),
   updated_at   timestamptz default now()
 );

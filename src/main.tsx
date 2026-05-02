@@ -6,6 +6,9 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { onAuthStateChange, Session } from './lib/auth.ts';
 import './index.css';
 
+// Debug - disponible dans la console avec window.debugDatabase()
+import './debug-db.ts';
+
 // Nettoyer le hash Supabase de l'URL (ex: #error=access_...+expired&sb=1)
 if (window.location.hash && window.location.hash.includes('error=')) {
   window.history.replaceState(null, '', window.location.pathname);

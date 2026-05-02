@@ -22,14 +22,34 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
     examCenter: student?.examCenter ?? '',
     photoUrl:   student?.photoUrl   ?? '',
     qrCodeData: student?.qrCodeData ?? '',
+    expirationDate: student?.expirationDate ?? '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      ...formData,
-      id: student?.id || crypto.randomUUID(),
-    } as Student);
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      console.log('📝 Soumission du formulaire avec les données:', formData);
+      
+      const studentData = {
+        ...formData,
+        id: student?.id || crypto.randomUUID(),
+      } as Student;
+      
+      console.log('👤 Données étudiant finales:', studentData);
+      
+      await onSubmit(studentData);
+    } catch (err) {
+      console.error('❌ Erreur lors de la soumission:', err);
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -80,6 +100,16 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                   onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                   placeholder="Ex: 2024-TG-001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Centre d'Examen</label>
+                <input
+                  type="text"
+                  value={formData.examCenter}
+                  onChange={(e) => setFormData({ ...formData, examCenter: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  placeholder="Ex: Lycée de Tokoin"
                 />
               </div>
             </div>
@@ -135,13 +165,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Centre d'Examen</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date d'Expiration</label>
                 <input
-                  type="text"
-                  value={formData.examCenter}
-                  onChange={(e) => setFormData({ ...formData, examCenter: e.target.value })}
+                  type="date"
+                  value={formData.expirationDate}
+                  onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  placeholder="Ex: Lycée de Tokoin"
                 />
               </div>
             </div>
@@ -190,19 +219,36 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
               </div>
             </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <X className="w-3 h-3 text-white" />
+                </div>
+                <p className="text-red-700 font-medium">Erreur lors de l'ajout</p>
+              </div>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
+              disabled={isSubmitting}
+              className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {student ? 'Mettre à jour' : 'Ajouter'}
+              {isSubmitting && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {isSubmitting ? 'Enregistrement...' : (student ? 'Mettre à jour' : 'Ajouter')}
             </button>
           </div>
         </form>
