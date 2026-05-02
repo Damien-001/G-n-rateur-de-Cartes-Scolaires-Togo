@@ -1,94 +1,173 @@
 -- ============================================================
--- Générateur de Cartes Scolaires Togo — Supabase Schema
--- Exécuter dans : Supabase Dashboard > SQL Editor > New Query
+-- Générateur de Cartes Scolaires Togo — Schéma Complet
+-- Version: 2.3.0
+-- Date: 2026-05-02
+-- ============================================================
+-- INSTRUCTIONS:
+-- 1. Allez sur Supabase Dashboard > SQL Editor
+-- 2. Cliquez sur "New Query"
+-- 3. Copiez-collez ce script complet
+-- 4. Cliquez sur "Run" pour exécuter
 -- ============================================================
 
--- 1. TABLE school_info
-create table if not exists public.school_info (
-  id            uuid primary key default gen_random_uuid(),
-  user_id       uuid not null references auth.users(id) on delete cascade,
-  name          text not null default 'ÉCOLE NATIONALE DU TOGO',
-  logo_url      text,
-  signature_url text,
-  stamp_url     text,
-  card_colors   jsonb default '{"headerBg":"#047857","headerText":"#ffffff","footerBar":"#059669","matriculeText":"#065f46"}'::jsonb,
-  updated_at    timestamptz default now(),
-  unique(user_id)
+-- ============================================================
+-- 1. TABLES
+-- ============================================================
+
+-- Table: school_info (Informations de l'école)
+CREATE TABLE IF NOT EXISTS public.school_info (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL DEFAULT 'ÉCOLE NATIONALE DU TOGO',
+  logo_url      TEXT,
+  signature_url TEXT,
+  stamp_url     TEXT,
+  card_colors   JSONB DEFAULT '{"headerBg":"#047857","headerText":"#ffffff","footerBar":"#059669","matriculeText":"#065f46"}'::jsonb,
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id)
 );
 
--- 2. TABLE students
-create table if not exists public.students (
-  id           uuid primary key default gen_random_uuid(),
-  user_id      uuid not null references auth.users(id) on delete cascade,
-  first_name   text not null default '',
-  last_name    text not null default '',
-  matricule    text not null default '',
-  class_name   text not null default '',
-  school_year  text not null default '',
-  birth_date   text,
-  birth_place  text,
-  exam_center  text,
-  photo_url    text,
-  qr_code_data text,
-  expiration_date text,
-  created_at   timestamptz default now(),
-  updated_at   timestamptz default now()
+-- Table: students (Étudiants)
+CREATE TABLE IF NOT EXISTS public.students (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name      TEXT NOT NULL DEFAULT '',
+  last_name       TEXT NOT NULL DEFAULT '',
+  matricule       TEXT NOT NULL DEFAULT '',
+  class_name      TEXT NOT NULL DEFAULT '',
+  school_year     TEXT NOT NULL DEFAULT '',
+  birth_date      TEXT,
+  birth_place     TEXT,
+  exam_center     TEXT,
+  expiration_date TEXT,
+  photo_url       TEXT,
+  qr_code_data    TEXT,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. Index
-create index if not exists students_user_id_idx on public.students(user_id);
-create index if not exists school_info_user_id_idx on public.school_info(user_id);
+-- ============================================================
+-- 2. INDEX (Pour améliorer les performances)
+-- ============================================================
 
--- 4. Row Level Security
-alter table public.school_info enable row level security;
-alter table public.students enable row level security;
+CREATE INDEX IF NOT EXISTS students_user_id_idx ON public.students(user_id);
+CREATE INDEX IF NOT EXISTS school_info_user_id_idx ON public.school_info(user_id);
 
--- Policies school_info
-drop policy if exists "Users can view own school_info" on public.school_info;
-drop policy if exists "Users can insert own school_info" on public.school_info;
-drop policy if exists "Users can update own school_info" on public.school_info;
+-- ============================================================
+-- 3. ROW LEVEL SECURITY (Sécurité des données)
+-- ============================================================
 
-create policy "Users can view own school_info"
-  on public.school_info for select using (auth.uid() = user_id);
-create policy "Users can insert own school_info"
-  on public.school_info for insert with check (auth.uid() = user_id);
-create policy "Users can update own school_info"
-  on public.school_info for update using (auth.uid() = user_id);
+-- Activer RLS
+ALTER TABLE public.school_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
--- Policies students
-drop policy if exists "Users can view own students" on public.students;
-drop policy if exists "Users can insert own students" on public.students;
-drop policy if exists "Users can update own students" on public.students;
-drop policy if exists "Users can delete own students" on public.students;
+-- Supprimer les anciennes policies si elles existent
+DROP POLICY IF EXISTS "Users can view own school_info" ON public.school_info;
+DROP POLICY IF EXISTS "Users can insert own school_info" ON public.school_info;
+DROP POLICY IF EXISTS "Users can update own school_info" ON public.school_info;
+DROP POLICY IF EXISTS "Users can delete own school_info" ON public.school_info;
 
-create policy "Users can view own students"
-  on public.students for select using (auth.uid() = user_id);
-create policy "Users can insert own students"
-  on public.students for insert with check (auth.uid() = user_id);
-create policy "Users can update own students"
-  on public.students for update using (auth.uid() = user_id);
-create policy "Users can delete own students"
-  on public.students for delete using (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can view own students" ON public.students;
+DROP POLICY IF EXISTS "Users can insert own students" ON public.students;
+DROP POLICY IF EXISTS "Users can update own students" ON public.students;
+DROP POLICY IF EXISTS "Users can delete own students" ON public.students;
 
--- 5. Storage bucket (si pas encore créé)
-insert into storage.buckets (id, name, public)
-values ('school-assets', 'school-assets', true)
-on conflict (id) do nothing;
+-- Policies pour school_info
+CREATE POLICY "Users can view own school_info"
+  ON public.school_info FOR SELECT
+  USING (auth.uid() = user_id);
 
-drop policy if exists "Users can upload own assets" on storage.objects;
-drop policy if exists "Users can update own assets" on storage.objects;
-drop policy if exists "Users can delete own assets" on storage.objects;
-drop policy if exists "Public can view assets" on storage.objects;
+CREATE POLICY "Users can insert own school_info"
+  ON public.school_info FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 
-create policy "Users can upload own assets"
-  on storage.objects for insert
-  with check (bucket_id = 'school-assets' and auth.uid()::text = (storage.foldername(name))[1]);
-create policy "Users can update own assets"
-  on storage.objects for update
-  using (bucket_id = 'school-assets' and auth.uid()::text = (storage.foldername(name))[1]);
-create policy "Users can delete own assets"
-  on storage.objects for delete
-  using (bucket_id = 'school-assets' and auth.uid()::text = (storage.foldername(name))[1]);
-create policy "Public can view assets"
-  on storage.objects for select
-  using (bucket_id = 'school-assets');
+CREATE POLICY "Users can update own school_info"
+  ON public.school_info FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own school_info"
+  ON public.school_info FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Policies pour students
+CREATE POLICY "Users can view own students"
+  ON public.students FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own students"
+  ON public.students FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own students"
+  ON public.students FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own students"
+  ON public.students FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================
+-- 4. STORAGE BUCKET (Pour les images)
+-- ============================================================
+
+-- Créer le bucket pour les assets (logo, signature, cachet, photos)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('school-assets', 'school-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Supprimer les anciennes policies de storage
+DROP POLICY IF EXISTS "Users can upload own assets" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own assets" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own assets" ON storage.objects;
+DROP POLICY IF EXISTS "Public can view assets" ON storage.objects;
+
+-- Policies pour storage
+CREATE POLICY "Users can upload own assets"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'school-assets' AND 
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Users can update own assets"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'school-assets' AND 
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Users can delete own assets"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'school-assets' AND 
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Public can view assets"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'school-assets');
+
+-- ============================================================
+-- 5. VÉRIFICATION
+-- ============================================================
+
+-- Vérifier que les tables ont été créées
+SELECT 
+  'school_info' as table_name, 
+  COUNT(*) as columns 
+FROM information_schema.columns 
+WHERE table_name = 'school_info'
+UNION ALL
+SELECT 
+  'students' as table_name, 
+  COUNT(*) as columns 
+FROM information_schema.columns 
+WHERE table_name = 'students';
+
+-- ============================================================
+-- FIN DU SCRIPT
+-- ============================================================
+-- ✅ Si vous voyez "Success. No rows returned", c'est normal !
+-- ✅ Les tables et policies ont été créées avec succès
+-- ✅ Vous pouvez maintenant utiliser l'application
+-- ============================================================
