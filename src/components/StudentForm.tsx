@@ -28,6 +28,77 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fonction pour compresser et redimensionner l'image
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Dimensions cibles pour la photo (ratio 3:4 - portrait)
+          const targetWidth = 300;
+          const targetHeight = 400;
+          
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Canvas non supporté'));
+            return;
+          }
+
+          // Calculer les dimensions en gardant le ratio
+          let width = img.width;
+          let height = img.height;
+          const ratio = width / height;
+          const targetRatio = targetWidth / targetHeight;
+
+          if (ratio > targetRatio) {
+            // Image trop large, on recadre sur la largeur
+            width = height * targetRatio;
+          } else {
+            // Image trop haute, on recadre sur la hauteur
+            height = width / targetRatio;
+          }
+
+          // Centrer le recadrage
+          const offsetX = (img.width - width) / 2;
+          const offsetY = (img.height - height) / 2;
+
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+
+          // Dessiner l'image recadrée et redimensionnée
+          ctx.drawImage(
+            img,
+            offsetX, offsetY, width, height,
+            0, 0, targetWidth, targetHeight
+          );
+
+          // Convertir en base64 avec compression JPEG (qualité 85%)
+          const compressedDataUrl = canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              } else {
+                reject(new Error('Erreur de compression'));
+              }
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -201,19 +272,28 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setFormData({ ...formData, photoUrl: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            // Vérifier la taille du fichier (max 10MB)
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert('La photo est trop volumineuse (max 10MB)');
+                              return;
+                            }
+                            
+                            // Compresser et redimensionner l'image
+                            const compressedDataUrl = await compressImage(file);
+                            setFormData({ ...formData, photoUrl: compressedDataUrl });
+                          } catch (err) {
+                            console.error('Erreur compression image:', err);
+                            alert('Erreur lors du traitement de l\'image');
+                          }
                         }
                       }}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
                     />
-                    <p className="mt-1 text-xs text-gray-400">Format recommandé: Portrait (3:4)</p>
+                    <p className="mt-1 text-xs text-gray-400">Format recommandé: Portrait (3:4) - Compression automatique</p>
                   </div>
                 </div>
               </div>

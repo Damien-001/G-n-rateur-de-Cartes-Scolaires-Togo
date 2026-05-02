@@ -169,12 +169,18 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            position: 'relative',
           }}>
             {student.photoUrl ? (
               <img
                 src={student.photoUrl}
                 alt="Student"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
               />
             ) : (
               <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke={GRAY_BORDER} strokeWidth="1.5">
