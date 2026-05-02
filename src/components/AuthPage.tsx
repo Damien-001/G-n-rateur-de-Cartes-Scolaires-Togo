@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { login, register, Session } from '../lib/auth';
+import { login, register, resendConfirmation, Session } from '../lib/auth';
 
 interface AuthPageProps {
   onAuth: (session: Session) => void;
 }
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'confirm';
 
-// Toutes les icônes en SVG inline — évite les conflits avec extensions navigateur
+// ── Icônes SVG inline ──────────────────────────────────────────────────────────
 const IconSchool = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -62,8 +62,24 @@ const IconCheck = () => (
     <polyline points="22 4 12 14.01 9 11.01"/>
   </svg>
 );
+const IconMail = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="16" x="2" y="4" rx="2"/>
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+  </svg>
+);
+const IconRefresh = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M8 16H3v5"/>
+  </svg>
+);
 
-// Formulaire de connexion — composant isolé avec sa propre clé
+// ── Formulaire de connexion ────────────────────────────────────────────────────
 const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -77,8 +93,8 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
     setLoading(true);
     try {
       const result = await login(email, password);
-      if (result.success) onAuth(result.session);
-      else setError(result.error);
+      if (!result.success) setError(result.error);
+      else onAuth(result.session);
     } finally {
       setLoading(false);
     }
@@ -114,8 +130,11 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
   );
 };
 
-// Formulaire d'inscription — composant isolé avec sa propre clé
-const RegisterForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
+// ── Formulaire d'inscription ───────────────────────────────────────────────────
+const RegisterForm: React.FC<{
+  onAuth: (s: Session) => void;
+  onNeedsConfirmation: (email: string) => void;
+}> = ({ onAuth, onNeedsConfirmation }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -133,8 +152,13 @@ const RegisterForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) =>
     setLoading(true);
     try {
       const result = await register(fullName, email, password);
-      if (result.success) onAuth(result.session);
-      else setError(result.error);
+      if (!result.success) {
+        setError(result.error);
+      } else if (result.needsConfirmation) {
+        onNeedsConfirmation(result.email);
+      } else {
+        onAuth(result.session);
+      }
     } finally {
       setLoading(false);
     }
@@ -195,8 +219,138 @@ const RegisterForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) =>
   );
 };
 
+// ── Écran de confirmation email ────────────────────────────────────────────────
+const ConfirmScreen: React.FC<{
+  email: string;
+  onBackToLogin: () => void;
+}> = ({ email, onBackToLogin }) => {
+  const [cooldown, setCooldown] = useState(0);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [resendError, setResendError] = useState('');
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    setResendStatus('sending');
+    setResendError('');
+    const result = await resendConfirmation(email);
+    if (result.success) {
+      setResendStatus('sent');
+      setCooldown(60);
+      setTimeout(() => setResendStatus('idle'), 4000);
+    } else {
+      setResendStatus('error');
+      setResendError(result.error);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center px-2 py-4">
+      {/* Icône animée */}
+      <div className="relative mb-6">
+        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100">
+          <div className="text-emerald-500">
+            <IconMail />
+          </div>
+        </div>
+        {/* Badge succès */}
+        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow">
+          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      </div>
+
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">Compte créé avec succès ! 🎉</h2>
+      <p className="text-gray-500 text-sm leading-relaxed mb-1">
+        Un email de confirmation a été envoyé à
+      </p>
+      <p className="font-bold text-emerald-700 text-sm mb-5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+        {email}
+      </p>
+      <p className="text-gray-500 text-sm leading-relaxed mb-6">
+        Cliquez sur le lien dans l'email pour activer votre compte,<br />
+        puis revenez vous connecter.
+      </p>
+
+      {/* Instructions */}
+      <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
+        <p className="text-xs font-bold text-amber-800 uppercase mb-2">📋 Étapes à suivre</p>
+        <ol className="space-y-1.5">
+          {[
+            'Ouvrez votre boîte email',
+            'Recherchez un email de "Générateur de Cartes Scolaires"',
+            'Cliquez sur le bouton de confirmation',
+            'Revenez sur cette page et connectez-vous',
+          ].map((step, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-amber-700">
+              <span className="w-4 h-4 bg-amber-200 rounded-full flex items-center justify-center font-bold text-amber-800 flex-shrink-0 mt-0.5 text-[10px]">{i + 1}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Feedback renvoi */}
+      {resendStatus === 'sent' && (
+        <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Email renvoyé avec succès !
+        </div>
+      )}
+      {resendStatus === 'error' && (
+        <div className="w-full bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">{resendError}</div>
+      )}
+
+      {/* Actions */}
+      <div className="w-full space-y-3">
+        <button
+          onClick={onBackToLogin}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+        >
+          <IconLogin />
+          Aller à la connexion
+        </button>
+        <button
+          onClick={handleResend}
+          disabled={resendStatus === 'sending' || cooldown > 0}
+          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:border-emerald-400 hover:text-emerald-600 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {resendStatus === 'sending' ? (
+            <span style={{
+              display: 'inline-block', width: 14, height: 14,
+              border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#059669',
+              borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite',
+            }} />
+          ) : (
+            <IconRefresh />
+          )}
+          {cooldown > 0
+            ? `Renvoyer dans ${cooldown}s`
+            : resendStatus === 'sending'
+            ? 'Envoi en cours...'
+            : "Renvoyer l'email"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Page principale Auth ───────────────────────────────────────────────────────
 export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
   const [mode, setMode] = useState<Mode>('login');
+  const [confirmEmail, setConfirmEmail] = useState('');
+
+  const handleNeedsConfirmation = (email: string) => {
+    setConfirmEmail(email);
+    setMode('confirm');
+  };
 
   return (
     <>
@@ -217,36 +371,46 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
           </div>
 
           <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100">
-              <button type="button" onClick={() => setMode('login')}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                  mode === 'login' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                }`}>
-                <IconLogin /> Connexion
-              </button>
-              <button type="button" onClick={() => setMode('register')}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                  mode === 'register' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                }`}>
-                <IconUserPlus /> Créer un compte
-              </button>
-            </div>
+            {/* Tabs — masqués sur l'écran de confirmation */}
+            {mode !== 'confirm' && (
+              <div className="flex border-b border-gray-100">
+                <button type="button" onClick={() => setMode('login')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
+                    mode === 'login' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
+                  }`}>
+                  <IconLogin /> Connexion
+                </button>
+                <button type="button" onClick={() => setMode('register')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
+                    mode === 'register' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
+                  }`}>
+                  <IconUserPlus /> Créer un compte
+                </button>
+              </div>
+            )}
 
             <div className="p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-1">
-                {mode === 'login' ? 'Bon retour 👋' : 'Créer votre compte'}
-              </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                {mode === 'login' ? 'Connectez-vous pour accéder à vos cartes scolaires.' : 'Remplissez le formulaire pour commencer.'}
-              </p>
-
-              {/* key= force un remount complet à chaque changement d'onglet
-                  → le DOM est entièrement recréé, les extensions ne peuvent plus corrompre */}
-              {mode === 'login'
-                ? <LoginForm key="login" onAuth={onAuth} />
-                : <RegisterForm key="register" onAuth={onAuth} />
-              }
+              {mode === 'confirm' ? (
+                <ConfirmScreen
+                  email={confirmEmail}
+                  onBackToLogin={() => setMode('login')}
+                />
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">
+                    {mode === 'login' ? 'Bon retour 👋' : 'Créer votre compte'}
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-6">
+                    {mode === 'login'
+                      ? 'Connectez-vous pour accéder à vos cartes scolaires.'
+                      : 'Remplissez le formulaire pour commencer.'}
+                  </p>
+                  {mode === 'login'
+                    ? <LoginForm key="login" onAuth={onAuth} />
+                    : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
+                  }
+                </>
+              )}
             </div>
           </div>
 

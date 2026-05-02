@@ -31,6 +31,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
           birthPlace: row.lieu_naissance || row.birthPlace || '',
           examCenter: row.centre_examen || row.examCenter || row.centre || '',
           photoUrl: row.photo_url || row.photoUrl || row.photo || '',
+          expirationDate: row.date_expiration || row.expirationDate || '',
         }));
         onImport(importedStudents);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -50,10 +51,11 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
         lieu_naissance: 'Lomé',
         centre_examen: 'Lycée de Tokoin',
         photo_url: '',
+        date_expiration: '31/12/2026',
       },
     ];
     const csv = Papa.unparse(template, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url'],
+      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
     });
     // BOM UTF-8 pour que Excel ouvre correctement les accents

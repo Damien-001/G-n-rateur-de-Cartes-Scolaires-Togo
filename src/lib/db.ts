@@ -157,6 +157,17 @@ export async function deleteStudent(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Suppression en masse — supprime plusieurs élèves en une seule requête */
+export async function deleteStudents(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from('students')
+    .delete()
+    .in('id', ids);
+
+  if (error) throw new Error(error.message);
+}
+
 // ─── School Info ──────────────────────────────────────────────────────────────
 
 export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null> {

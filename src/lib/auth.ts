@@ -29,7 +29,11 @@ export async function register(
   fullName: string,
   email: string,
   password: string
-): Promise<{ success: true; session: Session } | { success: false; error: string }> {
+): Promise<
+  | { success: true; session: Session; needsConfirmation: false }
+  | { success: true; session: null; needsConfirmation: true; email: string }
+  | { success: false; error: string }
+> {
   try {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
@@ -56,11 +60,32 @@ export async function register(
       return { success: false, error: 'Erreur lors de la création du compte.' };
     }
 
-    return { success: true, session: toSession(data.user) };
+    // Supabase renvoie session === null quand la confirmation par email est activée
+    if (!data.session) {
+      return { success: true, session: null, needsConfirmation: true, email: data.user.email ?? email };
+    }
+
+    return { success: true, session: toSession(data.user), needsConfirmation: false };
   } catch (e: any) {
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
       return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et les variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez le serveur de développement.' };
     }
+    return { success: false, error: e?.message ?? 'Erreur inconnue.' };
+  }
+}
+
+/** Renvoyer l'email de confirmation */
+export async function resendConfirmation(
+  email: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e: any) {
     return { success: false, error: e?.message ?? 'Erreur inconnue.' };
   }
 }

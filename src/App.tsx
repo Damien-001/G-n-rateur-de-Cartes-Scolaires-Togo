@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { 
   Plus, 
-  Printer, 
   Users, 
   Settings, 
   Trash2, 
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { StudentForm } from './components/StudentForm';
 import { ImportExport } from './components/ImportExport';
@@ -71,34 +72,46 @@ export default function App({ session, onLogout }: AppProps) {
     };
   }, [onLogout]);
 
-  const handlePrint = () => {
-    window.print();
-  };
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
-    
-    // Petite pause pour laisser le temps au bouton de se mettre à jour
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    // Courte pause pour laisser React mettre à jour le bouton
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
-      // Méthode alternative: utiliser l'impression du navigateur
-      // L'utilisateur devra choisir "Enregistrer en PDF" dans la boîte de dialogue
-      const originalTitle = document.title;
-      document.title = `cartes_scolaires_${new Date().toISOString().split('T')[0]}`;
-      
-      // Ouvrir la boîte de dialogue d'impression
-      window.print();
-      
-      // Restaurer le titre après un délai
-      setTimeout(() => { 
-        document.title = originalTitle;
-        setIsGeneratingPDF(false);
-      }, 1000);
-      
+      // Récupérer toutes les pages A4 rendues dans le DOM
+      const pages = document.querySelectorAll<HTMLElement>('.a4-page');
+      if (pages.length === 0) {
+        alert('Aucune page à exporter.');
+        return;
+      }
+
+      // A4 en mm: 210 × 297
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const A4_W_MM = 210;
+      const A4_H_MM = 297;
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const canvas = await html2canvas(page, {
+          scale: 2,           // haute résolution
+          useCORS: true,      // images cross-origin (photos Supabase)
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+      }
+
+      const date = new Date().toISOString().split('T')[0];
+      pdf.save(`cartes_scolaires_${date}.pdf`);
     } catch (error) {
       console.error('Erreur génération PDF:', error);
-      alert('Erreur lors de l\'ouverture de la fenêtre d\'impression');
+      alert('Erreur lors de la génération du PDF.');
+    } finally {
       setIsGeneratingPDF(false);
     }
   };
@@ -205,6 +218,34 @@ export default function App({ session, onLogout }: AppProps) {
     }
   }, []);
 
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedStudents.length === 0) return;
+    const n = selectedStudents.length;
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${n} élève${n > 1 ? 's' : ''} ? Cette action est irréversible.`)) return;
+    try {
+      await deleteStudents(selectedStudents);
+      setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
+      setSelectedStudents([]);
+    } catch (err) {
+      console.error('Erreur suppression massive:', err);
+      alert('Erreur lors de la suppression en masse.');
+    }
+  }, [selectedStudents]);
+
+  const filteredStudents = React.useMemo(() =>
+    students.filter(s =>
+      `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [students, searchTerm]
+  );
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedStudents.length === filteredStudents.length && filteredStudents.length > 0) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(filteredStudents.map(s => s.id));
+    }
+  }, [selectedStudents, filteredStudents]);
+
   const handleImport = useCallback(async (newStudents: Student[]) => {
     try {
       const saved = await insertStudents(newStudents, session.userId);
@@ -231,11 +272,7 @@ export default function App({ session, onLogout }: AppProps) {
     );
   }, []);
 
-  const filteredStudents = React.useMemo(() => 
-    students.filter(s => 
-      `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [students, searchTerm]
-  );
+
 
   const studentsToPrint = React.useMemo(() => 
     selectedStudents.length > 0 
@@ -302,11 +339,11 @@ export default function App({ session, onLogout }: AppProps) {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={generatePDF}
               disabled={isGeneratingPDF}
-              title="Ouvre la fenêtre d'impression - Choisissez 'Enregistrer en PDF' comme destination"
-              className="flex items-center gap-2 px-5 py-2 border-2 border-[#047857] text-[#047857] rounded-full font-bold hover:bg-emerald-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
+              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingPDF ? (
                 <>
@@ -316,16 +353,9 @@ export default function App({ session, onLogout }: AppProps) {
               ) : (
                 <>
                   <FileDown className="w-5 h-5" />
-                  Enregistrer en PDF
+                  Télécharger le PDF
                 </>
               )}
-            </button>
-            <button 
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200"
-            >
-              <Printer className="w-5 h-5" />
-              Imprimer
             </button>
           </div>
         </div>
@@ -382,8 +412,8 @@ export default function App({ session, onLogout }: AppProps) {
               disabled={students.length === 0}
               className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Printer className="w-5 h-5" />
-              Imprimer
+              <FileDown className="w-5 h-5" />
+              Télécharger PDF
             </button>
             <button 
               onClick={() => setIsFormOpen(true)}
@@ -657,6 +687,7 @@ export default function App({ session, onLogout }: AppProps) {
 
           {/* Main Content / List */}
           <div className="lg:col-span-8 space-y-6">
+            {/* Barre de recherche */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -668,74 +699,125 @@ export default function App({ session, onLogout }: AppProps) {
                   className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-500">
-                  {selectedStudents.length > 0 ? `${selectedStudents.length} sélectionnés` : `${students.length} élèves total`}
+                  {students.length} élève{students.length > 1 ? 's' : ''}
                 </span>
-                {selectedStudents.length > 0 && (
-                  <button 
-                    onClick={() => setSelectedStudents([])}
-                    className="text-xs text-emerald-600 font-bold hover:underline"
-                  >
-                    Désélectionner
-                  </button>
-                )}
+                <button
+                  onClick={handleSelectAll}
+                  disabled={filteredStudents.length === 0}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
+                    ? 'Tout désélectionner'
+                    : 'Tout sélectionner'}
+                </button>
               </div>
             </div>
 
+            {/* Barre d'action contextuelle — suppression massive */}
+            {selectedStudents.length > 0 && (
+              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-800">
+                      {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedStudents([])}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer la sélection
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredStudents.map((student) => (
+              {filteredStudents.map((student) => {
+                const isSelected = selectedStudents.includes(student.id);
+                return (
                   <div
                     key={student.id}
-                    className={`group relative bg-white rounded-2xl p-4 border transition-all hover:shadow-md ${
-                      selectedStudents.includes(student.id) ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-gray-200'
+                    onClick={() => toggleSelect(student.id)}
+                    className={`group relative bg-white rounded-2xl p-4 border-2 transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? 'border-emerald-500 ring-2 ring-emerald-200 shadow-md shadow-emerald-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                     }`}
                   >
+                    {/* Checkbox coin supérieur droit */}
+                    <div
+                      className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 border-emerald-500'
+                          : 'bg-white border-gray-300 opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+
                     <div className="flex gap-4">
-                      <div className="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                      <div className={`w-16 h-20 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${
+                        isSelected ? 'border-emerald-300' : 'border-gray-200 bg-gray-100'
+                      }`}>
                         {student.photoUrl ? (
                           <img src={student.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
                             <Users className="w-8 h-8 text-gray-300" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-6">
                         <h3 className="font-bold text-gray-900 truncate">{student.lastName} {student.firstName}</h3>
                         <p className="text-sm text-gray-500 font-medium">{student.className}</p>
                         <p className="text-xs text-emerald-600 font-bold mt-1">{student.matricule}</p>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between">
-                      <button 
-                        onClick={() => toggleSelect(student.id)}
-                        className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
-                          selectedStudents.includes(student.id) 
-                            ? 'bg-emerald-500 text-white' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                    {/* Actions — stopper la propagation du clic */}
+                    <div
+                      className="mt-3 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => handleEditStudent(student)}
+                        title="Modifier"
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                       >
-                        {selectedStudents.includes(student.id) ? 'Sélectionné' : 'Sélectionner'}
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleEditStudent(student)}
-                          className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteStudent(student.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleDeleteStudent(student.id)}
+                        title="Supprimer"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
+
 
               {filteredStudents.length === 0 && (
                 <div className="col-span-full py-12 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-200">
