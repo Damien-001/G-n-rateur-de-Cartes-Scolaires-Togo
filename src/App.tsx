@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { 
   Plus, 
@@ -110,7 +110,7 @@ export default function App({ session, onLogout }: AppProps) {
       pdf.save(`cartes_scolaires_${date}.pdf`);
     } catch (error) {
       console.error('Erreur génération PDF:', error);
-      alert('Erreur lors de la génération du PDF.');
+      alert('Erreur lors de la génération du PDF: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -469,7 +469,7 @@ export default function App({ session, onLogout }: AppProps) {
                     <div className="relative w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                       {schoolInfo.logoUrl ? (
                         <>
-                          <img src={schoolInfo.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                          <img src={schoolInfo.logoUrl} alt="Logo" crossOrigin="anonymous" className="w-full h-full object-contain" />
                           <button
                             type="button"
                             onClick={() => setSchoolInfo({ ...schoolInfo, logoUrl: undefined })}
@@ -508,7 +508,7 @@ export default function App({ session, onLogout }: AppProps) {
                       <div className="relative w-full h-8 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                         {schoolInfo.signatureUrl ? (
                           <>
-                            <img src={schoolInfo.signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                            <img src={schoolInfo.signatureUrl} alt="Signature" crossOrigin="anonymous" className="w-full h-full object-contain" />
                             <button
                               type="button"
                               onClick={() => setSchoolInfo({ ...schoolInfo, signatureUrl: undefined })}
@@ -546,7 +546,7 @@ export default function App({ session, onLogout }: AppProps) {
                       <div className="relative w-8 h-8 mx-auto bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center overflow-hidden">
                         {schoolInfo.stampUrl ? (
                           <>
-                            <img src={schoolInfo.stampUrl} alt="Cachet" className="w-full h-full object-contain" />
+                            <img src={schoolInfo.stampUrl} alt="Cachet" crossOrigin="anonymous" className="w-full h-full object-contain" />
                             <button
                               type="button"
                               onClick={() => setSchoolInfo({ ...schoolInfo, stampUrl: undefined })}
@@ -780,7 +780,7 @@ export default function App({ session, onLogout }: AppProps) {
                         isSelected ? 'border-emerald-300' : 'border-gray-200 bg-gray-100'
                       }`}>
                         {student.photoUrl ? (
-                          <img src={student.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={student.photoUrl} alt="" crossOrigin="anonymous" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100">
                             <Users className="w-8 h-8 text-gray-300" />

@@ -254,7 +254,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                   <div className="relative w-16 h-20 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {formData.photoUrl ? (
                       <>
-                        <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={formData.photoUrl} alt="Preview" crossOrigin="anonymous" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, photoUrl: '' })}

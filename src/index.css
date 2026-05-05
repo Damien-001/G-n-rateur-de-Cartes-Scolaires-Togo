@@ -47,6 +47,15 @@
   }
 }
 
+/* Fix for html2canvas oklch parsing error (Tailwind v4 default colors) */
+.a4-page, .a4-page *, .a4-page ::before, .a4-page ::after {
+  border-color: rgba(229, 231, 235, 1);
+  outline-color: rgba(229, 231, 235, 1);
+  text-decoration-color: rgba(229, 231, 235, 1);
+  color: #000000;
+  background-color: transparent;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
