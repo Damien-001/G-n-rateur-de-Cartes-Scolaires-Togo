@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Connexion Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #047857;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 4px solid #047857;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #ef4444;
+    }
+    .info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    button {
+      background: #047857;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 10px 10px 0;
+    }
+    button:hover {
+      background: #065f46;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .step {
+      font-weight: bold;
+      color: #047857;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Test de Connexion Supabase</h1>
+    
+    <div class="test-section">
+      <div class="step">Étape 1 : Configuration</div>
+      <p>Vérification des variables d'environnement Supabase</p>
+      <button onclick="testConfig()">Tester la configuration</button>
+      <div id="config-result"></div>
+    </div>
+
+    <div class="test-section">
+      <div class="step">Étape 2 : Authentification</div>
+      <p>Vérification de la session utilisateur actuelle</p>
+      <button onclick="testAuth()">Vérifier l'authentification</button>
+      <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+      <div class="step">Étape 3 : Test d'insertion</div>
+      <p>Tentative d'insertion d'un étudiant de test</p>
+      <button onclick="testInsert()" id="insert-btn">Tester l'insertion</button>
+      <div id="insert-result"></div>
+    </div>
+
+    <div class="test-section">
+      <div class="step">Étape 4 : Vérification RLS</div>
+      <p>Diagnostic des politiques de sécurité</p>
+      <button onclick="testRLS()">Diagnostiquer RLS</button>
+      <div id="rls-result"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Charger les variables d'environnement depuis .env
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'NON_DEFINI';
+    const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'NON_DEFINI';
+
+    // Créer le client Supabase
+    let supabase = null;
+    
+    try {
+      if (SUPABASE_URL !== 'NON_DEFINI' && SUPABASE_ANON_KEY !== 'NON_DEFINI') {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (error) {
+      console.error('Erreur création client Supabase:', error);
+    }
+
+    window.testConfig = function() {
+      const resultDiv = document.getElementById('config-result');
+      
+      let html = '<div class="result info">';
+      html += '<strong>📋 Configuration détectée :</strong>\n\n';
+      html += `VITE_SUPABASE_URL: ${SUPABASE_URL}\n`;
+      html += `VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY.substring(0, 50)}...\n\n`;
+      
+      if (SUPABASE_URL === 'NON_DEFINI' || SUPABASE_ANON_KEY === 'NON_DEFINI') {
+        html += '❌ ERREUR : Variables d\'environnement manquantes !\n\n';
+        html += 'Solution :\n';
+        html += '1. Créez un fichier .env à la racine du projet\n';
+        html += '2. Ajoutez les lignes suivantes :\n';
+        html += '   VITE_SUPABASE_URL=https://[votre-projet].supabase.co\n';
+        html += '   VITE_SUPABASE_ANON_KEY=[votre-clé]\n';
+        html += '3. Redémarrez le serveur (npm run dev)';
+        html += '</div>';
+        resultDiv.innerHTML = html;
+        return;
+      }
+      
+      if (supabase) {
+        html += '✅ Client Supabase créé avec succès !';
+        html += '</div>';
+        resultDiv.innerHTML = html;
+      } else {
+        html += '❌ Impossible de créer le client Supabase';
+        html += '</div>';
+        resultDiv.innerHTML = html;
+      }
+    };
+
+    window.testAuth = async function() {
+      const resultDiv = document.getElementById('auth-result');
+      
+      if (!supabase) {
+        resultDiv.innerHTML = '<div class="result error">❌ Client Supabase non initialisé. Testez d\'abord la configuration.</div>';
+        return;
+      }
+
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        let html = '<div class="result ';
+        
+        if (error) {
+          html += 'error">❌ Erreur lors de la récupération de la session :\n\n';
+          html += JSON.stringify(error, null, 2);
+          html += '</div>';
+          resultDiv.innerHTML = html;
+          return;
+        }
+        
+        if (!session) {
+          html += 'error">❌ Aucune session active !\n\n';
+          html += 'Vous devez être connecté pour ajouter des étudiants.\n\n';
+          html += 'Solution :\n';
+          html += '1. Retournez sur l\'application principale\n';
+          html += '2. Connectez-vous avec votre compte\n';
+          html += '3. Revenez sur cette page de test';
+          html += '</div>';
+          resultDiv.innerHTML = html;
+          return;
+        }
+        
+        html += 'success">✅ Session active détectée !\n\n';
+        html += '<strong>Informations utilisateur :</strong>\n';
+        html += `User ID: ${session.user.id}\n`;
+        html += `Email: ${session.user.email}\n`;
+        html += `Créé le: ${new Date(session.user.created_at).toLocaleString('fr-FR')}\n\n`;
+        html += '<strong>Token JWT :</strong>\n';
+        html += `${session.access_token.substring(0, 100)}...\n\n`;
+        html += '✅ Vous êtes bien authentifié !';
+        html += '</div>';
+        
+        resultDiv.innerHTML = html;
+        
+        // Activer le bouton d'insertion
+        document.getElementById('insert-btn').disabled = false;
+        
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ Exception : ${error.message}</div>`;
+      }
+    };
+
+    window.testInsert = async function() {
+      const resultDiv = document.getElementById('insert-result');
+      
+      if (!supabase) {
+        resultDiv.innerHTML = '<div class="result error">❌ Client Supabase non initialisé.</div>';
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          resultDiv.innerHTML = '<div class="result error">❌ Vous devez être connecté. Testez d\'abord l\'authentification.</div>';
+          return;
+        }
+
+        resultDiv.innerHTML = '<div class="result info">⏳ Tentative d\'insertion en cours...</div>';
+
+        const testStudent = {
+          user_id: session.user.id,
+          first_name: 'Test',
+          last_name: 'DIAGNOSTIC',
+          matricule: `TEST-${Date.now()}`,
+          class_name: '6ème',
+          school_year: '2025-2026',
+          birth_date: '2010-01-01',
+          birth_place: 'Lomé',
+          exam_center: 'Centre Test',
+          photo_url: null,
+          expiration_date: null
+        };
+
+        console.log('📝 Données à insérer:', testStudent);
+
+        const { data, error } = await supabase
+          .from('students')
+          .insert(testStudent)
+          .select()
+          .single();
+
+        if (error) {
+          let html = '<div class="result error">❌ ERREUR D\'INSERTION\n\n';
+          html += '<strong>Message :</strong>\n';
+          html += `${error.message}\n\n`;
+          html += '<strong>Code :</strong>\n';
+          html += `${error.code}\n\n`;
+          html += '<strong>Détails :</strong>\n';
+          html += `${error.details || 'Aucun détail'}\n\n`;
+          html += '<strong>Hint :</strong>\n';
+          html += `${error.hint || 'Aucun hint'}\n\n`;
+          
+          if (error.message.includes('row-level security')) {
+            html += '🔍 DIAGNOSTIC : Problème de politiques RLS\n\n';
+            html += 'SOLUTION :\n';
+            html += '1. Ouvrez Supabase Dashboard\n';
+            html += '2. Allez dans SQL Editor\n';
+            html += '3. Exécutez le script fix-rls-policies.sql\n';
+            html += '4. Réessayez ce test';
+          }
+          
+          html += '</div>';
+          resultDiv.innerHTML = html;
+          return;
+        }
+
+        let html = '<div class="result success">✅ INSERTION RÉUSSIE !\n\n';
+        html += '<strong>Données insérées :</strong>\n';
+        html += JSON.stringify(data, null, 2);
+        html += '\n\n✅ Les politiques RLS fonctionnent correctement !';
+        html += '\n\n⚠️ N\'oubliez pas de supprimer cet étudiant de test.';
+        html += '</div>';
+        
+        resultDiv.innerHTML = html;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ Exception : ${error.message}\n\n${error.stack}</div>`;
+      }
+    };
+
+    window.testRLS = async function() {
+      const resultDiv = document.getElementById('rls-result');
+      
+      if (!supabase) {
+        resultDiv.innerHTML = '<div class="result error">❌ Client Supabase non initialisé.</div>';
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          resultDiv.innerHTML = '<div class="result error">❌ Vous devez être connecté.</div>';
+          return;
+        }
+
+        let html = '<div class="result info"><strong>🔍 Diagnostic RLS</strong>\n\n';
+        html += `User ID actuel: ${session.user.id}\n\n`;
+        html += '<strong>Recommandations :</strong>\n\n';
+        html += '1. Ouvrez Supabase Dashboard > SQL Editor\n';
+        html += '2. Exécutez cette requête pour vérifier les policies :\n\n';
+        html += '```sql\n';
+        html += 'SELECT policyname, cmd, qual, with_check\n';
+        html += 'FROM pg_policies\n';
+        html += 'WHERE tablename = \'students\';\n';
+        html += '```\n\n';
+        html += '3. Si aucune policy n\'apparaît, exécutez fix-rls-policies.sql\n\n';
+        html += '4. Pour tester manuellement l\'insertion :\n\n';
+        html += '```sql\n';
+        html += 'INSERT INTO public.students (\n';
+        html += '  user_id, first_name, last_name,\n';
+        html += '  matricule, class_name, school_year\n';
+        html += ') VALUES (\n';
+        html += `  '${session.user.id}',\n`;
+        html += '  \'Test\', \'Manual\',\n';
+        html += '  \'MANUAL-001\', \'6ème\', \'2025-2026\'\n';
+        html += ');\n';
+        html += '```\n\n';
+        html += 'Si cette requête fonctionne dans SQL Editor mais pas dans l\'app,\n';
+        html += 'le problème vient du code JavaScript, pas de RLS.';
+        html += '</div>';
+        
+        resultDiv.innerHTML = html;
+
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ Exception : ${error.message}</div>`;
+      }
+    };
+
+    // Auto-test au chargement
+    window.addEventListener('load', () => {
+      testConfig();
+    });
+  </script>
+</body>
+</html>
