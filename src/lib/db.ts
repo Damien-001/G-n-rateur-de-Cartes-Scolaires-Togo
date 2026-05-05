@@ -91,34 +91,70 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
   // Sinon on fait un insert et Supabase génère l'UUID
   const isNew = !student.id || student.id === '';
 
+  console.log('🔍 [upsertStudent] Debug info:', {
+    isNew,
+    userId,
+    studentId: student.id,
+    firstName: student.firstName,
+    lastName: student.lastName
+  });
+
   if (isNew) {
+    const insertData = {
+      user_id: userId,
+      first_name: student.firstName,
+      last_name: student.lastName,
+      matricule: student.matricule,
+      class_name: student.className,
+      school_year: student.schoolYear,
+      birth_date: student.birthDate || null,
+      birth_place: student.birthPlace || null,
+      exam_center: student.examCenter || null,
+      photo_url: student.photoUrl || null,
+      expiration_date: student.expirationDate || null,
+    };
+    
+    console.log('📝 [upsertStudent] Données à insérer:', insertData);
+    
     const { data, error } = await supabase
       .from('students')
-      .insert({
-        user_id: userId,
-        first_name: student.firstName,
-        last_name: student.lastName,
-        matricule: student.matricule,
-        class_name: student.className,
-        school_year: student.schoolYear,
-        birth_date: student.birthDate || null,
-        birth_place: student.birthPlace || null,
-        exam_center: student.examCenter || null,
-        photo_url: student.photoUrl || null,
-        expiration_date: student.expirationDate || null,
-      })
+      .insert(insertData)
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    
+    if (error) {
+      console.error('❌ [upsertStudent] Erreur Supabase:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(error.message);
+    }
+    
+    console.log('✅ [upsertStudent] Insertion réussie:', data);
     return dbToStudent(data as DbStudent);
   } else {
     const row = studentToDb(student, userId);
+    console.log('📝 [upsertStudent] Données à mettre à jour:', row);
+    
     const { data, error } = await supabase
       .from('students')
       .upsert(row, { onConflict: 'id' })
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    
+    if (error) {
+      console.error('❌ [upsertStudent] Erreur Supabase:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(error.message);
+    }
+    
+    console.log('✅ [upsertStudent] Mise à jour réussie:', data);
     return dbToStudent(data as DbStudent);
   }
 }
