@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Student, SchoolInfo, CLASSES_LIST, SCHOOL_YEARS } from '../types';
-import { X, Upload, Plus, Trash2, Edit2 } from 'lucide-react';
+import { X, Upload, Plus, Trash2, Edit2, Camera } from 'lucide-react';
 import { IDCard } from './IDCard';
+import { CameraCapture, CameraCaptureRef } from './CameraCapture';
 
 interface StudentFormProps {
   student?: Student;
@@ -27,6 +28,33 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photoInputMode, setPhotoInputMode] = useState<'upload' | 'camera'>('upload');
+  
+  // Ref to CameraCapture component to control camera lifecycle (Requirement 8.3)
+  const cameraCaptureRef = useRef<CameraCaptureRef>(null);
+
+  // Cleanup camera on component unmount (Requirement 8.4)
+  useEffect(() => {
+    return () => {
+      cameraCaptureRef.current?.stopCamera();
+    };
+  }, []);
+
+  // Handle form cancel with camera cleanup (Requirement 8.1)
+  const handleCancel = () => {
+    cameraCaptureRef.current?.stopCamera();
+    onCancel();
+  };
+
+  // Handle mode switching with camera cleanup (Requirement 8.3)
+  const handleModeSwitch = (newMode: 'upload' | 'camera') => {
+    // If switching away from camera mode, stop the camera
+    if (photoInputMode === 'camera' && newMode === 'upload') {
+      cameraCaptureRef.current?.stopCamera();
+    }
+    // Switch mode (preserves formData including photoUrl)
+    setPhotoInputMode(newMode);
+  };
 
   // Fonction pour compresser et redimensionner l'image
   const compressImage = (file: File): Promise<string> => {
@@ -115,6 +143,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       console.log('👤 Données étudiant finales:', studentData);
       
       await onSubmit(studentData);
+      
+      // Stop camera after successful form submission (Requirement 8.2)
+      cameraCaptureRef.current?.stopCamera();
     } catch (err) {
       console.error('❌ Erreur lors de la soumission:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
@@ -125,19 +156,19 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col md:flex-row">
         {/* Form Section */}
-        <div className="flex-1 overflow-y-auto max-h-[90vh] md:max-h-none border-r border-gray-100">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-emerald-50">
+        <div className="flex-1 overflow-y-auto border-r border-gray-100">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-emerald-50 sticky top-0 z-10">
             <h2 className="text-xl font-bold text-emerald-900">
               {student ? 'Modifier l\'élève' : 'Ajouter un élève'}
             </h2>
-            <button onClick={onCancel} className="md:hidden p-2 hover:bg-emerald-100 rounded-full transition-colors">
+            <button onClick={handleCancel} className="md:hidden p-2 hover:bg-emerald-100 rounded-full transition-colors">
               <X className="w-5 h-5 text-emerald-700" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6 pb-24">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -250,52 +281,96 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Photo de l'élève</label>
-                <div className="flex items-center gap-4">
-                  <div className="relative w-16 h-20 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {formData.photoUrl ? (
-                      <>
-                        <img src={formData.photoUrl} alt="Preview" crossOrigin="anonymous" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, photoUrl: '' })}
-                          className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
-                          title="Supprimer la photo"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </>
-                    ) : (
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          try {
-                            // Vérifier la taille du fichier (max 10MB)
-                            if (file.size > 10 * 1024 * 1024) {
-                              alert('La photo est trop volumineuse (max 10MB)');
-                              return;
-                            }
-                            
-                            // Compresser et redimensionner l'image
-                            const compressedDataUrl = await compressImage(file);
-                            setFormData({ ...formData, photoUrl: compressedDataUrl });
-                          } catch (err) {
-                            console.error('Erreur compression image:', err);
-                            alert('Erreur lors du traitement de l\'image');
-                          }
-                        }
-                      }}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
-                    />
-                    <p className="mt-1 text-xs text-gray-400">Format recommandé: Portrait (3:4) - Compression automatique</p>
-                  </div>
+                
+                {/* Mode Selector */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch('upload')}
+                    className={`flex-1 px-4 py-2 rounded-lg border font-semibold transition-all flex items-center justify-center gap-2 ${
+                      photoInputMode === 'upload'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Télécharger
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch('camera')}
+                    className={`flex-1 px-4 py-2 rounded-lg border font-semibold transition-all flex items-center justify-center gap-2 ${
+                      photoInputMode === 'camera'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    Prendre une photo
+                  </button>
                 </div>
+
+                {/* Conditional Rendering: FileUpload or CameraCapture */}
+                {photoInputMode === 'upload' ? (
+                  // File Upload Section
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-16 h-20 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {formData.photoUrl ? (
+                        <>
+                          <img src={formData.photoUrl} alt="Preview" crossOrigin="anonymous" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, photoUrl: '' })}
+                            className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
+                            title="Supprimer la photo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <Upload className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              // Vérifier la taille du fichier (max 10MB)
+                              if (file.size > 10 * 1024 * 1024) {
+                                alert('La photo est trop volumineuse (max 10MB)');
+                                return;
+                              }
+                              
+                              // Compresser et redimensionner l'image
+                              const compressedDataUrl = await compressImage(file);
+                              setFormData({ ...formData, photoUrl: compressedDataUrl });
+                            } catch (err) {
+                              console.error('Erreur compression image:', err);
+                              alert('Erreur lors du traitement de l\'image');
+                            }
+                          }
+                        }}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
+                      />
+                      <p className="mt-1 text-xs text-gray-400">Format recommandé: Portrait (3:4) - Compression automatique</p>
+                    </div>
+                  </div>
+                ) : (
+                  // Camera Capture Section
+                  <CameraCapture
+                    ref={cameraCaptureRef}
+                    onPhotoCapture={(photoDataUrl) => {
+                      setFormData({ ...formData, photoUrl: photoDataUrl });
+                      setPhotoInputMode('upload'); // Switch back to upload mode after capture
+                    }}
+                    onCancel={() => setPhotoInputMode('upload')}
+                    existingPhotoUrl={formData.photoUrl}
+                  />
+                )}
               </div>
             </div>
 
@@ -314,7 +389,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleCancel}
               disabled={isSubmitting}
               className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -337,7 +412,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       {/* Preview Section */}
       <div className="hidden md:flex flex-col w-[400px] bg-gray-50 p-8 items-center justify-center relative">
         <button 
-          onClick={onCancel} 
+          onClick={handleCancel} 
           className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
         >
           <X className="w-5 h-5 text-gray-500" />

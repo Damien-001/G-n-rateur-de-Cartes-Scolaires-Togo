@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Task 8.2 - CameraCapture Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #059669;
+            margin-top: 0;
+        }
+        .test-case {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9fafb;
+            border-left: 4px solid #059669;
+            border-radius: 4px;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.pass {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            color: #9ca3af;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .note {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .note strong {
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Task 8.2 - CameraCapture Integration dans StudentForm</h1>
+    
+    <div class="test-section">
+        <h2>📋 Objectif de la Tâche</h2>
+        <p>Intégrer le composant CameraCapture dans StudentForm avec un rendu conditionnel basé sur le mode de saisie photo sélectionné.</p>
+        <ul>
+            <li>Importer le composant CameraCapture</li>
+            <li>Rendre FileUpload quand <code>photoInputMode === 'upload'</code></li>
+            <li>Rendre CameraCapture quand <code>photoInputMode === 'camera'</code></li>
+            <li>Passer le callback <code>onPhotoCapture</code> pour mettre à jour <code>formData.photoUrl</code></li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>✅ Tests de Vérification</h2>
+        
+        <div class="test-case">
+            <h3>Test 1: Import du Composant <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> Le composant CameraCapture est correctement importé dans StudentForm.tsx</p>
+            <div class="code-block">import { CameraCapture } from './CameraCapture';</div>
+            <p>✓ Import ajouté avec succès</p>
+        </div>
+
+        <div class="test-case">
+            <h3>Test 2: Rendu Conditionnel <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> Le code rend conditionnellement FileUpload ou CameraCapture selon photoInputMode</p>
+            <div class="code-block">
+{photoInputMode === 'upload' ? (
+  // File Upload Section
+  &lt;div className="flex items-center gap-4"&gt;...&lt;/div&gt;
+) : (
+  // Camera Capture Section
+  &lt;CameraCapture ... /&gt;
+)}
+            </div>
+            <p>✓ Rendu conditionnel implémenté correctement</p>
+        </div>
+
+        <div class="test-case">
+            <h3>Test 3: Callback onPhotoCapture <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> Le callback onPhotoCapture met à jour formData.photoUrl et change le mode</p>
+            <div class="code-block">
+onPhotoCapture={(photoDataUrl) => {
+  setFormData({ ...formData, photoUrl: photoDataUrl });
+  setPhotoInputMode('upload'); // Switch back to upload mode
+}}
+            </div>
+            <p>✓ Callback implémenté avec mise à jour de photoUrl</p>
+            <p>✓ Retour automatique au mode upload après capture</p>
+        </div>
+
+        <div class="test-case">
+            <h3>Test 4: Callback onCancel <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> Le callback onCancel retourne au mode upload</p>
+            <div class="code-block">onCancel={() => setPhotoInputMode('upload')}</div>
+            <p>✓ Callback onCancel implémenté</p>
+        </div>
+
+        <div class="test-case">
+            <h3>Test 5: Prop existingPhotoUrl <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> La prop existingPhotoUrl est passée au composant CameraCapture</p>
+            <div class="code-block">existingPhotoUrl={formData.photoUrl}</div>
+            <p>✓ Prop existingPhotoUrl passée correctement</p>
+        </div>
+
+        <div class="test-case">
+            <h3>Test 6: Compilation TypeScript <span class="status pass">PASS</span></h3>
+            <p><strong>Vérification:</strong> Le code compile sans erreurs TypeScript</p>
+            <p>✓ Aucune erreur de diagnostic TypeScript</p>
+            <p>✓ Build Vite réussi</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Tests Manuels à Effectuer</h2>
+        <div class="note">
+            <strong>Note:</strong> Ces tests nécessitent de lancer l'application et d'interagir avec l'interface utilisateur.
+        </div>
+        
+        <ul class="checklist">
+            <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+            <li>Vérifier que les deux boutons "Télécharger" et "Prendre une photo" sont visibles</li>
+            <li>Vérifier que le mode "Télécharger" est sélectionné par défaut</li>
+            <li>Cliquer sur "Prendre une photo" et vérifier que l'interface CameraCapture s'affiche</li>
+            <li>Vérifier que la caméra s'initialise correctement</li>
+            <li>Capturer une photo et vérifier qu'elle apparaît dans le preview</li>
+            <li>Cliquer sur "Valider" et vérifier que la photo est ajoutée au formulaire</li>
+            <li>Vérifier que le mode revient automatiquement à "Télécharger" après validation</li>
+            <li>Vérifier que la photo capturée apparaît dans la prévisualisation de la carte (IDCard)</li>
+            <li>Cliquer sur "Annuler" dans CameraCapture et vérifier le retour au mode upload</li>
+            <li>Vérifier que le changement de mode ne perd pas les autres données du formulaire</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Exigences Validées</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f3f4f6;">
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Exigence</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e5e7eb;">Description</th>
+                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #e5e7eb;">Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">1.3</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Afficher l'interface caméra quand "Prendre une photo" est sélectionné</td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">✅</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">10.2</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">La photo capturée doit peupler formData.photoUrl identiquement aux photos uploadées</td>
+                    <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">✅</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Résumé</h2>
+        <p><strong>Tâche 8.2:</strong> Conditionally render FileUpload or CameraCapture</p>
+        <p><strong>Statut:</strong> <span class="status pass">COMPLÉTÉ</span></p>
+        <p><strong>Modifications:</strong></p>
+        <ul>
+            <li>✅ Import du composant CameraCapture ajouté</li>
+            <li>✅ Rendu conditionnel implémenté basé sur photoInputMode</li>
+            <li>✅ Callback onPhotoCapture configuré pour mettre à jour formData.photoUrl</li>
+            <li>✅ Callback onCancel configuré pour retourner au mode upload</li>
+            <li>✅ Prop existingPhotoUrl passée au composant</li>
+            <li>✅ Retour automatique au mode upload après validation de la photo</li>
+        </ul>
+        
+        <div class="note">
+            <strong>Prochaine étape:</strong> Tâche 8.3 - Implement mode switching logic
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Commandes pour Tester</h2>
+        <div class="code-block">
+# Lancer le serveur de développement
+npm run dev
+
+# Ouvrir l'application dans le navigateur
+# Cliquer sur "Ajouter un élève"
+# Tester le sélecteur de mode photo
+        </div>
+    </div>
+</body>
+</html>

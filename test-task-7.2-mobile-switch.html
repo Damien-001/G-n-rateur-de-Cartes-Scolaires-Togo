@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Task 7.2 - Mobile Camera Switch Button</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #059669;
+        }
+        .test-description {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        .test-steps {
+            background: #f9fafb;
+            padding: 15px;
+            border-left: 4px solid #059669;
+            margin: 15px 0;
+        }
+        .test-steps h3 {
+            margin-top: 0;
+            color: #059669;
+        }
+        .test-steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin: 8px 0;
+        }
+        .expected-result {
+            background: #ecfdf5;
+            padding: 15px;
+            border-left: 4px solid #10b981;
+            margin: 15px 0;
+        }
+        .expected-result h3 {
+            margin-top: 0;
+            color: #10b981;
+        }
+        .info-box {
+            background: #eff6ff;
+            padding: 15px;
+            border-left: 4px solid #3b82f6;
+            margin: 15px 0;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #3b82f6;
+        }
+        .warning-box {
+            background: #fef3c7;
+            padding: 15px;
+            border-left: 4px solid #f59e0b;
+            margin: 15px 0;
+        }
+        .warning-box h3 {
+            margin-top: 0;
+            color: #f59e0b;
+        }
+        .code {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .button {
+            background: #059669;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 10px 10px 0;
+        }
+        .button:hover {
+            background: #047857;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            font-size: 20px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-section">
+        <div class="test-title">Test Task 7.2 - Mobile Camera Switch Button</div>
+        <div class="test-description">
+            Ce test vérifie que le bouton de changement de caméra s'affiche UNIQUEMENT sur les appareils mobiles
+            et qu'il est désactivé pendant l'initialisation de la caméra.
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="info-box">
+            <h3>📋 Objectif du Test</h3>
+            <p>Vérifier que l'implémentation de la tâche 7.2 respecte les exigences suivantes :</p>
+            <ul>
+                <li><strong>Requirement 9.4</strong>: Le bouton de changement de caméra doit être affiché uniquement sur mobile</li>
+                <li><strong>Requirement 11.2</strong>: Le bouton doit utiliser l'icône RotateCw de Lucide React</li>
+                <li>Le bouton doit être désactivé pendant l'initialisation de la caméra</li>
+                <li>Le bouton doit être positionné au-dessus de la prévisualisation vidéo</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-steps">
+            <h3>🖥️ Test 1: Desktop - Le bouton NE doit PAS s'afficher</h3>
+            <ol>
+                <li>Ouvrir l'application sur un navigateur desktop (Chrome, Firefox, Edge, Safari)</li>
+                <li>Naviguer vers le formulaire d'ajout d'élève</li>
+                <li>Cliquer sur "Prendre une photo" pour activer le mode caméra</li>
+                <li>Autoriser l'accès à la caméra si demandé</li>
+                <li>Observer la prévisualisation vidéo</li>
+            </ol>
+        </div>
+        <div class="expected-result">
+            <h3>✅ Résultat Attendu (Desktop)</h3>
+            <ul>
+                <li>La prévisualisation vidéo s'affiche correctement</li>
+                <li><strong>Le bouton de changement de caméra (RotateCw) NE doit PAS être visible</strong></li>
+                <li>Seul le cadre de guidage blanc doit être visible sur la vidéo</li>
+                <li>Le bouton "Capturer" doit être visible en bas</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-steps">
+            <h3>📱 Test 2: Mobile - Le bouton DOIT s'afficher</h3>
+            <ol>
+                <li>Ouvrir l'application sur un appareil mobile (iPhone Safari, Android Chrome)</li>
+                <li>Naviguer vers le formulaire d'ajout d'élève</li>
+                <li>Cliquer sur "Prendre une photo" pour activer le mode caméra</li>
+                <li>Autoriser l'accès à la caméra si demandé</li>
+                <li>Observer la prévisualisation vidéo</li>
+            </ol>
+        </div>
+        <div class="expected-result">
+            <h3>✅ Résultat Attendu (Mobile)</h3>
+            <ul>
+                <li>La prévisualisation vidéo s'affiche correctement</li>
+                <li><strong>Le bouton de changement de caméra (RotateCw) DOIT être visible en haut à droite</strong></li>
+                <li>Le bouton doit avoir un fond semi-transparent noir (bg-black/50)</li>
+                <li>Le bouton doit être rond avec l'icône RotateCw blanche</li>
+                <li>Le bouton doit être positionné au-dessus de la vidéo (position absolute)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-steps">
+            <h3>⏳ Test 3: État Désactivé Pendant l'Initialisation</h3>
+            <ol>
+                <li>Sur mobile, activer le mode caméra</li>
+                <li>Observer le bouton de changement de caméra pendant l'initialisation</li>
+                <li>Essayer de cliquer sur le bouton pendant l'initialisation</li>
+                <li>Attendre que la caméra soit complètement initialisée</li>
+                <li>Essayer de cliquer sur le bouton après l'initialisation</li>
+            </ol>
+        </div>
+        <div class="expected-result">
+            <h3>✅ Résultat Attendu (État Désactivé)</h3>
+            <ul>
+                <li><strong>Pendant l'initialisation (isInitializing=true)</strong>:
+                    <ul>
+                        <li>Le bouton doit être désactivé (disabled)</li>
+                        <li>Le bouton doit avoir une opacité réduite (opacity-50)</li>
+                        <li>Le curseur doit indiquer "not-allowed"</li>
+                        <li>Cliquer sur le bouton ne doit rien faire</li>
+                    </ul>
+                </li>
+                <li><strong>Après l'initialisation (isInitializing=false)</strong>:
+                    <ul>
+                        <li>Le bouton doit être actif</li>
+                        <li>Le bouton doit avoir une opacité normale</li>
+                        <li>Cliquer sur le bouton doit changer de caméra</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-steps">
+            <h3>🔄 Test 4: Fonctionnalité de Changement de Caméra</h3>
+            <ol>
+                <li>Sur mobile, avec la caméra active</li>
+                <li>Cliquer sur le bouton de changement de caméra</li>
+                <li>Observer le changement de caméra (avant → arrière ou arrière → avant)</li>
+                <li>Vérifier que la nouvelle caméra s'initialise correctement</li>
+                <li>Cliquer à nouveau pour revenir à la caméra précédente</li>
+            </ol>
+        </div>
+        <div class="expected-result">
+            <h3>✅ Résultat Attendu (Changement de Caméra)</h3>
+            <ul>
+                <li>La caméra actuelle doit s'arrêter</li>
+                <li>Un court délai (100ms) doit se produire</li>
+                <li>La nouvelle caméra doit s'initialiser</li>
+                <li>La prévisualisation doit afficher le flux de la nouvelle caméra</li>
+                <li>Le bouton doit rester fonctionnel pour changer à nouveau</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="info-box">
+            <h3>🔍 Détection Mobile - Implémentation</h3>
+            <p>La détection mobile utilise deux méthodes combinées :</p>
+            <div class="code">
+// 1. Media Query pour la taille d'écran
+const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
+
+// 2. User Agent pour les appareils mobiles
+const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Le bouton s'affiche si l'une des conditions est vraie
+setIsMobile(mobileMediaQuery.matches || mobileUserAgent);
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="warning-box">
+            <h3>⚠️ Points d'Attention</h3>
+            <ul>
+                <li><strong>Responsive Design</strong>: Tester avec différentes tailles d'écran (redimensionner la fenêtre)</li>
+                <li><strong>Tablettes</strong>: Les tablettes peuvent être détectées comme mobiles selon leur taille d'écran</li>
+                <li><strong>Mode Développeur</strong>: Utiliser les outils de développement pour simuler un appareil mobile</li>
+                <li><strong>User Agent</strong>: Certains navigateurs permettent de modifier le user agent</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-steps">
+            <h3>📝 Checklist de Validation</h3>
+            <ul class="checklist">
+                <li>Desktop Chrome: Bouton de changement de caméra NON visible</li>
+                <li>Desktop Firefox: Bouton de changement de caméra NON visible</li>
+                <li>Desktop Edge: Bouton de changement de caméra NON visible</li>
+                <li>Desktop Safari: Bouton de changement de caméra NON visible</li>
+                <li>Mobile Safari iOS: Bouton de changement de caméra VISIBLE</li>
+                <li>Mobile Chrome Android: Bouton de changement de caméra VISIBLE</li>
+                <li>Bouton désactivé pendant l'initialisation (mobile)</li>
+                <li>Bouton actif après l'initialisation (mobile)</li>
+                <li>Changement de caméra fonctionne correctement (mobile)</li>
+                <li>Icône RotateCw utilisée pour le bouton</li>
+                <li>Bouton positionné en haut à droite de la vidéo</li>
+                <li>Bouton a un fond semi-transparent noir</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="info-box">
+            <h3>🚀 Lancer l'Application</h3>
+            <p>Pour tester l'implémentation :</p>
+            <a href="/" class="button">Ouvrir l'Application</a>
+            <p style="margin-top: 15px;">Ou utiliser les outils de développement pour simuler un appareil mobile :</p>
+            <ul>
+                <li><strong>Chrome/Edge</strong>: F12 → Toggle Device Toolbar (Ctrl+Shift+M)</li>
+                <li><strong>Firefox</strong>: F12 → Responsive Design Mode (Ctrl+Shift+M)</li>
+                <li><strong>Safari</strong>: Develop → Enter Responsive Design Mode</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="expected-result">
+            <h3>✅ Critères de Succès</h3>
+            <p>La tâche 7.2 est considérée comme réussie si :</p>
+            <ul>
+                <li>✅ Le bouton de changement de caméra s'affiche UNIQUEMENT sur mobile</li>
+                <li>✅ Le bouton utilise l'icône RotateCw de Lucide React</li>
+                <li>✅ Le bouton est positionné au-dessus de la prévisualisation vidéo</li>
+                <li>✅ Le bouton est désactivé pendant l'initialisation de la caméra</li>
+                <li>✅ Le bouton fonctionne correctement pour changer de caméra</li>
+                <li>✅ Aucune erreur de compilation ou d'exécution</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

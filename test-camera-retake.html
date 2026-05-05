@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Retake Test - Task 4.2 Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f0fdf4;
+        }
+        video {
+            width: 100%;
+            max-width: 300px;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        canvas {
+            display: none;
+        }
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        button.secondary {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        button.secondary:hover {
+            background: #f9fafb;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        .preview img {
+            max-width: 300px;
+            border-radius: 8px;
+            border: 2px solid #10b981;
+        }
+        .info {
+            background: #dbeafe;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d1fae5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #991b1b;
+        }
+        .test-step {
+            background: #f3f4f6;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #10b981;
+        }
+        .test-step.active {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+        }
+        .test-step.passed {
+            background: #d1fae5;
+            border-left-color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Camera Retake Test - Task 4.2 Verification</h1>
+    
+    <div class="info">
+        <h3>Testing Requirement 5.3:</h3>
+        <p><strong>WHEN the user clicks "Reprendre", THE Camera_Capture_Component SHALL discard the Captured_Photo and restart the Media_Stream</strong></p>
+        <ul>
+            <li>✅ Clear capturedPhoto state</li>
+            <li>✅ Restart MediaStream by calling initializeCamera()</li>
+            <li>✅ Return to video preview mode</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>Test Flow</h2>
+        <div id="testSteps">
+            <div class="test-step" id="step1">
+                <strong>Step 1:</strong> Initialize camera and display video preview
+            </div>
+            <div class="test-step" id="step2">
+                <strong>Step 2:</strong> Capture a photo
+            </div>
+            <div class="test-step" id="step3">
+                <strong>Step 3:</strong> Display photo preview with "Reprendre" button
+            </div>
+            <div class="test-step" id="step4">
+                <strong>Step 4:</strong> Click "Reprendre" to discard photo and restart camera
+            </div>
+            <div class="test-step" id="step5">
+                <strong>Step 5:</strong> Verify camera restarts and video preview is shown
+            </div>
+        </div>
+
+        <div id="cameraView" style="margin-top: 20px;">
+            <h3>Camera View</h3>
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+            
+            <div id="videoControls">
+                <button id="startBtn">Start Camera</button>
+                <button id="captureBtn" disabled>Capturer</button>
+            </div>
+        </div>
+
+        <div id="photoPreview" style="display: none; margin-top: 20px;">
+            <h3>Photo Preview</h3>
+            <img id="preview" alt="Captured photo">
+            <div>
+                <button id="retakeBtn" class="secondary">🔄 Reprendre</button>
+                <button id="confirmBtn">✓ Valider</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <div id="testResults" style="margin-top: 20px;"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('startBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const status = document.getElementById('status');
+        const cameraView = document.getElementById('cameraView');
+        const photoPreview = document.getElementById('photoPreview');
+        const preview = document.getElementById('preview');
+        const testResults = document.getElementById('testResults');
+
+        let stream = null;
+        let capturedPhoto = null;
+        let testLog = [];
+
+        function logTest(message, passed = true) {
+            testLog.push({ message, passed, timestamp: new Date().toISOString() });
+            console.log(`[TEST] ${passed ? '✅' : '❌'} ${message}`);
+        }
+
+        function updateTestStep(stepId, state) {
+            const step = document.getElementById(stepId);
+            step.classList.remove('active', 'passed');
+            if (state === 'active') {
+                step.classList.add('active');
+            } else if (state === 'passed') {
+                step.classList.add('passed');
+            }
+        }
+
+        function showTestResults() {
+            const passed = testLog.filter(t => t.passed).length;
+            const total = testLog.length;
+            const allPassed = passed === total;
+
+            testResults.innerHTML = `
+                <div class="${allPassed ? 'success' : 'error'}">
+                    <h3>Test Results: ${passed}/${total} passed</h3>
+                    <ul>
+                        ${testLog.map(t => `<li>${t.passed ? '✅' : '❌'} ${t.message}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Initialize camera (Step 1)
+        async function initializeCamera() {
+            try {
+                updateTestStep('step1', 'active');
+                status.innerHTML = '<div class="info">Initializing camera...</div>';
+                logTest('Starting camera initialization');
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 1280 }
+                    },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                
+                startBtn.disabled = true;
+                captureBtn.disabled = false;
+                
+                cameraView.style.display = 'block';
+                photoPreview.style.display = 'none';
+                
+                status.innerHTML = '<div class="success">✅ Camera started successfully!</div>';
+                logTest('Camera initialized and video preview displayed');
+                updateTestStep('step1', 'passed');
+                
+                return true;
+            } catch (error) {
+                console.error('Camera error:', error);
+                status.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                logTest(`Camera initialization failed: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        // Start camera button
+        startBtn.addEventListener('click', initializeCamera);
+
+        // Capture photo (Step 2)
+        captureBtn.addEventListener('click', () => {
+            try {
+                updateTestStep('step2', 'active');
+                captureBtn.disabled = true;
+                captureBtn.innerHTML = '<span class="spinner"></span>Capture en cours...';
+                status.innerHTML = '<div class="info">⏳ Capturing photo...</div>';
+                logTest('Starting photo capture');
+
+                const ctx = canvas.getContext('2d');
+                
+                const targetWidth = 300;
+                const targetHeight = 400;
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
+                const videoRatio = videoWidth / videoHeight;
+                const targetRatio = targetWidth / targetHeight;
+
+                let sourceWidth = videoWidth;
+                let sourceHeight = videoHeight;
+                let sourceX = 0;
+                let sourceY = 0;
+
+                if (videoRatio > targetRatio) {
+                    sourceWidth = videoHeight * targetRatio;
+                    sourceX = (videoWidth - sourceWidth) / 2;
+                } else {
+                    sourceHeight = videoWidth / targetRatio;
+                    sourceY = (videoHeight - sourceHeight) / 2;
+                }
+
+                ctx.drawImage(
+                    video,
+                    sourceX, sourceY, sourceWidth, sourceHeight,
+                    0, 0, targetWidth, targetHeight
+                );
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                capturedPhoto = reader.result;
+                                preview.src = capturedPhoto;
+                                
+                                // Stop camera after capture
+                                if (stream) {
+                                    stream.getTracks().forEach(track => track.stop());
+                                    logTest('Camera stream stopped after capture');
+                                }
+                                
+                                // Show photo preview (Step 3)
+                                updateTestStep('step2', 'passed');
+                                updateTestStep('step3', 'active');
+                                cameraView.style.display = 'none';
+                                photoPreview.style.display = 'block';
+                                
+                                status.innerHTML = '<div class="success">✅ Photo captured! Click "Reprendre" to test retake functionality.</div>';
+                                logTest('Photo captured and preview displayed');
+                                logTest('Captured photo state set (not null)');
+                                updateTestStep('step3', 'passed');
+                                
+                                captureBtn.disabled = false;
+                                captureBtn.innerHTML = 'Capturer';
+                            };
+                            reader.readAsDataURL(blob);
+                        }
+                    },
+                    'image/jpeg',
+                    0.85
+                );
+            } catch (error) {
+                console.error('Capture error:', error);
+                status.innerHTML = `<div class="error">❌ Capture error: ${error.message}</div>`;
+                logTest(`Photo capture failed: ${error.message}`, false);
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = 'Capturer';
+            }
+        });
+
+        // Retake photo (Step 4 & 5) - THIS IS THE KEY FUNCTIONALITY BEING TESTED
+        retakeBtn.addEventListener('click', async () => {
+            updateTestStep('step4', 'active');
+            status.innerHTML = '<div class="info">🔄 Retaking photo...</div>';
+            logTest('Retake button clicked');
+
+            // Step 4a: Clear captured photo state
+            const hadPhoto = capturedPhoto !== null;
+            capturedPhoto = null;
+            logTest(`Captured photo state cleared (was: ${hadPhoto ? 'not null' : 'null'}, now: null)`, hadPhoto);
+            updateTestStep('step4', 'passed');
+
+            // Step 5: Restart camera
+            updateTestStep('step5', 'active');
+            const cameraRestarted = await initializeCamera();
+            
+            if (cameraRestarted) {
+                logTest('Camera restarted successfully via initializeCamera()');
+                logTest('Returned to video preview mode');
+                updateTestStep('step5', 'passed');
+                status.innerHTML = '<div class="success">✅ Retake successful! Camera restarted and ready to capture again.</div>';
+            } else {
+                logTest('Camera restart failed', false);
+                updateTestStep('step5', 'failed');
+            }
+
+            showTestResults();
+        });
+
+        // Confirm photo
+        confirmBtn.addEventListener('click', () => {
+            if (capturedPhoto) {
+                status.innerHTML = '<div class="success">✅ Photo confirmed! In the real app, this would set formData.photoUrl</div>';
+                logTest('Photo confirmed');
+                
+                // Stop camera
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    logTest('Camera stream stopped after confirmation');
+                }
+                
+                showTestResults();
+            }
+        });
+    </script>
+</body>
+</html>

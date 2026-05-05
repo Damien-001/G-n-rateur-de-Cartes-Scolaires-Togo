@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Performance Mobile - Tâche 7.3</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #10b981;
+      color: white;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .test-section {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 12px;
+      border: 2px solid #e5e7eb;
+      transition: all 0.3s;
+    }
+
+    .test-section:hover {
+      border-color: #10b981;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+
+    .test-title {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-running {
+      background: #dbeafe;
+      color: #1e40af;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .status-pass {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-fail {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .metric:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .metric-value {
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 14px;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 16px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      margin-top: 12px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .ui-test {
+      padding: 16px;
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      margin: 12px 0;
+    }
+
+    .ui-test-label {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .counter {
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+    }
+
+    .device-info {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-top: 16px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 12px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .alert-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    .icon {
+      font-size: 20px;
+    }
+
+    .summary {
+      margin-top: 24px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-radius: 12px;
+      border: 2px solid #10b981;
+      display: none;
+    }
+
+    .summary.show {
+      display: block;
+    }
+
+    .summary-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #065f46;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      color: #065f46;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Test Performance Mobile</h1>
+    <p class="subtitle">Validation Tâche 7.3 <span class="badge">Req 9.5, 12.2, 12.5</span></p>
+
+    <!-- Test 1: Responsive Video Preview -->
+    <div class="test-section">
+      <div class="test-title">
+        <span><span class="icon">📱</span> Test 1: Prévisualisation Responsive</span>
+        <span class="status-badge status-pending" id="test1-status">En attente</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Largeur vidéo</span>
+        <span class="metric-value" id="video-width">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Hauteur vidéo</span>
+        <span class="metric-value" id="video-height">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Ratio d'aspect</span>
+        <span class="metric-value" id="aspect-ratio">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Pleine largeur (w-full)</span>
+        <span class="metric-value" id="responsive-check">-</span>
+      </div>
+    </div>
+
+    <!-- Test 2: Camera Initialization Time -->
+    <div class="test-section">
+      <div class="test-title">
+        <span><span class="icon">⚡</span> Test 2: Temps d'Initialisation</span>
+        <span class="status-badge status-pending" id="test2-status">En attente</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Temps mesuré</span>
+        <span class="metric-value" id="init-time">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Limite (mobile < 3s)</span>
+        <span class="metric-value" id="init-limit">3000 ms</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Résultat</span>
+        <span class="metric-value" id="init-result">-</span>
+      </div>
+    </div>
+
+    <!-- Test 3: UI Non-Blocking -->
+    <div class="test-section">
+      <div class="test-title">
+        <span><span class="icon">🔄</span> Test 3: UI Non-Bloquante</span>
+        <span class="status-badge status-pending" id="test3-status">En attente</span>
+      </div>
+      <div class="alert alert-info">
+        Ce test vérifie que l'UI reste réactive pendant le traitement d'image. Le compteur doit continuer à s'incrémenter pendant la compression.
+      </div>
+      <div class="ui-test">
+        <div class="ui-test-label">Compteur UI (doit continuer pendant compression)</div>
+        <div class="counter" id="ui-counter">0</div>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Temps de compression</span>
+        <span class="metric-value" id="compression-time">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">UI bloquée?</span>
+        <span class="metric-value" id="ui-blocked">-</span>
+      </div>
+    </div>
+
+    <!-- Video Preview -->
+    <div class="video-container">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+
+    <!-- Hidden Canvas -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Controls -->
+    <button id="start-test" class="btn-primary">
+      <span class="icon">🚀</span>
+      Démarrer les Tests
+    </button>
+    <button id="capture-test" class="btn-secondary" disabled>
+      <span class="icon">📸</span>
+      Test Capture & Compression
+    </button>
+
+    <!-- Summary -->
+    <div class="summary" id="summary">
+      <div class="summary-title">✅ Tous les Tests Réussis!</div>
+      <div class="summary-item">
+        <span>✅</span>
+        <span>Prévisualisation responsive (Req 9.5)</span>
+      </div>
+      <div class="summary-item">
+        <span>✅</span>
+        <span>Initialisation < 3s mobile (Req 12.2)</span>
+      </div>
+      <div class="summary-item">
+        <span>✅</span>
+        <span>UI non-bloquante (Req 12.5)</span>
+      </div>
+    </div>
+
+    <!-- Device Info -->
+    <div class="device-info" id="device-info">
+      Chargement des informations de l'appareil...
+    </div>
+  </div>
+
+  <script>
+    // State
+    let stream = null;
+    let initStartTime = 0;
+    let uiCounter = 0;
+    let uiInterval = null;
+    let testResults = { test1: false, test2: false, test3: false };
+
+    // Elements
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const startBtn = document.getElementById('start-test');
+    const captureBtn = document.getElementById('capture-test');
+    const summary = document.getElementById('summary');
+
+    // Detect device type
+    function isMobileDevice() {
+      const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
+      const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      return mobileMediaQuery.matches || mobileUserAgent;
+    }
+
+    // Display device info
+    function displayDeviceInfo() {
+      const isMobile = isMobileDevice();
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      const userAgent = navigator.userAgent;
+      
+      document.getElementById('device-info').innerHTML = `
+        <strong>Type:</strong> ${isMobile ? '📱 Mobile' : '💻 Desktop'} | 
+        <strong>Écran:</strong> ${screenWidth}x${screenHeight}px<br>
+        <strong>Navigateur:</strong> ${userAgent.substring(0, 60)}...
+      `;
+    }
+
+    // Test 1: Check responsive video
+    function testResponsiveVideo() {
+      const videoWidth = video.offsetWidth;
+      const videoHeight = video.offsetHeight;
+      const aspectRatio = (videoWidth / videoHeight).toFixed(2);
+      const containerWidth = video.parentElement.offsetWidth;
+      const isFullWidth = Math.abs(videoWidth - containerWidth) < 5;
+
+      document.getElementById('video-width').textContent = `${videoWidth}px`;
+      document.getElementById('video-height').textContent = `${videoHeight}px`;
+      document.getElementById('aspect-ratio').textContent = `${aspectRatio} (cible: 0.75)`;
+      document.getElementById('responsive-check').textContent = isFullWidth ? '✅ Oui' : '❌ Non';
+
+      const targetRatio = 0.75;
+      const ratioMatch = Math.abs(parseFloat(aspectRatio) - targetRatio) < 0.05;
+
+      if (isFullWidth && ratioMatch) {
+        updateTestStatus('test1-status', 'pass', '✅ Réussi');
+        testResults.test1 = true;
+        return true;
+      } else {
+        updateTestStatus('test1-status', 'fail', '❌ Échoué');
+        return false;
+      }
+    }
+
+    // Test 2: Measure camera initialization time
+    async function testCameraInitTime() {
+      updateTestStatus('test2-status', 'running', '⏳ En cours');
+      
+      initStartTime = performance.now();
+
+      try {
+        const constraints = {
+          video: {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 1280 }
+          },
+          audio: false
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = resolve;
+        });
+
+        const initTime = performance.now() - initStartTime;
+        const isMobile = isMobileDevice();
+        const limit = isMobile ? 3000 : 2000;
+
+        document.getElementById('init-time').textContent = `${initTime.toFixed(0)} ms`;
+        document.getElementById('init-limit').textContent = `${limit} ms`;
+
+        if (initTime < limit) {
+          document.getElementById('init-result').textContent = '✅ Conforme';
+          updateTestStatus('test2-status', 'pass', '✅ Réussi');
+          testResults.test2 = true;
+          return true;
+        } else {
+          document.getElementById('init-result').textContent = '❌ Trop lent';
+          updateTestStatus('test2-status', 'fail', '❌ Échoué');
+          return false;
+        }
+      } catch (error) {
+        console.error('Camera error:', error);
+        document.getElementById('init-result').textContent = `❌ Erreur: ${error.message}`;
+        updateTestStatus('test2-status', 'fail', '❌ Erreur');
+        return false;
+      }
+    }
+
+    // Test 3: Check UI non-blocking during compression
+    async function testUIBlocking() {
+      updateTestStatus('test3-status', 'running', '⏳ En cours');
+
+      uiCounter = 0;
+      document.getElementById('ui-counter').textContent = uiCounter;
+      
+      uiInterval = setInterval(() => {
+        uiCounter++;
+        document.getElementById('ui-counter').textContent = uiCounter;
+      }, 100);
+
+      const compressionStart = performance.now();
+      
+      try {
+        const compressedImage = await compressImage(video);
+        const compressionTime = performance.now() - compressionStart;
+
+        clearInterval(uiInterval);
+
+        document.getElementById('compression-time').textContent = `${compressionTime.toFixed(0)} ms`;
+
+        if (uiCounter > 0) {
+          document.getElementById('ui-blocked').textContent = `✅ Non (${uiCounter} incréments)`;
+          updateTestStatus('test3-status', 'pass', '✅ Réussi');
+          testResults.test3 = true;
+          checkAllTestsComplete();
+          return true;
+        } else {
+          document.getElementById('ui-blocked').textContent = '❌ Oui (0 incréments)';
+          updateTestStatus('test3-status', 'fail', '❌ Échoué');
+          return false;
+        }
+      } catch (error) {
+        clearInterval(uiInterval);
+        console.error('Compression error:', error);
+        document.getElementById('ui-blocked').textContent = `❌ Erreur: ${error.message}`;
+        updateTestStatus('test3-status', 'fail', '❌ Erreur');
+        return false;
+      }
+    }
+
+    // Image compression function
+    function compressImage(imageSource) {
+      return new Promise((resolve, reject) => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas non supporté'));
+          return;
+        }
+
+        const targetWidth = 300;
+        const targetHeight = 400;
+
+        let width = imageSource.videoWidth;
+        let height = imageSource.videoHeight;
+        const ratio = width / height;
+        const targetRatio = targetWidth / targetHeight;
+
+        if (ratio > targetRatio) {
+          width = height * targetRatio;
+        } else {
+          height = width / targetRatio;
+        }
+
+        const sourceWidth = imageSource.videoWidth;
+        const sourceHeight = imageSource.videoHeight;
+        const offsetX = (sourceWidth - width) / 2;
+        const offsetY = (sourceHeight - height) / 2;
+
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        ctx.drawImage(
+          imageSource,
+          offsetX, offsetY, width, height,
+          0, 0, targetWidth, targetHeight
+        );
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            } else {
+              reject(new Error('Erreur de compression'));
+            }
+          },
+          'image/jpeg',
+          0.85
+        );
+      });
+    }
+
+    // Update test status badge
+    function updateTestStatus(elementId, status, text) {
+      const element = document.getElementById(elementId);
+      element.className = `status-badge status-${status}`;
+      element.textContent = text;
+    }
+
+    // Check if all tests are complete
+    function checkAllTestsComplete() {
+      if (testResults.test1 && testResults.test2 && testResults.test3) {
+        summary.classList.add('show');
+      }
+    }
+
+    // Run all tests
+    async function runAllTests() {
+      startBtn.disabled = true;
+      startBtn.innerHTML = '<span class="spinner"></span> Tests en cours...';
+
+      const test2Pass = await testCameraInitTime();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const test1Pass = testResponsiveVideo();
+
+      captureBtn.disabled = false;
+      startBtn.textContent = '✅ Tests 1 & 2 Terminés';
+      startBtn.disabled = false;
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', runAllTests);
+    captureBtn.addEventListener('click', testUIBlocking);
+
+    // Initialize
+    displayDeviceInfo();
+    window.addEventListener('resize', displayDeviceInfo);
+  </script>
+</body>
+</html>

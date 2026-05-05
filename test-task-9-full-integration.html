@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task 9 - Full Integration Test - Camera Photo Capture</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    
+    .header p {
+      font-size: 16px;
+      opacity: 0.95;
+    }
+    
+    .content {
+      padding: 40px;
+    }
+    
+    .section {
+      margin-bottom: 40px;
+      padding: 25px;
+      background: #f9fafb;
+      border-radius: 12px;
+      border-left: 4px solid #10b981;
+    }
+    
+    .section h2 {
+      color: #059669;
+      font-size: 20px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .section-icon {
+      width: 28px;
+      height: 28px;
+      background: #10b981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .checklist {
+      list-style: none;
+      margin-top: 15px;
+    }
+    
+    .checklist li {
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+    
+    .checklist li:hover {
+      border-color: #10b981;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    }
+    
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .checkbox:hover {
+      border-color: #10b981;
+    }
+    
+    .checkbox.checked {
+      background: #10b981;
+      border-color: #10b981;
+      position: relative;
+    }
+    
+    .checkbox.checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    
+    .test-text {
+      flex: 1;
+      color: #374151;
+      line-height: 1.6;
+    }
+    
+    .test-text strong {
+      color: #059669;
+      font-weight: 600;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    
+    .badge.mobile {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    
+    .badge.desktop {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+    
+    .badge.critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    
+    .info-box h3 {
+      color: #1e40af;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .info-box p {
+      color: #1e3a8a;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .warning-box {
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    
+    .warning-box h3 {
+      color: #92400e;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .warning-box p {
+      color: #78350f;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .success-box {
+      background: #d1fae5;
+      border: 1px solid #a7f3d0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    
+    .success-box h3 {
+      color: #065f46;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .success-box p {
+      color: #047857;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      text-align: center;
+      margin-top: 10px;
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    
+    .btn:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #6366f1;
+    }
+    
+    .btn-secondary:hover {
+      background: #4f46e5;
+    }
+    
+    .footer {
+      background: #f9fafb;
+      padding: 30px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .footer-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Task 9 - Full Integration Test</h1>
+      <p>Checkpoint - Ensure full integration works between CameraCapture and StudentForm</p>
+    </div>
+    
+    <div class="content">
+      <!-- Overview Section -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">📋</span>
+          Test Overview
+        </h2>
+        <p style="color: #6b7280; line-height: 1.8;">
+          This checkpoint verifies that the complete integration between <strong>CameraCapture</strong> and <strong>StudentForm</strong> 
+          works correctly. All previous tasks (1-8) have been completed successfully. This test ensures that all features work together 
+          seamlessly in a real-world scenario.
+        </p>
+        
+        <div class="info-box">
+          <h3>🎯 Test Objectives</h3>
+          <p>
+            Verify that users can successfully capture photos using the camera, switch between upload and camera modes, 
+            and that all lifecycle events (form submit, cancel, mode switching) properly clean up camera resources.
+          </p>
+        </div>
+      </div>
+
+      <!-- 1. Mode Selector Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">1</span>
+          Mode Selector Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Display both mode options:</strong> Verify that "Télécharger une photo" and "Prendre une photo" buttons are visible
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Visual feedback:</strong> Selected mode button should have emerald background and shadow
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Mode switching:</strong> Click between modes - should switch without losing form data
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Camera cleanup on switch:</strong> When switching from camera to upload mode, camera should stop (check browser indicator)
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 2. Camera Initialization Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">2</span>
+          Camera Initialization Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Permission request:</strong> Browser should prompt for camera permission when selecting camera mode
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Loading state:</strong> "Initialisation de la caméra..." message with spinner should appear
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Video preview:</strong> Live camera feed should appear in 3:4 aspect ratio (300x400px minimum)
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Frame overlay:</strong> White border guide should be visible over video preview
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Initialization time:</strong> Camera should initialize within 2 seconds on desktop, 3 seconds on mobile
+              <span class="badge desktop">desktop</span>
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 3. Photo Capture Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">3</span>
+          Photo Capture Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Capture button:</strong> "Capturer" button with camera icon should be visible while video is active
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Capture action:</strong> Click "Capturer" - should capture current video frame
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Capture speed:</strong> Photo capture and processing should complete within 500ms
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Camera stops:</strong> After capture, video stream should stop (browser camera indicator should turn off)
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 4. Photo Preview and Validation Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">4</span>
+          Photo Preview and Validation Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Preview display:</strong> Captured photo should appear in same 3:4 aspect ratio as video preview
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Action buttons:</strong> "Reprendre" and "Valider" buttons should be visible
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Retake functionality:</strong> Click "Reprendre" - should discard photo and restart camera
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Confirm functionality:</strong> Click "Valider" - photo should appear in form and live preview card
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Mode switch after confirm:</strong> After validation, should automatically switch back to upload mode
+              <span class="badge">UI</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 5. Mobile-Specific Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">5</span>
+          Mobile-Specific Tests
+          <span class="badge mobile">mobile only</span>
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Camera switch button:</strong> RotateCw button should appear in top-right corner of video preview
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Default camera:</strong> Should start with front-facing camera (facingMode: 'user')
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Camera switching:</strong> Click switch button - should toggle to rear camera and back
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Responsive layout:</strong> Video preview should adapt to mobile screen width
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Mobile performance:</strong> Camera initialization should complete within 3 seconds
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+        </ul>
+        
+        <div class="warning-box">
+          <h3>⚠️ Mobile Testing Required</h3>
+          <p>
+            Test on actual mobile devices (Safari iOS 14.5+, Chrome Android 90+) to verify camera switching and responsive layout.
+            Desktop browsers typically don't have camera switching functionality.
+          </p>
+        </div>
+      </div>
+
+      <!-- 6. Error Handling Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">6</span>
+          Error Handling Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Permission denied:</strong> Deny camera permission - should show error message and fallback to upload button
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Error message clarity:</strong> Error message should explain how to enable camera access in browser settings
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Fallback button:</strong> "Utiliser l'upload de fichier" button should switch to upload mode
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Camera in use:</strong> If camera is used by another app, should show appropriate error message
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 7. Resource Cleanup Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">7</span>
+          Resource Cleanup Tests
+          <span class="badge critical">critical</span>
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Cleanup on photo confirm:</strong> After clicking "Valider", camera indicator should turn off
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Cleanup on mode switch:</strong> When switching from camera to upload mode, camera should stop
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Cleanup on form cancel:</strong> Click "Annuler" button - camera should stop immediately
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Cleanup on form submit:</strong> Submit form with captured photo - camera should stop
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>No memory leaks:</strong> Capture multiple photos in succession - no performance degradation
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+        
+        <div class="warning-box">
+          <h3>🔍 How to Verify Camera Cleanup</h3>
+          <p>
+            Check your browser's camera indicator (usually in the address bar or system tray). The indicator should turn off 
+            when the camera is properly stopped. On Chrome, look for the camera icon in the address bar. On Safari, check the 
+            menu bar for the camera indicator.
+          </p>
+        </div>
+      </div>
+
+      <!-- 8. Integration with StudentForm Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">8</span>
+          Integration with StudentForm Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Photo in formData:</strong> Captured photo should populate formData.photoUrl field
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Live preview card:</strong> Captured photo should appear in IDCard preview on the right side
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Photo deletion:</strong> X button on photo thumbnail should work with captured photos
+              <span class="badge">UI</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Form validation:</strong> Form should submit successfully with captured photo
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Photo format consistency:</strong> Captured photo should have same format as uploaded photos (300x400px, JPEG 85%)
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 9. Cross-Browser Compatibility Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">9</span>
+          Cross-Browser Compatibility Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Chrome Desktop:</strong> Camera access, capture, and cleanup work correctly
+              <span class="badge desktop">desktop</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Firefox Desktop:</strong> Camera access, capture, and cleanup work correctly
+              <span class="badge desktop">desktop</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Edge Desktop:</strong> Camera access, capture, and cleanup work correctly
+              <span class="badge desktop">desktop</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Safari iOS 14.5+:</strong> Front camera, capture, cleanup, and camera switching work
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Chrome Android 90+:</strong> Front camera, capture, cleanup, and camera switching work
+              <span class="badge mobile">mobile</span>
+            </div>
+          </li>
+        </ul>
+        
+        <div class="info-box">
+          <h3>🌐 Browser Testing Notes</h3>
+          <p>
+            Desktop browsers typically only have one camera (webcam), so camera switching won't be available. 
+            Mobile browsers (Safari iOS, Chrome Android) support camera switching between front and rear cameras.
+          </p>
+        </div>
+      </div>
+
+      <!-- 10. End-to-End User Flow Tests -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">10</span>
+          End-to-End User Flow Tests
+        </h2>
+        <ul class="checklist">
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Complete flow:</strong> Open form → Select camera mode → Grant permission → Capture photo → Validate → Submit form
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Retake flow:</strong> Capture photo → Click "Reprendre" → Capture again → Validate → Submit
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Mode switching flow:</strong> Start with upload → Switch to camera → Capture → Switch back to upload → Upload file
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Cancel flow:</strong> Select camera mode → Grant permission → Click "Annuler" → Camera stops
+              <span class="badge">critical</span>
+            </div>
+          </li>
+          <li>
+            <div class="checkbox" onclick="toggleCheck(this)"></div>
+            <div class="test-text">
+              <strong>Error recovery flow:</strong> Deny permission → See error → Click fallback → Use upload mode
+              <span class="badge">critical</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Progress Tracker -->
+      <div class="section">
+        <h2>
+          <span class="section-icon">📊</span>
+          Test Progress
+        </h2>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 / 50 tests completed (0%)</div>
+        
+        <div class="success-box" id="successBox" style="display: none;">
+          <h3>🎉 All Tests Completed!</h3>
+          <p>
+            Congratulations! You have successfully verified all integration tests for the camera photo capture feature. 
+            The feature is ready for production use.
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <h3 style="color: #374151; margin-bottom: 20px; font-size: 18px;">Ready to Test?</h3>
+      <div class="footer-buttons">
+        <a href="/" class="btn">
+          🚀 Open Application
+        </a>
+        <button class="btn btn-secondary" onclick="resetChecklist()">
+          🔄 Reset Checklist
+        </button>
+      </div>
+      <p style="color: #9ca3af; margin-top: 20px; font-size: 13px;">
+        Task 9 - Camera Photo Capture Integration Test | Spec: camera-photo-capture
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Track checked items
+    let checkedCount = 0;
+    const totalTests = document.querySelectorAll('.checkbox').length;
+
+    function toggleCheck(element) {
+      element.classList.toggle('checked');
+      updateProgress();
+    }
+
+    function updateProgress() {
+      checkedCount = document.querySelectorAll('.checkbox.checked').length;
+      const percentage = Math.round((checkedCount / totalTests) * 100);
+      
+      document.getElementById('progressFill').style.width = percentage + '%';
+      document.getElementById('progressText').textContent = 
+        `${checkedCount} / ${totalTests} tests completed (${percentage}%)`;
+      
+      if (checkedCount === totalTests) {
+        document.getElementById('successBox').style.display = 'block';
+      } else {
+        document.getElementById('successBox').style.display = 'none';
+      }
+    }
+
+    function resetChecklist() {
+      document.querySelectorAll('.checkbox').forEach(checkbox => {
+        checkbox.classList.remove('checked');
+      });
+      updateProgress();
+    }
+
+    // Initialize progress
+    updateProgress();
+  </script>
+</body>
+</html>

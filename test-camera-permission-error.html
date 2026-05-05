@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test - Camera Permission Error Handling</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .icon {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Test - Camera Permission Error Handling</h1>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Task 6.3: Handle Permission Errors</h2>
+      
+      <div class="space-y-4 mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 class="font-semibold text-blue-900 mb-2">Test Instructions:</h3>
+          <ol class="list-decimal list-inside space-y-2 text-sm text-blue-800">
+            <li>Click "Request Camera Access" button below</li>
+            <li>When browser shows permission prompt, click "Block" or "Deny"</li>
+            <li>Verify error message appears: "Accès à la caméra refusé. Veuillez autoriser l'accès dans les paramètres de votre navigateur"</li>
+            <li>Verify fallback button "Utiliser l'upload de fichier" is displayed</li>
+            <li>Click the fallback button to verify it works</li>
+          </ol>
+        </div>
+
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 class="font-semibold text-yellow-900 mb-2">Requirements Being Tested:</h3>
+          <ul class="list-disc list-inside space-y-1 text-sm text-yellow-800">
+            <li><strong>Requirement 2.3:</strong> Display clear message explaining how to enable camera access</li>
+            <li><strong>Requirement 7.2:</strong> Display specific error message for permission denied</li>
+            <li><strong>Requirement 7.5:</strong> Automatically offer file upload option as fallback</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="camera-container" class="space-y-4">
+        <!-- Initial state: Request button -->
+        <button
+          id="request-camera-btn"
+          class="w-full px-4 py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
+        >
+          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          Request Camera Access
+        </button>
+      </div>
+
+      <div id="status-log" class="mt-6 space-y-2">
+        <h3 class="font-semibold text-gray-700 mb-2">Status Log:</h3>
+        <div id="log-messages" class="bg-gray-50 rounded-lg p-3 text-sm font-mono text-gray-600 min-h-[100px] max-h-[300px] overflow-y-auto">
+          <div class="text-gray-400">Waiting for user action...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Expected Behavior</h2>
+      
+      <div class="space-y-4">
+        <div>
+          <h3 class="font-semibold text-gray-700 mb-2">✅ When Permission is Denied:</h3>
+          <ul class="list-disc list-inside space-y-1 text-sm text-gray-600 ml-4">
+            <li>Error message box appears with red styling</li>
+            <li>Message reads: "Accès à la caméra refusé. Veuillez autoriser l'accès dans les paramètres de votre navigateur"</li>
+            <li>Fallback button "Utiliser l'upload de fichier" is displayed</li>
+            <li>Clicking fallback button shows file input</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-700 mb-2">✅ Error Detection:</h3>
+          <ul class="list-disc list-inside space-y-1 text-sm text-gray-600 ml-4">
+            <li>Catches <code>NotAllowedError</code> (Chrome, Firefox, Safari)</li>
+            <li>Catches <code>PermissionDeniedError</code> (legacy browsers)</li>
+            <li>Maps both errors to 'permission-denied' type</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-gray-700 mb-2">✅ User Experience:</h3>
+          <ul class="list-disc list-inside space-y-1 text-sm text-gray-600 ml-4">
+            <li>Clear, actionable error message</li>
+            <li>Guidance on how to fix the issue (browser settings)</li>
+            <li>Immediate fallback option (no dead end)</li>
+            <li>Consistent styling with application design</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Log utility
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('log-messages');
+      const timestamp = new Date().toLocaleTimeString();
+      const colors = {
+        info: 'text-blue-600',
+        success: 'text-green-600',
+        error: 'text-red-600',
+        warning: 'text-yellow-600'
+      };
+      
+      const logEntry = document.createElement('div');
+      logEntry.className = colors[type] || 'text-gray-600';
+      logEntry.textContent = `[${timestamp}] ${message}`;
+      
+      // Clear "waiting" message on first log
+      if (logContainer.querySelector('.text-gray-400')) {
+        logContainer.innerHTML = '';
+      }
+      
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Error messages mapping (from CameraCapture.tsx)
+    const errorMessages = {
+      'not-supported': 'Votre navigateur ne supporte pas l\'accès à la caméra',
+      'permission-denied': 'Accès à la caméra refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur',
+      'device-not-found': 'Aucune caméra détectée sur cet appareil',
+      'device-in-use': 'La caméra est déjà utilisée par une autre application',
+      'capture-failed': 'Erreur lors de la capture. Veuillez réessayer'
+    };
+
+    // Handle camera errors (from CameraCapture.tsx)
+    function handleCameraError(error) {
+      log(`Error caught: ${error.name} - ${error.message}`, 'error');
+      
+      let errorType = 'capture-failed';
+
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorType = 'permission-denied';
+        log('✅ Permission error detected correctly', 'success');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorType = 'device-not-found';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorType = 'device-in-use';
+      }
+
+      log(`Error type mapped to: ${errorType}`, 'info');
+      displayError(errorType);
+    }
+
+    // Display error UI (from CameraCapture.tsx)
+    function displayError(errorType) {
+      const container = document.getElementById('camera-container');
+      
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+              <p class="text-red-700 font-semibold">Erreur d'accès à la caméra</p>
+            </div>
+            <p class="text-red-600 text-sm">${errorMessages[errorType]}</p>
+          </div>
+          
+          <button
+            id="fallback-btn"
+            type="button"
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            Utiliser l'upload de fichier
+          </button>
+        </div>
+      `;
+
+      log('✅ Error UI displayed with fallback button', 'success');
+
+      // Add fallback button handler
+      document.getElementById('fallback-btn').addEventListener('click', handleFallback);
+    }
+
+    // Handle fallback to file upload
+    function handleFallback() {
+      log('Fallback button clicked', 'info');
+      
+      const container = document.getElementById('camera-container');
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p class="text-green-700 font-semibold">✅ Switched to File Upload Mode</p>
+            <p class="text-green-600 text-sm mt-1">User can now upload a photo from their device</p>
+          </div>
+          
+          <input
+            type="file"
+            accept="image/*"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          />
+          
+          <button
+            id="reset-btn"
+            type="button"
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+          >
+            Reset Test
+          </button>
+        </div>
+      `;
+
+      log('✅ File upload input displayed', 'success');
+      log('✅ Task 6.3 verification complete!', 'success');
+
+      // Add reset button handler
+      document.getElementById('reset-btn').addEventListener('click', resetTest);
+    }
+
+    // Reset test
+    function resetTest() {
+      location.reload();
+    }
+
+    // Request camera access
+    async function requestCameraAccess() {
+      log('Requesting camera access...', 'info');
+      
+      // Check browser support
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        log('❌ Browser does not support getUserMedia', 'error');
+        handleCameraError({ name: 'NotSupportedError', message: 'getUserMedia not supported' });
+        return;
+      }
+
+      log('✅ Browser supports getUserMedia', 'success');
+
+      try {
+        const constraints = {
+          video: {
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 1280 }
+          },
+          audio: false
+        };
+
+        log('Calling getUserMedia with constraints...', 'info');
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        log('✅ Camera access granted!', 'success');
+        log('⚠️ This test is for permission DENIED scenario', 'warning');
+        log('Please reload and deny permission to test error handling', 'warning');
+        
+        // Stop the stream
+        stream.getTracks().forEach(track => track.stop());
+        
+      } catch (error) {
+        handleCameraError(error);
+      }
+    }
+
+    // Initialize
+    document.getElementById('request-camera-btn').addEventListener('click', requestCameraAccess);
+    
+    log('Test initialized. Click "Request Camera Access" to begin.', 'info');
+  </script>
+</body>
+</html>

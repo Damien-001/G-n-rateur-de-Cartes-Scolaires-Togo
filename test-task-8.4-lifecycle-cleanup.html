@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Tâche 8.4 - Camera Lifecycle Cleanup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4299e1;
+        }
+        .test-section h2 {
+            color: #2d3748;
+            margin-top: 0;
+            font-size: 18px;
+        }
+        .test-steps {
+            margin: 15px 0;
+        }
+        .step {
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid #48bb78;
+        }
+        .expected {
+            background: #c6f6d5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 3px solid #38a169;
+        }
+        .expected strong {
+            color: #22543d;
+        }
+        .warning {
+            background: #fef5e7;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 3px solid #f39c12;
+        }
+        .info {
+            background: #ebf8ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 3px solid #4299e1;
+        }
+        .requirements {
+            background: #faf5ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .requirements h3 {
+            color: #553c9a;
+            margin-top: 0;
+        }
+        .req-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 6px;
+        }
+        .code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .success {
+            color: #38a169;
+            font-weight: bold;
+        }
+        .button {
+            background: #4299e1;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+        }
+        .checklist {
+            margin: 15px 0;
+        }
+        .checklist-item {
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .checklist-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Test Tâche 8.4 - Camera Lifecycle Cleanup</h1>
+        <p class="subtitle">Vérification de l'arrêt de la caméra lors des événements du cycle de vie du formulaire</p>
+
+        <div class="requirements">
+            <h3>📋 Requirements Validés</h3>
+            <div class="req-item">✅ <strong>Requirement 8.1</strong>: Stop camera on form cancel (onCancel callback)</div>
+            <div class="req-item">✅ <strong>Requirement 8.2</strong>: Stop camera on form submit (handleSubmit)</div>
+            <div class="req-item">✅ <strong>Requirement 8.4</strong>: Stop camera on component unmount (useEffect cleanup)</div>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ Objectif:</strong> S'assurer que la caméra est arrêtée automatiquement lors de tous les événements du cycle de vie du formulaire StudentForm pour préserver la batterie et la confidentialité.
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Pour ces tests, vous devez observer le voyant de la caméra de votre appareil (LED sur ordinateur portable, icône dans la barre de statut sur mobile). Le voyant doit s'éteindre lorsque la caméra est arrêtée.
+        </div>
+
+        <!-- Test 1 -->
+        <div class="test-section">
+            <h2>Test 1: Arrêt de la caméra lors de l'annulation</h2>
+            <div class="test-steps">
+                <div class="step">1. Ouvrir l'application et cliquer sur "Ajouter un élève"</div>
+                <div class="step">2. Dans la section "Photo de l'élève", cliquer sur "Prendre une photo"</div>
+                <div class="step">3. Autoriser l'accès à la caméra si demandé</div>
+                <div class="step">4. Vérifier que le flux vidéo est visible et que le voyant de la caméra est allumé</div>
+                <div class="step">5. Cliquer sur le bouton "Annuler" (en bas du formulaire)</div>
+            </div>
+            <div class="expected">
+                <strong>✅ Résultat attendu:</strong> Le voyant de la caméra doit s'éteindre immédiatement et le formulaire doit se fermer.
+            </div>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="test1-camera-on">
+                    <label for="test1-camera-on">La caméra s'est activée correctement</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test1-camera-off">
+                    <label for="test1-camera-off">Le voyant de la caméra s'est éteint après l'annulation</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test1-form-closed">
+                    <label for="test1-form-closed">Le formulaire s'est fermé correctement</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 2 -->
+        <div class="test-section">
+            <h2>Test 2: Arrêt de la caméra avec le bouton X (mobile)</h2>
+            <div class="test-steps">
+                <div class="step">1. Ouvrir l'application sur mobile ou réduire la fenêtre du navigateur</div>
+                <div class="step">2. Cliquer sur "Ajouter un élève"</div>
+                <div class="step">3. Cliquer sur "Prendre une photo"</div>
+                <div class="step">4. Vérifier que la caméra est active</div>
+                <div class="step">5. Cliquer sur le bouton "X" dans l'en-tête du formulaire</div>
+            </div>
+            <div class="expected">
+                <strong>✅ Résultat attendu:</strong> Le voyant de la caméra doit s'éteindre et le formulaire doit se fermer.
+            </div>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="test2-camera-on">
+                    <label for="test2-camera-on">La caméra s'est activée correctement</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test2-camera-off">
+                    <label for="test2-camera-off">Le voyant de la caméra s'est éteint après avoir cliqué sur X</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 3 -->
+        <div class="test-section">
+            <h2>Test 3: Arrêt de la caméra avec le bouton X (desktop preview)</h2>
+            <div class="test-steps">
+                <div class="step">1. Ouvrir l'application sur desktop (écran large)</div>
+                <div class="step">2. Cliquer sur "Ajouter un élève"</div>
+                <div class="step">3. Cliquer sur "Prendre une photo"</div>
+                <div class="step">4. Vérifier que la caméra est active</div>
+                <div class="step">5. Cliquer sur le bouton "X" dans la section preview (à droite)</div>
+            </div>
+            <div class="expected">
+                <strong>✅ Résultat attendu:</strong> Le voyant de la caméra doit s'éteindre et le formulaire doit se fermer.
+            </div>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="test3-camera-on">
+                    <label for="test3-camera-on">La caméra s'est activée correctement</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test3-camera-off">
+                    <label for="test3-camera-off">Le voyant de la caméra s'est éteint après avoir cliqué sur X</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 4 -->
+        <div class="test-section">
+            <h2>Test 4: Arrêt de la caméra lors de la soumission du formulaire</h2>
+            <div class="test-steps">
+                <div class="step">1. Ouvrir l'application et cliquer sur "Ajouter un élève"</div>
+                <div class="step">2. Cliquer sur "Prendre une photo"</div>
+                <div class="step">3. Capturer une photo et cliquer sur "Valider"</div>
+                <div class="step">4. Remplir tous les champs obligatoires du formulaire</div>
+                <div class="step">5. Cliquer sur "Ajouter" pour soumettre le formulaire</div>
+            </div>
+            <div class="expected">
+                <strong>✅ Résultat attendu:</strong> Le formulaire doit être soumis avec succès et le voyant de la caméra doit rester éteint (la caméra a été arrêtée lors de la validation de la photo).
+            </div>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="test4-photo-captured">
+                    <label for="test4-photo-captured">La photo a été capturée et validée</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test4-form-submitted">
+                    <label for="test4-form-submitted">Le formulaire a été soumis avec succès</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test4-camera-off">
+                    <label for="test4-camera-off">Le voyant de la caméra est resté éteint</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 5 -->
+        <div class="test-section">
+            <h2>Test 5: Arrêt de la caméra au démontage du composant</h2>
+            <div class="test-steps">
+                <div class="step">1. Ouvrir l'application et cliquer sur "Ajouter un élève"</div>
+                <div class="step">2. Cliquer sur "Prendre une photo"</div>
+                <div class="step">3. Vérifier que la caméra est active</div>
+                <div class="step">4. Ouvrir les DevTools (F12) et aller dans l'onglet Console</div>
+                <div class="step">5. Fermer l'onglet du navigateur ou naviguer vers une autre page</div>
+            </div>
+            <div class="expected">
+                <strong>✅ Résultat attendu:</strong> Le voyant de la caméra doit s'éteindre automatiquement lors de la fermeture/navigation. Aucun warning ne doit apparaître dans la console.
+            </div>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="test5-camera-on">
+                    <label for="test5-camera-on">La caméra s'est activée correctement</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test5-camera-off">
+                    <label for="test5-camera-off">Le voyant de la caméra s'est éteint au démontage</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="test5-no-warning">
+                    <label for="test5-no-warning">Aucun warning dans la console</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Implementation Details -->
+        <div class="test-section">
+            <h2>📝 Détails d'Implémentation</h2>
+            
+            <h3>1. useEffect Cleanup (Requirement 8.4)</h3>
+            <div class="code">
+// Cleanup camera on component unmount (Requirement 8.4)
+useEffect(() => {
+  return () => {
+    cameraCaptureRef.current?.stopCamera();
+  };
+}, []);
+            </div>
+
+            <h3>2. handleCancel Wrapper (Requirement 8.1)</h3>
+            <div class="code">
+// Handle form cancel with camera cleanup (Requirement 8.1)
+const handleCancel = () => {
+  cameraCaptureRef.current?.stopCamera();
+  onCancel();
+};
+            </div>
+
+            <h3>3. handleSubmit Modification (Requirement 8.2)</h3>
+            <div class="code">
+await onSubmit(studentData);
+
+// Stop camera after successful form submission (Requirement 8.2)
+cameraCaptureRef.current?.stopCamera();
+            </div>
+        </div>
+
+        <!-- Verification Checklist -->
+        <div class="test-section">
+            <h2>✅ Checklist de Vérification Finale</h2>
+            <div class="checklist">
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-cancel">
+                    <label for="final-cancel">La caméra s'arrête lors de l'annulation (tous les boutons)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-submit">
+                    <label for="final-submit">La caméra s'arrête lors de la soumission du formulaire</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-unmount">
+                    <label for="final-unmount">La caméra s'arrête au démontage du composant</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-no-errors">
+                    <label for="final-no-errors">Aucune erreur dans la console</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-optional-chaining">
+                    <label for="final-optional-chaining">Tous les appels utilisent l'optional chaining (?.)</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="final-build">
+                    <label for="final-build">Le build TypeScript réussit sans erreurs</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>📊 Résumé:</strong> Cette tâche garantit que la caméra est correctement arrêtée dans tous les scénarios de fermeture du formulaire, préservant ainsi la batterie de l'appareil et la confidentialité de l'utilisateur.
+        </div>
+
+        <button class="button" onclick="window.location.href='/'">🚀 Ouvrir l'Application</button>
+        <button class="button" onclick="window.print()">🖨️ Imprimer ce Guide</button>
+    </div>
+
+    <script>
+        // Auto-save checkbox states
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            const savedState = localStorage.getItem(checkbox.id);
+            if (savedState === 'true') {
+                checkbox.checked = true;
+            }
+            
+            checkbox.addEventListener('change', () => {
+                localStorage.setItem(checkbox.id, checkbox.checked);
+            });
+        });
+
+        // Calculate completion percentage
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const checked = document.querySelectorAll('input[type="checkbox"]:checked');
+            const percentage = Math.round((checked.length / checkboxes.length) * 100);
+            console.log(`Progress: ${percentage}% (${checked.length}/${checkboxes.length})`);
+        }
+
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', updateProgress);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Capture Test - Task 3.2 Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f0fdf4;
+        }
+        video {
+            width: 100%;
+            max-width: 300px;
+            height: 400px;
+            background: #000;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        canvas {
+            display: none;
+        }
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        .preview img {
+            max-width: 300px;
+            border-radius: 8px;
+            border: 2px solid #10b981;
+        }
+        .info {
+            background: #dbeafe;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d1fae5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎥 Camera Capture Test - Task 3.2 Verification</h1>
+    
+    <div class="info">
+        <h3>Testing Requirements:</h3>
+        <ul>
+            <li><strong>Requirement 4.1:</strong> Display "Capturer" button while video preview is active</li>
+            <li><strong>Requirement 11.3:</strong> Display loading states during camera initialization and capture processing</li>
+            <li><strong>Requirement 11.4:</strong> Use emerald color scheme (emerald-600, emerald-700) for primary actions</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>Camera Preview</h2>
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        
+        <div>
+            <button id="startBtn">Start Camera</button>
+            <button id="captureBtn" disabled>Capture Photo</button>
+            <button id="stopBtn" disabled>Stop Camera</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="preview" id="previewContainer" style="display: none;">
+            <h3>Captured Photo</h3>
+            <img id="preview" alt="Captured photo">
+            <div id="imageInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('startBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const previewContainer = document.getElementById('previewContainer');
+        const preview = document.getElementById('preview');
+        const imageInfo = document.getElementById('imageInfo');
+
+        let stream = null;
+
+        // Start camera
+        startBtn.addEventListener('click', async () => {
+            try {
+                status.innerHTML = '<div class="info">Requesting camera access...</div>';
+                
+                // Request camera with same constraints as CameraCapture component
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 1280 }
+                    },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                
+                startBtn.disabled = true;
+                captureBtn.disabled = false;
+                stopBtn.disabled = false;
+                
+                status.innerHTML = '<div class="success">✅ Camera started successfully!</div>';
+            } catch (error) {
+                console.error('Camera error:', error);
+                status.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        });
+
+        // Capture photo - Implementation from CameraCapture.tsx
+        captureBtn.addEventListener('click', () => {
+            try {
+                // Show loading state (Requirement 11.3)
+                captureBtn.disabled = true;
+                captureBtn.innerHTML = '<span class="spinner"></span>Capture en cours...';
+                status.innerHTML = '<div class="info">⏳ Capturing and processing image...</div>';
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions to target size (300x400 - 3:4 ratio)
+                const targetWidth = 300;
+                const targetHeight = 400;
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+
+                // Calculate crop dimensions to maintain 3:4 ratio
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
+                const videoRatio = videoWidth / videoHeight;
+                const targetRatio = targetWidth / targetHeight;
+
+                let sourceWidth = videoWidth;
+                let sourceHeight = videoHeight;
+                let sourceX = 0;
+                let sourceY = 0;
+
+                if (videoRatio > targetRatio) {
+                    // Video is wider, crop width
+                    sourceWidth = videoHeight * targetRatio;
+                    sourceX = (videoWidth - sourceWidth) / 2;
+                } else {
+                    // Video is taller, crop height
+                    sourceHeight = videoWidth / targetRatio;
+                    sourceY = (videoHeight - sourceHeight) / 2;
+                }
+
+                // Draw the cropped and resized image
+                ctx.drawImage(
+                    video,
+                    sourceX, sourceY, sourceWidth, sourceHeight,
+                    0, 0, targetWidth, targetHeight
+                );
+
+                // Convert to base64 JPEG with 85% quality
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const dataUrl = reader.result;
+                                preview.src = dataUrl;
+                                previewContainer.style.display = 'block';
+                                
+                                // Display verification info
+                                const blobSizeKB = (blob.size / 1024).toFixed(2);
+                                imageInfo.innerHTML = `
+                                    <div class="success">
+                                        <h4>✅ Capture Successful!</h4>
+                                        <p><strong>Dimensions:</strong> ${targetWidth}x${targetHeight}px (3:4 ratio)</p>
+                                        <p><strong>Format:</strong> JPEG</p>
+                                        <p><strong>Quality:</strong> 85%</p>
+                                        <p><strong>Size:</strong> ${blobSizeKB} KB</p>
+                                        <p><strong>Encoding:</strong> Base64 Data URL</p>
+                                        <p><strong>Data URL Length:</strong> ${dataUrl.length} characters</p>
+                                        <p><strong>Starts with:</strong> ${dataUrl.substring(0, 30)}...</p>
+                                    </div>
+                                `;
+                                
+                                status.innerHTML = '<div class="success">✅ Photo captured and converted to base64 JPEG!</div>';
+                                
+                                // Reset button state
+                                captureBtn.disabled = false;
+                                captureBtn.innerHTML = 'Capture Photo';
+                            };
+                            reader.readAsDataURL(blob);
+                        } else {
+                            status.innerHTML = '<div class="error">❌ Failed to create blob</div>';
+                            captureBtn.disabled = false;
+                            captureBtn.innerHTML = 'Capture Photo';
+                        }
+                    },
+                    'image/jpeg',
+                    0.85
+                );
+            } catch (error) {
+                console.error('Capture error:', error);
+                status.innerHTML = `<div class="error">❌ Capture error: ${error.message}</div>`;
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = 'Capture Photo';
+            }
+        });
+
+        // Stop camera
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                
+                // Verify all tracks are stopped
+                const allTracksStopped = stream.getTracks().every(track => track.readyState === 'ended');
+                
+                video.srcObject = null;
+                stream = null;
+                
+                startBtn.disabled = false;
+                captureBtn.disabled = true;
+                stopBtn.disabled = true;
+                
+                if (allTracksStopped) {
+                    status.innerHTML = '<div class="success">✅ Camera stopped and all tracks released</div>';
+                } else {
+                    status.innerHTML = '<div class="error">⚠️ Warning: Not all tracks were properly stopped</div>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

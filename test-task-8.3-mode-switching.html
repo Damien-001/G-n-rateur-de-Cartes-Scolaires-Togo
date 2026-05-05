@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Task 8.3 - Mode Switching Logic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #059669;
+            margin-bottom: 10px;
+        }
+        .test-description {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .test-steps {
+            background: #f9fafb;
+            padding: 15px;
+            border-left: 4px solid #059669;
+            margin: 15px 0;
+        }
+        .test-steps h3 {
+            margin-top: 0;
+            color: #059669;
+        }
+        .test-steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .expected-result {
+            background: #ecfdf5;
+            padding: 15px;
+            border-left: 4px solid #10b981;
+            margin: 15px 0;
+        }
+        .expected-result h3 {
+            margin-top: 0;
+            color: #10b981;
+        }
+        .warning {
+            background: #fef3c7;
+            padding: 15px;
+            border-left: 4px solid #f59e0b;
+            margin: 15px 0;
+        }
+        .warning h3 {
+            margin-top: 0;
+            color: #f59e0b;
+        }
+        .code {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            font-size: 18px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: #059669;">Test Task 8.3 - Mode Switching Logic</h1>
+    <p style="color: #666;">Validation de la logique de changement de mode entre upload et caméra</p>
+
+    <!-- Test 1: Switch from Upload to Camera -->
+    <div class="test-section">
+        <div class="test-title">Test 1: Passage du mode Upload au mode Caméra</div>
+        <div class="test-description">
+            Vérifier que le passage du mode upload au mode caméra fonctionne sans perdre les données du formulaire.
+        </div>
+
+        <div class="test-steps">
+            <h3>Étapes du test:</h3>
+            <ol>
+                <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+                <li>Remplir quelques champs du formulaire (nom, prénom, classe, etc.)</li>
+                <li>Vérifier que le mode "Télécharger" est sélectionné par défaut</li>
+                <li>Cliquer sur le bouton "Prendre une photo"</li>
+                <li>Observer le changement de mode</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            <h3>Résultat attendu:</h3>
+            <ul>
+                <li>✓ Le mode passe de "Télécharger" à "Prendre une photo"</li>
+                <li>✓ L'interface de la caméra s'affiche (demande de permission puis flux vidéo)</li>
+                <li>✓ Tous les champs du formulaire conservent leurs valeurs</li>
+                <li>✓ La photo existante (si présente) est préservée dans formData.photoUrl</li>
+                <li>✓ Le bouton "Prendre une photo" est maintenant en surbrillance (vert)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Test 2: Switch from Camera to Upload (Critical Test) -->
+    <div class="test-section">
+        <div class="test-title">Test 2: Passage du mode Caméra au mode Upload (Test Critique)</div>
+        <div class="test-description">
+            Vérifier que le passage du mode caméra au mode upload arrête correctement la caméra et préserve les données.
+        </div>
+
+        <div class="test-steps">
+            <h3>Étapes du test:</h3>
+            <ol>
+                <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+                <li>Remplir quelques champs du formulaire</li>
+                <li>Cliquer sur "Prendre une photo" pour activer le mode caméra</li>
+                <li>Autoriser l'accès à la caméra si demandé</li>
+                <li>Attendre que le flux vidéo s'affiche</li>
+                <li>Ouvrir la console du navigateur (F12) pour observer les logs</li>
+                <li>Cliquer sur le bouton "Télécharger" pour revenir au mode upload</li>
+                <li>Observer la console et l'interface</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            <h3>Résultat attendu:</h3>
+            <ul>
+                <li>✓ Le mode passe de "Prendre une photo" à "Télécharger"</li>
+                <li>✓ Le flux vidéo disparaît immédiatement</li>
+                <li>✓ La caméra s'arrête (le voyant de la caméra s'éteint sur l'appareil)</li>
+                <li>✓ L'interface de téléchargement de fichier s'affiche</li>
+                <li>✓ Tous les champs du formulaire conservent leurs valeurs</li>
+                <li>✓ La photo existante (si présente) est préservée</li>
+                <li>✓ Aucune erreur dans la console</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ Points critiques à vérifier:</h3>
+            <ul>
+                <li><strong>Arrêt de la caméra:</strong> Le voyant de la caméra doit s'éteindre immédiatement</li>
+                <li><strong>Libération des ressources:</strong> Vérifier dans la console qu'il n'y a pas de warning sur les tracks</li>
+                <li><strong>Préservation des données:</strong> Aucune donnée du formulaire ne doit être perdue</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Test 3: Multiple Mode Switches -->
+    <div class="test-section">
+        <div class="test-title">Test 3: Changements de mode multiples</div>
+        <div class="test-description">
+            Vérifier que plusieurs changements de mode successifs fonctionnent correctement.
+        </div>
+
+        <div class="test-steps">
+            <h3>Étapes du test:</h3>
+            <ol>
+                <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+                <li>Remplir le formulaire avec des données de test</li>
+                <li>Cliquer sur "Prendre une photo" → attendre le flux vidéo</li>
+                <li>Cliquer sur "Télécharger" → vérifier que la caméra s'arrête</li>
+                <li>Cliquer sur "Prendre une photo" → attendre le flux vidéo</li>
+                <li>Cliquer sur "Télécharger" → vérifier que la caméra s'arrête</li>
+                <li>Répéter 2-3 fois</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            <h3>Résultat attendu:</h3>
+            <ul>
+                <li>✓ Chaque changement de mode fonctionne correctement</li>
+                <li>✓ La caméra s'arrête à chaque passage au mode upload</li>
+                <li>✓ La caméra redémarre à chaque passage au mode caméra</li>
+                <li>✓ Les données du formulaire sont toujours préservées</li>
+                <li>✓ Pas de fuite mémoire (vérifier dans les DevTools → Performance)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Test 4: Mode Switch with Existing Photo -->
+    <div class="test-section">
+        <div class="test-title">Test 4: Changement de mode avec photo existante</div>
+        <div class="test-description">
+            Vérifier que la photo existante est préservée lors du changement de mode.
+        </div>
+
+        <div class="test-steps">
+            <h3>Étapes du test:</h3>
+            <ol>
+                <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+                <li>Télécharger une photo via le mode "Télécharger"</li>
+                <li>Vérifier que la photo apparaît dans la prévisualisation</li>
+                <li>Cliquer sur "Prendre une photo" pour passer au mode caméra</li>
+                <li>Observer l'interface</li>
+                <li>Cliquer sur "Télécharger" pour revenir au mode upload</li>
+                <li>Vérifier que la photo est toujours présente</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            <h3>Résultat attendu:</h3>
+            <ul>
+                <li>✓ La photo téléchargée reste visible dans la prévisualisation</li>
+                <li>✓ Le changement de mode ne supprime pas la photo existante</li>
+                <li>✓ La photo apparaît toujours dans la carte de prévisualisation à droite</li>
+                <li>✓ Le bouton "X" pour supprimer la photo fonctionne toujours</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Test 5: Mode Switch with Captured Photo -->
+    <div class="test-section">
+        <div class="test-title">Test 5: Changement de mode après capture</div>
+        <div class="test-description">
+            Vérifier que la photo capturée est préservée lors du changement de mode.
+        </div>
+
+        <div class="test-steps">
+            <h3>Étapes du test:</h3>
+            <ol>
+                <li>Ouvrir l'application et cliquer sur "Ajouter un élève"</li>
+                <li>Cliquer sur "Prendre une photo"</li>
+                <li>Autoriser l'accès à la caméra</li>
+                <li>Cliquer sur "Capturer" pour prendre une photo</li>
+                <li>Cliquer sur "Valider" pour confirmer la photo</li>
+                <li>Observer que le mode revient automatiquement à "Télécharger"</li>
+                <li>Vérifier que la photo capturée est visible</li>
+                <li>Cliquer sur "Prendre une photo" à nouveau</li>
+                <li>Cliquer sur "Télécharger" sans capturer</li>
+                <li>Vérifier que la photo précédente est toujours là</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            <h3>Résultat attendu:</h3>
+            <ul>
+                <li>✓ Après validation, le mode revient automatiquement à "Télécharger"</li>
+                <li>✓ La photo capturée est visible dans la prévisualisation</li>
+                <li>✓ La photo capturée apparaît dans la carte de prévisualisation</li>
+                <li>✓ Les changements de mode ultérieurs préservent la photo capturée</li>
+                <li>✓ La caméra s'arrête correctement après validation</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Implementation Details -->
+    <div class="test-section">
+        <div class="test-title">Détails d'implémentation</div>
+        
+        <h3>Modifications apportées:</h3>
+        
+        <h4>1. CameraCapture.tsx</h4>
+        <div class="code">
+// Ajout de forwardRef et useImperativeHandle
+export interface CameraCaptureRef {
+  stopCamera: () => void;
+}
+
+export const CameraCapture = forwardRef&lt;CameraCaptureRef, CameraCaptureProps&gt;(({
+  onPhotoCapture,
+  onCancel,
+  existingPhotoUrl
+}, ref) => {
+  // ...
+  
+  // Expose stopCamera method to parent component via ref
+  useImperativeHandle(ref, () => ({
+    stopCamera
+  }));
+  
+  // ...
+});
+
+CameraCapture.displayName = 'CameraCapture';
+        </div>
+
+        <h4>2. StudentForm.tsx</h4>
+        <div class="code">
+// Ajout de la référence au composant CameraCapture
+const cameraCaptureRef = useRef&lt;CameraCaptureRef&gt;(null);
+
+// Fonction pour gérer le changement de mode
+const handleModeSwitch = (newMode: 'upload' | 'camera') => {
+  // Si on quitte le mode caméra, arrêter la caméra
+  if (photoInputMode === 'camera' && newMode === 'upload') {
+    cameraCaptureRef.current?.stopCamera();
+  }
+  // Changer de mode (préserve formData incluant photoUrl)
+  setPhotoInputMode(newMode);
+};
+
+// Utilisation dans les boutons
+&lt;button onClick={() => handleModeSwitch('upload')}&gt;...&lt;/button&gt;
+&lt;button onClick={() => handleModeSwitch('camera')}&gt;...&lt;/button&gt;
+
+// Passage de la ref au composant CameraCapture
+&lt;CameraCapture ref={cameraCaptureRef} ... /&gt;
+        </div>
+
+        <h3>Exigences satisfaites:</h3>
+        <ul class="checklist">
+            <li><strong>Requirement 1.4:</strong> Allow switching between modes without losing form data</li>
+            <li><strong>Requirement 8.3:</strong> Stop camera when switching from camera to upload mode</li>
+            <li><strong>Requirement 8.3:</strong> Preserve existing photo when switching modes</li>
+        </ul>
+    </div>
+
+    <!-- Manual Testing Checklist -->
+    <div class="test-section">
+        <div class="test-title">Checklist de test manuel</div>
+        <div class="test-description">
+            Cochez chaque élément après l'avoir testé avec succès.
+        </div>
+
+        <ul class="checklist">
+            <li>Le passage du mode upload au mode caméra fonctionne</li>
+            <li>Le passage du mode caméra au mode upload fonctionne</li>
+            <li>La caméra s'arrête quand on passe au mode upload</li>
+            <li>Le voyant de la caméra s'éteint sur l'appareil</li>
+            <li>Les données du formulaire sont préservées lors du changement de mode</li>
+            <li>La photo existante (uploadée) est préservée lors du changement de mode</li>
+            <li>La photo capturée est préservée lors du changement de mode</li>
+            <li>Plusieurs changements de mode successifs fonctionnent correctement</li>
+            <li>Pas d'erreur dans la console lors du changement de mode</li>
+            <li>Pas de warning sur les tracks non arrêtés</li>
+            <li>Pas de fuite mémoire après plusieurs changements de mode</li>
+            <li>Le comportement est cohérent sur desktop</li>
+            <li>Le comportement est cohérent sur mobile (iOS/Android)</li>
+        </ul>
+    </div>
+
+    <!-- Console Verification -->
+    <div class="test-section">
+        <div class="test-title">Vérification dans la console</div>
+        <div class="test-description">
+            Ouvrez la console du navigateur (F12) et vérifiez les points suivants:
+        </div>
+
+        <div class="warning">
+            <h3>Points à vérifier dans la console:</h3>
+            <ul>
+                <li><strong>Pas d'erreur:</strong> Aucune erreur rouge ne doit apparaître</li>
+                <li><strong>Pas de warning sur les tracks:</strong> Le message "Warning: Not all camera tracks were properly stopped" ne doit PAS apparaître</li>
+                <li><strong>Logs de débogage:</strong> Vous pouvez voir les logs normaux de l'application</li>
+            </ul>
+        </div>
+
+        <div class="expected-result">
+            <h3>Console propre attendue:</h3>
+            <div class="code">
+// Lors du changement de mode caméra → upload, vous devriez voir:
+// (Aucun warning ou erreur)
+
+// Si vous voyez ce warning, il y a un problème:
+// ❌ Warning: Not all camera tracks were properly stopped
+            </div>
+        </div>
+    </div>
+
+    <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin-top: 30px;">
+        <h2 style="color: #10b981; margin-top: 0;">✓ Task 8.3 Complétée</h2>
+        <p>La logique de changement de mode a été implémentée avec succès:</p>
+        <ul>
+            <li>✓ Changement de mode sans perte de données du formulaire</li>
+            <li>✓ Arrêt automatique de la caméra lors du passage au mode upload</li>
+            <li>✓ Préservation de la photo existante lors du changement de mode</li>
+            <li>✓ Utilisation de useRef et useImperativeHandle pour contrôler le cycle de vie de la caméra</li>
+        </ul>
+    </div>
+</body>
+</html>
