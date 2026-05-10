@@ -778,7 +778,7 @@ export default function App({ session, onLogout }: AppProps) {
                       className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                         isSelected
                           ? 'bg-emerald-500 border-emerald-500'
-                          : 'bg-white border-gray-300 opacity-0 group-hover:opacity-100'
+                          : 'bg-white border-gray-300 opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
                       }`}
                     >
                       {isSelected && (
@@ -809,20 +809,20 @@ export default function App({ session, onLogout }: AppProps) {
 
                     {/* Actions — stopper la propagation du clic */}
                     <div
-                      className="mt-3 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="mt-3 flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         onClick={() => handleEditStudent(student)}
                         title="Modifier"
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 active:text-emerald-600 active:bg-emerald-50 rounded-lg transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(student.id)}
                         title="Supprimer"
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 active:text-red-600 active:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
