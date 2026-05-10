@@ -78,7 +78,9 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
 
   // Error messages mapping
   const errorMessages: Record<CameraError, string> = {
-    'not-supported': 'Votre navigateur ne supporte pas l\'accès à la caméra',
+    'not-supported': window.isSecureContext 
+      ? 'Votre navigateur ne supporte pas l\'accès à la caméra' 
+      : '⚠️ HTTPS requis : L\'accès à la caméra nécessite une connexion sécurisée (HTTPS). Veuillez utiliser l\'upload de fichier ou accéder au site via HTTPS.',
     'permission-denied': 'Accès à la caméra refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur',
     'device-not-found': 'Aucune caméra détectée sur cet appareil',
     'device-in-use': 'La caméra est déjà utilisée par une autre application',
@@ -108,10 +110,21 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
   const initializeCamera = async (newFacingMode?: 'user' | 'environment') => {
     console.log('🎥 [CameraCapture] Initializing camera...');
     
+    // Check if page is served over HTTPS (required on mobile)
+    const isSecureContext = window.isSecureContext;
+    const protocol = window.location.protocol;
+    console.log('🔒 [CameraCapture] Secure context:', isSecureContext, 'Protocol:', protocol);
+    
+    if (!isSecureContext && protocol !== 'http:' && window.location.hostname !== 'localhost') {
+      console.error('❌ [CameraCapture] Not a secure context - HTTPS required');
+      setState(prev => ({ ...prev, error: 'not-supported', isInitializing: false }));
+      return;
+    }
+    
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.error('❌ [CameraCapture] getUserMedia not supported');
-      setState(prev => ({ ...prev, error: 'not-supported' }));
+      setState(prev => ({ ...prev, error: 'not-supported', isInitializing: false }));
       return;
     }
 
@@ -386,16 +399,44 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
 
   // Render error state
   if (state.error) {
+    const isHttpsError = !window.isSecureContext && window.location.protocol !== 'https:';
+    
     return (
       <div className="space-y-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className={`border rounded-lg p-4 ${isHttpsError ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isHttpsError ? 'bg-amber-500' : 'bg-red-500'}`}>
               <X className="w-3 h-3 text-white" />
             </div>
-            <p className="text-red-700 font-semibold">Erreur d'accès à la caméra</p>
+            <p className={`font-semibold ${isHttpsError ? 'text-amber-700' : 'text-red-700'}`}>
+              {isHttpsError ? 'Connexion non sécurisée' : 'Erreur d\'accès à la caméra'}
+            </p>
           </div>
-          <p className="text-red-600 text-sm">{errorMessages[state.error]}</p>
+          <p className={`text-sm mb-3 ${isHttpsError ? 'text-amber-600' : 'text-red-600'}`}>
+            {errorMessages[state.error]}
+          </p>
+          
+          {isHttpsError && (
+            <div className="bg-white border border-amber-300 rounded-lg p-3 mb-3">
+              <p className="text-xs font-semibold text-amber-900 mb-2">💡 Solutions :</p>
+              <ul className="text-xs text-amber-800 space-y-1 ml-4 list-disc">
+                <li>Utilisez l'upload de fichier ci-dessous</li>
+                <li>Ou accédez au site via HTTPS (https://...)</li>
+                <li>Ou utilisez localhost pour le développement</li>
+              </ul>
+            </div>
+          )}
+          
+          {!isHttpsError && (
+            <div className="bg-white border border-red-300 rounded-lg p-3 mb-3">
+              <p className="text-xs font-semibold text-red-900 mb-2">💡 Que faire ?</p>
+              <ul className="text-xs text-red-800 space-y-1 ml-4 list-disc">
+                <li>Vérifiez les permissions de votre navigateur</li>
+                <li>Rechargez la page et autorisez l'accès</li>
+                <li>Ou utilisez l'upload de fichier ci-dessous</li>
+              </ul>
+            </div>
+          )}
         </div>
         
         <button
