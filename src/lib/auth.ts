@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { User, Session as SupabaseSession } from '@supabase/supabase-js';
+import { logger, logAuditTrail } from './logger';
 
 // On réexporte Session avec la même interface qu'avant
 // pour ne pas casser les composants existants
@@ -44,8 +45,12 @@ export async function register(
     });
 
     if (error) {
+      // ✅ LOGGING SÉCURISÉ - Ne pas logger les détails sensibles
+      logger.warn('Registration failed', { code: error.code });
+      
+      // ✅ MESSAGES D'ERREUR UNIFORMES - Anti-énumération
       if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-        return { success: false, error: 'Un compte avec cet email existe déjà.' };
+        return { success: false, error: 'Identifiants incorrects ou compte déjà existant.' };
       }
       if (error.message.includes('Password should be')) {
         return { success: false, error: 'Le mot de passe doit contenir au moins 6 caractères.' };
@@ -53,24 +58,35 @@ export async function register(
       if (error.status === 429 || error.message.includes('rate limit') || error.message.includes('too many')) {
         return { success: false, error: 'Trop de tentatives. Attendez quelques minutes avant de réessayer.' };
       }
-      return { success: false, error: error.message };
+      return { success: false, error: 'Une erreur est survenue. Veuillez réessayer.' };
     }
 
     if (!data.user) {
-      return { success: false, error: 'Erreur lors de la création du compte.' };
+      return { success: false, error: 'Une erreur est survenue lors de la création du compte.' };
     }
 
     // Supabase renvoie session === null quand la confirmation par email est activée
     if (!data.session) {
+      logger.info('Registration successful - confirmation required', { email: data.user.email });
       return { success: true, session: null, needsConfirmation: true, email: data.user.email ?? email };
     }
 
+    // ✅ AUDIT TRAIL
+    await logAuditTrail({
+      userId: data.user.id,
+      action: 'USER_REGISTERED',
+      resourceType: 'user',
+      resourceId: data.user.id,
+    });
+
+    logger.info('Registration successful', { userId: data.user.id });
     return { success: true, session: toSession(data.user), needsConfirmation: false };
   } catch (e: any) {
+    logger.error('Registration exception', { error: e?.message });
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
-      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et les variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez le serveur de développement.' };
+      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.' };
     }
-    return { success: false, error: e?.message ?? 'Erreur inconnue.' };
+    return { success: false, error: 'Une erreur est survenue. Veuillez réessayer.' };
   }
 }
 
@@ -102,29 +118,54 @@ export async function login(
     });
 
     if (error) {
+      // ✅ LOGGING SÉCURISÉ - Journaliser les tentatives échouées
+      logger.warn('Login failed', { 
+        email: email.trim().toLowerCase(),
+        code: error.code,
+      });
+      
+      // ✅ AUDIT TRAIL - Tentative de connexion échouée
+      await logAuditTrail({
+        userId: 'anonymous',
+        action: 'LOGIN_FAILED',
+        resourceType: 'auth',
+        details: { email: email.trim().toLowerCase() },
+      });
+      
+      // ✅ MESSAGES D'ERREUR UNIFORMES - Anti-énumération
       if (
         error.message.includes('Invalid login') ||
         error.message.includes('invalid_credentials') ||
         error.message.includes('Email not confirmed')
       ) {
-        return { success: false, error: 'Email ou mot de passe incorrect.' };
+        return { success: false, error: 'Identifiants incorrects ou compte inexistant.' };
       }
       if (error.status === 429 || error.message.includes('rate limit') || error.message.includes('too many')) {
         return { success: false, error: 'Trop de tentatives. Attendez quelques minutes avant de réessayer.' };
       }
-      return { success: false, error: error.message };
+      return { success: false, error: 'Une erreur est survenue. Veuillez réessayer.' };
     }
 
     if (!data.user) {
-      return { success: false, error: 'Erreur lors de la connexion.' };
+      return { success: false, error: 'Une erreur est survenue lors de la connexion.' };
     }
 
+    // ✅ AUDIT TRAIL - Connexion réussie
+    await logAuditTrail({
+      userId: data.user.id,
+      action: 'LOGIN_SUCCESS',
+      resourceType: 'auth',
+      resourceId: data.user.id,
+    });
+
+    logger.info('Login successful', { userId: data.user.id });
     return { success: true, session: toSession(data.user) };
   } catch (e: any) {
+    logger.error('Login exception', { error: e?.message });
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
-      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et les variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez le serveur de développement.' };
+      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.' };
     }
-    return { success: false, error: e?.message ?? 'Erreur inconnue.' };
+    return { success: false, error: 'Une erreur est survenue. Veuillez réessayer.' };
   }
 }
 

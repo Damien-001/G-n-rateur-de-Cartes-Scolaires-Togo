@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
+import { StudentSchema, SchoolInfoSchema, validateFileUpload } from './validation';
+import { logger, logAuditTrail } from './logger';
 
 // ─── Helpers de conversion ────────────────────────────────────────────────────
 
@@ -68,100 +70,138 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (error) {
-      console.error('fetchStudents error:', error.message);
+      logger.error('Failed to fetch students', { code: error.code });
       return [];
     }
     
     const endTime = performance.now();
-    console.log(`✅ Chargement de ${data?.length || 0} étudiants en ${(endTime - startTime).toFixed(0)}ms`);
+    logger.info('Students fetched successfully', { 
+      count: data?.length || 0, 
+      duration: `${(endTime - startTime).toFixed(0)}ms` 
+    });
     
-    return (data as DbStudent[]).map(dbToStudent);
+    // ✅ VALIDATION ZOD des données reçues
+    const validatedStudents = (data as DbStudent[]).map(dbToStudent).filter(student => {
+      try {
+        StudentSchema.parse(student);
+        return true;
+      } catch (error) {
+        logger.warn('Invalid student data from database', { studentId: student.id });
+        return false; // Filtrer les données invalides
+      }
+    });
+    
+    return validatedStudents;
   } catch (e: any) {
     if (e.message === 'Timeout fetchStudents') {
-      console.error('⏱️ Timeout lors du chargement des étudiants (>15s)');
+      logger.error('Timeout loading students (>15s)');
     } else {
-      console.error('fetchStudents exception:', e);
+      logger.error('fetchStudents exception', { error: e.message });
     }
     return [];
   }
 }
 
 export async function upsertStudent(student: Student, userId: string): Promise<Student> {
-  // Si l'élève existe déjà (édition), on fait un update ciblé
-  // Sinon on fait un insert et Supabase génère l'UUID
-  const isNew = !student.id || student.id === '';
+  // ✅ VALIDATION ZOD CÔTÉ SERVEUR
+  try {
+    const validatedStudent = StudentSchema.parse(student);
+    
+    const isNew = !validatedStudent.id || validatedStudent.id === '';
 
-  console.log('🔍 [upsertStudent] Debug info:', {
-    isNew,
-    userId,
-    studentId: student.id,
-    firstName: student.firstName,
-    lastName: student.lastName
-  });
+    logger.debug('upsertStudent called', {
+      isNew,
+      userId,
+      studentId: validatedStudent.id,
+    });
 
-  if (isNew) {
-    const insertData = {
-      user_id: userId,
-      first_name: student.firstName,
-      last_name: student.lastName,
-      matricule: student.matricule,
-      class_name: student.className,
-      school_year: student.schoolYear,
-      birth_date: student.birthDate || null,
-      birth_place: student.birthPlace || null,
-      exam_center: student.examCenter || null,
-      photo_url: student.photoUrl || null,
-      expiration_date: student.expirationDate || null,
-    };
-    
-    console.log('📝 [upsertStudent] Données à insérer:', insertData);
-    
-    const { data, error } = await supabase
-      .from('students')
-      .insert(insertData)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('❌ [upsertStudent] Erreur Supabase:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+    if (isNew) {
+      const insertData = {
+        user_id: userId,
+        first_name: validatedStudent.firstName,
+        last_name: validatedStudent.lastName,
+        matricule: validatedStudent.matricule,
+        class_name: validatedStudent.className,
+        school_year: validatedStudent.schoolYear,
+        birth_date: validatedStudent.birthDate || null,
+        birth_place: validatedStudent.birthPlace || null,
+        exam_center: validatedStudent.examCenter || null,
+        photo_url: validatedStudent.photoUrl || null,
+        expiration_date: validatedStudent.expirationDate || null,
+      };
+      
+      const { data, error } = await supabase
+        .from('students')
+        .insert(insertData)
+        .select()
+        .single();
+      
+      if (error) {
+        logger.error('Failed to insert student', { code: error.code });
+        throw new Error('Erreur lors de l\'ajout de l\'élève');
+      }
+      
+      // ✅ AUDIT TRAIL
+      await logAuditTrail({
+        userId,
+        action: 'CREATE_STUDENT',
+        resourceType: 'student',
+        resourceId: (data as DbStudent).id,
+        details: { matricule: validatedStudent.matricule },
       });
-      throw new Error(error.message);
-    }
-    
-    console.log('✅ [upsertStudent] Insertion réussie:', data);
-    return dbToStudent(data as DbStudent);
-  } else {
-    const row = studentToDb(student, userId);
-    console.log('📝 [upsertStudent] Données à mettre à jour:', row);
-    
-    const { data, error } = await supabase
-      .from('students')
-      .upsert(row, { onConflict: 'id' })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('❌ [upsertStudent] Erreur Supabase:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+      
+      logger.info('Student created successfully');
+      return dbToStudent(data as DbStudent);
+    } else {
+      const row = studentToDb(validatedStudent as Student, userId);
+      
+      const { data, error } = await supabase
+        .from('students')
+        .upsert(row, { onConflict: 'id' })
+        .select()
+        .single();
+      
+      if (error) {
+        logger.error('Failed to update student', { code: error.code });
+        throw new Error('Erreur lors de la mise à jour de l\'élève');
+      }
+      
+      // ✅ AUDIT TRAIL
+      await logAuditTrail({
+        userId,
+        action: 'UPDATE_STUDENT',
+        resourceType: 'student',
+        resourceId: validatedStudent.id,
+        details: { matricule: validatedStudent.matricule },
       });
-      throw new Error(error.message);
+      
+      logger.info('Student updated successfully');
+      return dbToStudent(data as DbStudent);
     }
-    
-    console.log('✅ [upsertStudent] Mise à jour réussie:', data);
-    return dbToStudent(data as DbStudent);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'ZodError') {
+      logger.warn('Validation error in upsertStudent', { error: error.message });
+      throw new Error('Données invalides : ' + error.message);
+    }
+    throw error;
   }
 }
 
 /** Import en masse depuis CSV — laisse Supabase générer les IDs */
 export async function insertStudents(students: Student[], userId: string): Promise<Student[]> {
-  const rows = students.map(s => ({
+  // ✅ VALIDATION ZOD pour chaque étudiant
+  const validatedStudents = students.map((s, index) => {
+    try {
+      return StudentSchema.parse(s);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ZodError') {
+        throw new Error(`Étudiant ${index + 1} invalide : ${error.message}`);
+      }
+      throw error;
+    }
+  });
+
+  const rows = validatedStudents.map(s => ({
     user_id: userId,
     first_name: s.firstName,
     last_name: s.lastName,
@@ -180,28 +220,69 @@ export async function insertStudents(students: Student[], userId: string): Promi
     .insert(rows)
     .select();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logger.error('Failed to insert students', { code: error.code });
+    throw new Error(error.message);
+  }
+  
+  // ✅ AUDIT TRAIL
+  await logAuditTrail({
+    userId,
+    action: 'CREATE_STUDENTS_BULK',
+    resourceType: 'student',
+    resourceId: 'bulk',
+    details: { count: validatedStudents.length },
+  });
+  
+  logger.info('Students inserted successfully', { count: validatedStudents.length });
   return (data as DbStudent[]).map(dbToStudent);
 }
 
-export async function deleteStudent(id: string): Promise<void> {
+export async function deleteStudent(id: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('students')
     .delete()
     .eq('id', id);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logger.error('Failed to delete student', { code: error.code });
+    throw new Error('Erreur lors de la suppression');
+  }
+  
+  // ✅ AUDIT TRAIL
+  await logAuditTrail({
+    userId,
+    action: 'DELETE_STUDENT',
+    resourceType: 'student',
+    resourceId: id,
+  });
+  
+  logger.info('Student deleted successfully', { studentId: id });
 }
 
 /** Suppression en masse — supprime plusieurs élèves en une seule requête */
-export async function deleteStudents(ids: string[]): Promise<void> {
+export async function deleteStudents(ids: string[], userId: string): Promise<void> {
   if (ids.length === 0) return;
   const { error } = await supabase
     .from('students')
     .delete()
     .in('id', ids);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logger.error('Failed to delete students', { code: error.code });
+    throw new Error(error.message);
+  }
+  
+  // ✅ AUDIT TRAIL
+  await logAuditTrail({
+    userId,
+    action: 'DELETE_STUDENTS_BULK',
+    resourceType: 'student',
+    resourceId: 'bulk',
+    details: { count: ids.length, ids },
+  });
+  
+  logger.info('Students deleted successfully', { count: ids.length });
 }
 
 // ─── School Info ──────────────────────────────────────────────────────────────
@@ -224,20 +305,31 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
     const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (error) {
-      console.error('fetchSchoolInfo error:', error.message);
+      logger.error('Failed to fetch school info', { code: error.code });
       return null;
     }
     
     const endTime = performance.now();
-    console.log(`✅ Chargement des infos école en ${(endTime - startTime).toFixed(0)}ms`);
+    logger.info('School info fetched successfully', { 
+      duration: `${(endTime - startTime).toFixed(0)}ms` 
+    });
     
     if (!data) return null;
-    return dbToSchoolInfo(data as DbSchoolInfo);
+    
+    // ✅ VALIDATION ZOD des données reçues
+    const schoolInfo = dbToSchoolInfo(data as DbSchoolInfo);
+    try {
+      SchoolInfoSchema.parse(schoolInfo);
+      return schoolInfo;
+    } catch (error) {
+      logger.warn('Invalid school info data from database', { error });
+      return null; // Retourner null si les données sont invalides
+    }
   } catch (e: any) {
     if (e.message === 'Timeout fetchSchoolInfo') {
-      console.error('⏱️ Timeout lors du chargement des infos école (>10s)');
+      logger.error('Timeout loading school info (>10s)');
     } else {
-      console.error('fetchSchoolInfo exception:', e);
+      logger.error('fetchSchoolInfo exception', { error: e.message });
     }
     return null;
   }
@@ -245,13 +337,16 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 
 export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<void> {
   try {
+    // ✅ VALIDATION ZOD CÔTÉ SERVEUR
+    const validatedInfo = SchoolInfoSchema.parse(info);
+    
     const row: DbSchoolInfo = {
       user_id: userId,
-      name: info.name,
-      logo_url: info.logoUrl,
-      signature_url: info.signatureUrl,
-      stamp_url: info.stampUrl,
-      card_colors: info.cardColors ?? DEFAULT_CARD_COLORS,
+      name: validatedInfo.name,
+      logo_url: validatedInfo.logoUrl,
+      signature_url: validatedInfo.signatureUrl,
+      stamp_url: validatedInfo.stampUrl,
+      card_colors: validatedInfo.cardColors ?? DEFAULT_CARD_COLORS,
       updated_at: new Date().toISOString(),
     };
 
@@ -266,14 +361,27 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
     ]);
 
     if (error) {
-      console.error('saveSchoolInfo error:', error.message);
+      logger.error('Failed to save school info', { code: error.code });
       throw error;
     }
+    
+    // ✅ AUDIT TRAIL
+    await logAuditTrail({
+      userId,
+      action: 'UPDATE_SCHOOL_INFO',
+      resourceType: 'school_info',
+      resourceId: userId,
+    });
+    
+    logger.info('School info saved successfully');
   } catch (e: any) {
     if (e.message === 'Timeout') {
-      console.warn('⚠️ saveSchoolInfo timeout - les données seront sauvegardées plus tard');
+      logger.warn('saveSchoolInfo timeout - data will be saved later');
+    } else if (e.name === 'ZodError') {
+      logger.warn('Validation error in saveSchoolInfo', { error: e.message });
+      throw new Error('Données invalides : ' + e.message);
     } else {
-      console.error('saveSchoolInfo exception:', e);
+      logger.error('saveSchoolInfo exception', { error: e.message });
     }
     // Ne pas propager l'erreur pour ne pas bloquer l'interface
   }
@@ -288,6 +396,13 @@ export async function uploadImage(
   userId: string,
   folder: 'logos' | 'signatures' | 'photos'
 ): Promise<string> {
+  // ✅ VALIDATION DU FICHIER
+  const validation = validateFileUpload(file);
+  if (!validation.valid) {
+    logger.warn('File upload validation failed', { reason: validation.error });
+    throw new Error(validation.error);
+  }
+  
   const ext = file.name.split('.').pop() ?? 'jpg';
   const path = `${userId}/${folder}/${Date.now()}.${ext}`;
 
@@ -295,9 +410,23 @@ export async function uploadImage(
     .from(BUCKET)
     .upload(path, file, { upsert: true, contentType: file.type });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    logger.error('Failed to upload image', { code: error.message });
+    throw new Error(error.message);
+  }
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  
+  // ✅ AUDIT TRAIL
+  await logAuditTrail({
+    userId,
+    action: 'UPLOAD_IMAGE',
+    resourceType: 'storage',
+    resourceId: path,
+    details: { folder, size: file.size, type: file.type },
+  });
+  
+  logger.info('Image uploaded successfully', { path, size: file.size });
   return data.publicUrl;
 }
 

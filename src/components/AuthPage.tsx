@@ -93,8 +93,11 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
     setLoading(true);
     try {
       const result = await login(email, password);
-      if (!result.success) setError(result.error);
-      else onAuth(result.session);
+      if (!result.success) {
+        setError(result.error);
+      } else {
+        onAuth(result.session);
+      }
     } finally {
       setLoading(false);
     }

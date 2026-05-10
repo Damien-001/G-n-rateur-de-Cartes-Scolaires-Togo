@@ -26,6 +26,10 @@ import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
 import { SchoolSettings } from './components/SchoolSettings';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import DataManagement from './components/DataManagement';
+import CookieConsent from './components/CookieConsent';
 
 
 interface AppProps {
@@ -38,6 +42,8 @@ export default function App({ session, onLogout }: AppProps) {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(DEFAULT_SCHOOL_INFO);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSchoolSettingsOpen, setIsSchoolSettingsOpen] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showDataManagement, setShowDataManagement] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
   const [view, setView] = useState<'manage' | 'preview'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
@@ -209,28 +215,28 @@ export default function App({ session, onLogout }: AppProps) {
   const handleDeleteStudent = useCallback(async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) return;
     try {
-      await deleteStudent(id);
+      await deleteStudent(id, session.userId);
       setStudents(prev => prev.filter(s => s.id !== id));
       setSelectedStudents(prev => prev.filter(sid => sid !== id));
     } catch (err) {
       console.error('Erreur suppression:', err);
       alert('Erreur lors de la suppression.');
     }
-  }, []);
+  }, [session.userId]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedStudents.length === 0) return;
     const n = selectedStudents.length;
     if (!confirm(`Êtes-vous sûr de vouloir supprimer ${n} élève${n > 1 ? 's' : ''} ? Cette action est irréversible.`)) return;
     try {
-      await deleteStudents(selectedStudents);
+      await deleteStudents(selectedStudents, session.userId);
       setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
       setSelectedStudents([]);
     } catch (err) {
       console.error('Erreur suppression massive:', err);
       alert('Erreur lors de la suppression en masse.');
     }
-  }, [selectedStudents]);
+  }, [selectedStudents, session.userId]);
 
   const filteredStudents = React.useMemo(() =>
     students.filter(s =>
@@ -428,6 +434,13 @@ export default function App({ session, onLogout }: AppProps) {
               className="flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
             >
               <LogOut className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowDataManagement(true)}
+              title="Mes données (RGPD)"
+              className="flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+            >
+              <Settings className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -856,6 +869,45 @@ export default function App({ session, onLogout }: AppProps) {
           onClose={() => setIsSchoolSettingsOpen(false)}
         />
       )}
+
+      {showPrivacyPolicy && (
+        <PrivacyPolicy onClose={() => setShowPrivacyPolicy(false)} />
+      )}
+
+      {showDataManagement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">Mes Données</h2>
+              <button
+                onClick={() => setShowDataManagement(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6">
+              <DataManagement userId={session.userId} userEmail={session.email} />
+            </div>
+            <div className="border-t p-4 bg-gray-50 flex justify-between items-center">
+              <button
+                onClick={() => setShowPrivacyPolicy(true)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Politique de confidentialité
+              </button>
+              <button
+                onClick={() => setShowDataManagement(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CookieConsent />
     </div>
   );
 }

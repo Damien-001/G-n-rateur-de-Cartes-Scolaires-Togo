@@ -193,3 +193,72 @@ Avant de commencer à utiliser l'application :
 
 **Version :** 2.3.0  
 **Dernière mise à jour :** 2026-05-02
+
+
+---
+
+## 🆕 Nouveau : Table audit_logs (Sécurité)
+
+### `audit-logs.sql` ⭐ IMPORTANT POUR LA SÉCURITÉ
+
+**Description :** Script pour créer la table d'audit trail qui trace toutes les actions sensibles.
+
+**Contenu :**
+- ✅ Table `audit_logs` avec RLS
+- ✅ Index pour performances optimales
+- ✅ Fonction de nettoyage automatique (90 jours - RGPD)
+- ✅ Politiques de sécurité strictes
+
+**Utilisation :**
+1. Ouvrez Supabase Dashboard > SQL Editor
+2. Créez une nouvelle requête
+3. Copiez-collez tout le contenu de `audit-logs.sql`
+4. Exécutez (Run)
+5. Vérifiez dans Table Editor que la table `audit_logs` existe
+
+**Actions tracées :**
+- `CREATE_STUDENT`, `UPDATE_STUDENT`, `DELETE_STUDENT`
+- `DELETE_STUDENTS_BULK`, `CREATE_STUDENTS_BULK`
+- `UPDATE_SCHOOL_INFO`, `UPLOAD_IMAGE`
+- `LOGIN_SUCCESS`, `LOGIN_FAILED`, `USER_REGISTERED`
+
+**Quand l'utiliser :**
+- ✅ **OBLIGATOIRE** pour la conformité RGPD
+- ✅ **OBLIGATOIRE** pour l'audit de sécurité
+- ✅ Après avoir exécuté `schema.sql`
+
+### Structure de la table audit_logs
+
+```sql
+CREATE TABLE audit_logs (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL → auth.users,
+  action TEXT NOT NULL,
+  resource_type TEXT NOT NULL,
+  resource_id TEXT,
+  details JSONB,
+  ip_address INET,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ
+);
+```
+
+### Configuration du cron job (Optionnel)
+
+Pour supprimer automatiquement les logs de plus de 90 jours :
+
+1. Allez dans **Database** > **Extensions**
+2. Activez l'extension **pg_cron**
+3. Dans **SQL Editor**, exécutez :
+
+```sql
+SELECT cron.schedule(
+  'delete-old-audit-logs',
+  '0 2 * * *', -- Tous les jours à 2h du matin
+  'SELECT delete_old_audit_logs();'
+);
+```
+
+---
+
+**Dernière mise à jour** : ${new Date().toLocaleDateString('fr-FR')}
