@@ -87,24 +87,22 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
 
   // Initialize camera on component mount
   useEffect(() => {
-    // Don't initialize automatically - wait for user to click
-    // initializeCamera();
+    // Don't initialize automatically on mobile - wait for user interaction
+    // This is required by many mobile browsers for security/privacy
+    if (!isMobile) {
+      // Auto-start only on desktop
+      const timer = setTimeout(() => {
+        initializeCamera();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
     
     // Cleanup on unmount
     return () => {
       stopCamera();
     };
-  }, []);
-
-  // Initialize camera when component is ready
-  useEffect(() => {
-    // Initialize camera after component is mounted and rendered
-    const timer = setTimeout(() => {
-      initializeCamera();
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  }, [isMobile]);
 
   // Initialize camera stream
   const initializeCamera = async (newFacingMode?: 'user' | 'environment') => {
@@ -123,8 +121,13 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
     setState(prev => ({ ...prev, isInitializing: true, error: null }));
 
     try {
+      // On mobile, use exact facingMode for better compatibility
       const constraints: MediaStreamConstraints = {
-        video: {
+        video: isMobile ? {
+          facingMode: { exact: targetFacingMode },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 1280, max: 1920 }
+        } : {
           facingMode: targetFacingMode,
           width: { ideal: 1280 },
           height: { ideal: 1280 }
@@ -133,7 +136,25 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
       };
 
       console.log('🔧 [CameraCapture] Requesting camera with constraints:', constraints);
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Try with exact facingMode first on mobile
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (exactError) {
+        // If exact facingMode fails on mobile, try without exact
+        console.warn('⚠️ [CameraCapture] Exact facingMode failed, trying without exact:', exactError);
+        const fallbackConstraints: MediaStreamConstraints = {
+          video: {
+            facingMode: targetFacingMode,
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 1280, max: 1920 }
+          },
+          audio: false
+        };
+        stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+      }
+      
       console.log('✅ [CameraCapture] Camera stream obtained:', stream);
       console.log('📊 [CameraCapture] Stream tracks:', stream.getTracks());
       
@@ -141,20 +162,37 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
         console.log('🎬 [CameraCapture] Setting srcObject on video element');
         videoRef.current.srcObject = stream;
         
+        // Add event listeners for better mobile support
+        videoRef.current.onloadedmetadata = async () => {
+          console.log('📺 [CameraCapture] Video metadata loaded');
+          if (videoRef.current) {
+            try {
+              // On mobile, play() must be called after user interaction
+              await videoRef.current.play();
+              console.log('✅ [CameraCapture] Video play() succeeded');
+            } catch (playError) {
+              console.warn('⚠️ [CameraCapture] Video play error:', playError);
+              // Try again after a short delay
+              setTimeout(async () => {
+                if (videoRef.current) {
+                  try {
+                    await videoRef.current.play();
+                    console.log('✅ [CameraCapture] Video play() succeeded on retry');
+                  } catch (retryError) {
+                    console.error('❌ [CameraCapture] Video play() failed on retry:', retryError);
+                  }
+                }
+              }, 100);
+            }
+          }
+        };
+        
         console.log('▶️ [CameraCapture] Video element properties:', {
           readyState: videoRef.current.readyState,
           videoWidth: videoRef.current.videoWidth,
           videoHeight: videoRef.current.videoHeight,
           paused: videoRef.current.paused
         });
-        
-        // Force video to play
-        try {
-          await videoRef.current.play();
-          console.log('✅ [CameraCapture] Video play() succeeded');
-        } catch (playError) {
-          console.warn('⚠️ [CameraCapture] Video play error (may be normal):', playError);
-        }
       } else {
         console.error('❌ [CameraCapture] videoRef.current is null!');
       }
@@ -419,6 +457,24 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
         </div>
       )}
 
+      {/* Manual start button for mobile if camera doesn't auto-start */}
+      {!state.isCameraActive && !state.isInitializing && (
+        <div className="flex flex-col items-center justify-center py-8 gap-4">
+          <Camera className="w-16 h-16 text-gray-300" />
+          <p className="text-sm text-gray-600 text-center">
+            Appuyez sur le bouton pour démarrer la caméra
+          </p>
+          <button
+            type="button"
+            onClick={() => initializeCamera()}
+            className="px-6 py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 flex items-center gap-2"
+          >
+            <Camera className="w-5 h-5" />
+            Démarrer la caméra
+          </button>
+        </div>
+      )}
+
       {/* Video preview */}
       {(state.isCameraActive || state.isInitializing) && (
         <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '3/4' }}>
@@ -427,7 +483,8 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
             autoPlay
             playsInline
             muted
-            onLoadedMetadata={(e) => {
+            webkit-playsinline="true"
+            onLoadedMetadata={async (e) => {
               // Force play when metadata is loaded
               const video = e.currentTarget;
               console.log('📺 [CameraCapture] Video metadata loaded:', {
@@ -435,7 +492,30 @@ export const CameraCapture = forwardRef<CameraCaptureRef, CameraCaptureProps>(({
                 videoHeight: video.videoHeight,
                 readyState: video.readyState
               });
-              video.play().catch(err => console.warn('⚠️ [CameraCapture] Video play error:', err));
+              
+              // On mobile, ensure video plays
+              try {
+                await video.play();
+                console.log('✅ [CameraCapture] Video playing after metadata loaded');
+              } catch (err) {
+                console.warn('⚠️ [CameraCapture] Video play error:', err);
+                // Retry after a short delay
+                setTimeout(async () => {
+                  try {
+                    await video.play();
+                    console.log('✅ [CameraCapture] Video playing after retry');
+                  } catch (retryErr) {
+                    console.error('❌ [CameraCapture] Video play failed:', retryErr);
+                  }
+                }, 200);
+              }
+            }}
+            onCanPlay={(e) => {
+              // Additional play attempt when video can play
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(err => console.warn('⚠️ [CameraCapture] onCanPlay play error:', err));
+              }
             }}
             style={{ transform: state.facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
             className="w-full h-full object-cover"
