@@ -201,7 +201,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             textAlign: 'center',
             lineHeight: 1,
           }}>
-            {student.matricule}
+            N° {student.matricule}
           </div>
         </div>
 

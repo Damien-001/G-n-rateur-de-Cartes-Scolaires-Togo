@@ -90,6 +90,26 @@ export default function App({ session, onLogout }: AppProps) {
         return;
       }
 
+      // ✅ Attendre que toutes les images soient chargées
+      const images = document.querySelectorAll<HTMLImageElement>('.a4-page img');
+      await Promise.all(
+        Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => {
+              console.warn('Image failed to load:', img.src);
+              resolve(null); // Continue même si une image échoue
+            };
+            // Timeout de 10 secondes par image
+            setTimeout(() => resolve(null), 10000);
+          });
+        })
+      );
+
+      // Petit délai supplémentaire pour s'assurer que tout est rendu
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Importation dynamique des librairies lourdes (code-splitting)
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
@@ -102,16 +122,17 @@ export default function App({ session, onLogout }: AppProps) {
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         const canvas = await html2canvas(page, {
-          scale: 2,           // haute résolution
+          scale: 4,           // ✅ Très haute résolution (4x) pour qualité optimale au zoom
           useCORS: true,      // images cross-origin (photos Supabase)
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        // ✅ Utiliser PNG pour éviter la compression JPEG et garder la netteté
+        const imgData = canvas.toDataURL('image/png');
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+        pdf.addImage(imgData, 'PNG', 0, 0, A4_W_MM, A4_H_MM, undefined, 'FAST');
       }
 
       const date = new Date().toISOString().split('T')[0];
