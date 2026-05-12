@@ -129,18 +129,19 @@ export default function App({ session, onLogout }: AppProps) {
       setLoadingTimeout(false);
       const startTime = performance.now();
       
-      // Timeout de 15 secondes pour connexions lentes
+      // Timeout de 30 secondes pour connexions lentes et cold starts
       loadingTimer.current = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 15000);
+      }, 30000);
       
       try {
-        // Charger school_info d'abord (plus rapide)
-        const fetchedSchool = await fetchSchoolInfo(session.userId);
+        // Charger en parallèle pour optimiser le temps d'ouverture
+        const [fetchedSchool, fetchedStudents] = await Promise.all([
+          fetchSchoolInfo(session.userId),
+          fetchStudents(session.userId)
+        ]);
+
         setSchoolInfo(fetchedSchool ?? DEFAULT_SCHOOL_INFO);
-        
-        // Puis charger les étudiants
-        const fetchedStudents = await fetchStudents(session.userId);
         setStudents(fetchedStudents);
         
         const endTime = performance.now();

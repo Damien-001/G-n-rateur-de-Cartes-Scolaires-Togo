@@ -55,9 +55,9 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
   try {
     const startTime = performance.now();
     
-    // Timeout augmenté à 15 secondes pour connexions lentes
+    // Timeout augmenté à 30 secondes pour connexions lentes et cold starts
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout fetchStudents')), 15000)
+      setTimeout(() => reject(new Error('Timeout fetchStudents')), 30000)
     );
     
     const fetchPromise = supabase
@@ -94,7 +94,7 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     return validatedStudents;
   } catch (e: any) {
     if (e.message === 'Timeout fetchStudents') {
-      logger.error('Timeout loading students (>15s)');
+      logger.error('Timeout loading students (>30s)');
     } else {
       logger.error('fetchStudents exception', { error: e.message });
     }
@@ -291,9 +291,9 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
   try {
     const startTime = performance.now();
     
-    // Timeout augmenté à 10 secondes pour connexions lentes
+    // Timeout augmenté à 30 secondes pour connexions lentes et cold starts
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 10000)
+      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 30000)
     );
     
     const fetchPromise = supabase
@@ -327,7 +327,7 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
     }
   } catch (e: any) {
     if (e.message === 'Timeout fetchSchoolInfo') {
-      logger.error('Timeout loading school info (>10s)');
+      logger.error('Timeout loading school info (>30s)');
     } else {
       logger.error('fetchSchoolInfo exception', { error: e.message });
     }
@@ -350,13 +350,13 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       updated_at: new Date().toISOString(),
     };
 
-    // Timeout augmenté à 10 secondes
+    // Timeout augmenté à 30 secondes
     const { error } = await Promise.race([
       supabase
         .from('school_info')
         .upsert(row, { onConflict: 'user_id' }),
       new Promise<{ error: any }>((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 10000)
+        setTimeout(() => reject(new Error('Timeout')), 30000)
       )
     ]);
 
