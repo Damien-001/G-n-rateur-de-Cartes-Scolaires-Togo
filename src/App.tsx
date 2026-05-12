@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import html2canvas from 'html2canvas-pro';
-import { jsPDF } from 'jspdf';
 import { 
   Plus, 
   Users, 
@@ -91,6 +89,10 @@ export default function App({ session, onLogout }: AppProps) {
         alert('Aucune page à exporter.');
         return;
       }
+
+      // Importation dynamique des librairies lourdes (code-splitting)
+      const html2canvas = (await import('html2canvas-pro')).default;
+      const { jsPDF } = await import('jspdf');
 
       // A4 en mm: 210 × 297
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
