@@ -343,9 +343,9 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
     const row: DbSchoolInfo = {
       user_id: userId,
       name: validatedInfo.name,
-      logo_url: validatedInfo.logoUrl,
-      signature_url: validatedInfo.signatureUrl,
-      stamp_url: validatedInfo.stampUrl,
+      logo_url: validatedInfo.logoUrl || null,
+      signature_url: validatedInfo.signatureUrl || null,
+      stamp_url: validatedInfo.stampUrl || null,
       card_colors: validatedInfo.cardColors ?? DEFAULT_CARD_COLORS,
       updated_at: new Date().toISOString(),
     };
