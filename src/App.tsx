@@ -122,17 +122,20 @@ export default function App({ session, onLogout }: AppProps) {
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         const canvas = await html2canvas(page, {
-          scale: 4,           // ✅ Très haute résolution (4x) pour qualité optimale au zoom
+          scale: 5,           // ✅ Résolution maximale (5x) pour qualité professionnelle
           useCORS: true,      // images cross-origin (photos Supabase)
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
         });
 
-        // ✅ Utiliser PNG pour éviter la compression JPEG et garder la netteté
-        const imgData = canvas.toDataURL('image/png');
+        // ✅ Utiliser PNG pour éviter la compression JPEG et garder la netteté maximale
+        const imgData = canvas.toDataURL('image/png', 1.0);
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, A4_W_MM, A4_H_MM, undefined, 'FAST');
+        // Compression NONE pour qualité maximale (fichier plus lourd mais meilleure qualité)
+        pdf.addImage(imgData, 'PNG', 0, 0, A4_W_MM, A4_H_MM, undefined, 'NONE');
       }
 
       const date = new Date().toISOString().split('T')[0];
@@ -152,13 +155,13 @@ export default function App({ session, onLogout }: AppProps) {
       setLoadingTimeout(false);
       const startTime = performance.now();
       
-      // Timeout de 30 secondes pour connexions lentes et cold starts
+      // Timeout réduit à 15 secondes pour un feedback plus rapide
       loadingTimer.current = setTimeout(() => {
         setLoadingTimeout(true);
-      }, 30000);
+      }, 15000);
       
       try {
-        // Charger en parallèle pour optimiser le temps d'ouverture
+        // ✅ OPTIMISATION : Charger en parallèle pour optimiser le temps
         const [fetchedSchool, fetchedStudents] = await Promise.all([
           fetchSchoolInfo(session.userId),
           fetchStudents(session.userId)
@@ -168,7 +171,13 @@ export default function App({ session, onLogout }: AppProps) {
         setStudents(fetchedStudents);
         
         const endTime = performance.now();
-        console.log(`🚀 Chargement total en ${(endTime - startTime).toFixed(0)}ms`);
+        const duration = (endTime - startTime).toFixed(0);
+        console.log(`🚀 Chargement total en ${duration}ms`);
+        
+        // Log performance pour diagnostic
+        if (parseInt(duration) > 3000) {
+          console.warn('⚠️ Chargement lent détecté (>3s). Vérifiez votre connexion internet.');
+        }
       } catch (error) {
         console.error('Erreur chargement données:', error);
         // Continuer même en cas d'erreur

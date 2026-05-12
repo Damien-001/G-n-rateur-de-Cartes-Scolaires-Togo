@@ -55,17 +55,18 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
   try {
     const startTime = performance.now();
     
-    // Timeout augmenté à 30 secondes pour connexions lentes et cold starts
+    // Timeout réduit à 15 secondes pour un feedback plus rapide
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout fetchStudents')), 30000)
+      setTimeout(() => reject(new Error('Timeout fetchStudents')), 15000)
     );
     
+    // ✅ OPTIMISATION : Ne charger que les champs essentiels, pas les URLs d'images au départ
     const fetchPromise = supabase
       .from('students')
       .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
-      .limit(100); // Limiter à 100 étudiants pour le chargement initial
+      .limit(200); // Augmenté à 200 pour plus d'étudiants
 
     const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
@@ -94,7 +95,7 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     return validatedStudents;
   } catch (e: any) {
     if (e.message === 'Timeout fetchStudents') {
-      logger.error('Timeout loading students (>30s)');
+      logger.error('Timeout loading students (>15s)');
     } else {
       logger.error('fetchStudents exception', { error: e.message });
     }
@@ -291,9 +292,9 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
   try {
     const startTime = performance.now();
     
-    // Timeout augmenté à 30 secondes pour connexions lentes et cold starts
+    // Timeout réduit à 10 secondes pour un feedback plus rapide
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 30000)
+      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 10000)
     );
     
     const fetchPromise = supabase
@@ -327,7 +328,7 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
     }
   } catch (e: any) {
     if (e.message === 'Timeout fetchSchoolInfo') {
-      logger.error('Timeout loading school info (>30s)');
+      logger.error('Timeout loading school info (>10s)');
     } else {
       logger.error('fetchSchoolInfo exception', { error: e.message });
     }
