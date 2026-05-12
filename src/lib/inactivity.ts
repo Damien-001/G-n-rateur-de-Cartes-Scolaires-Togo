@@ -15,6 +15,9 @@ function reset() {
   if (timeoutTimer) clearTimeout(timeoutTimer);
   if (warningTimer) clearTimeout(warningTimer);
 
+  // ✅ SÉCURITÉ : Mettre à jour le timestamp de dernière activité
+  localStorage.setItem('last_activity', Date.now().toString());
+
   warningTimer = setTimeout(() => {
     if (onWarningCb) onWarningCb();
   }, WARNING_MS);

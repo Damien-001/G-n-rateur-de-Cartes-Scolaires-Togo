@@ -15,6 +15,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // ✅ SÉCURITÉ : Expiration de session après 2 heures d'inactivité
+    storageKey: 'school-cards-auth',
   },
 });
 

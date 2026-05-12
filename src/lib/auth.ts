@@ -22,6 +22,26 @@ function toSession(user: User): Session {
 export async function getSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession();
   if (!data.session?.user) return null;
+  
+  // ✅ SÉCURITÉ : Vérifier l'expiration de la session (2 heures d'inactivité)
+  const lastActivity = localStorage.getItem('last_activity');
+  if (lastActivity) {
+    const lastActivityTime = parseInt(lastActivity, 10);
+    const now = Date.now();
+    const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 heures en millisecondes
+    
+    if (now - lastActivityTime > TWO_HOURS) {
+      // Session expirée après 2 heures d'inactivité
+      logger.info('Session expired after 2 hours of inactivity');
+      await supabase.auth.signOut();
+      localStorage.removeItem('last_activity');
+      return null;
+    }
+  }
+  
+  // Mettre à jour le timestamp de dernière activité
+  localStorage.setItem('last_activity', Date.now().toString());
+  
   return toSession(data.session.user);
 }
 
@@ -106,6 +126,49 @@ export async function resendConfirmation(
   }
 }
 
+/** Demander la réinitialisation du mot de passe */
+export async function resetPassword(
+  email: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      {
+        redirectTo: `${window.location.origin}/`,
+      }
+    );
+    
+    if (error) {
+      logger.warn('Password reset request failed', { code: error.code });
+      
+      // ✅ MESSAGE UNIFORME - Anti-énumération (ne pas révéler si l'email existe)
+      if (error.status === 429 || error.message.includes('rate limit') || error.message.includes('too many')) {
+        return { success: false, error: 'Trop de tentatives. Attendez quelques minutes avant de réessayer.' };
+      }
+      // On retourne succès même si l'email n'existe pas (sécurité)
+      return { success: true };
+    }
+    
+    // ✅ AUDIT TRAIL
+    await logAuditTrail({
+      userId: 'anonymous',
+      action: 'PASSWORD_RESET_REQUESTED',
+      resourceType: 'auth',
+      details: { email: email.trim().toLowerCase() },
+    });
+    
+    logger.info('Password reset email sent', { email: email.trim().toLowerCase() });
+    return { success: true };
+  } catch (e: any) {
+    logger.error('Password reset exception', { error: e?.message });
+    if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
+      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.' };
+    }
+    // En cas d'erreur, on retourne succès pour ne pas révéler si l'email existe
+    return { success: true };
+  }
+}
+
 /** Connexion */
 export async function login(
   email: string,
@@ -171,6 +234,8 @@ export async function login(
 
 /** Déconnexion */
 export async function logout(): Promise<void> {
+  // ✅ Nettoyer le timestamp d'activité
+  localStorage.removeItem('last_activity');
   await supabase.auth.signOut();
 }
 

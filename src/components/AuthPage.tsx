@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { login, register, resendConfirmation, Session } from '../lib/auth';
+import { login, register, resendConfirmation, resetPassword, Session } from '../lib/auth';
 
 interface AuthPageProps {
   onAuth: (session: Session) => void;
 }
 
-type Mode = 'login' | 'register' | 'confirm';
+type Mode = 'login' | 'register' | 'confirm' | 'reset';
 
 // ── Icônes SVG inline ──────────────────────────────────────────────────────────
 const IconSchool = () => (
@@ -80,7 +80,10 @@ const IconRefresh = () => (
 );
 
 // ── Formulaire de connexion ────────────────────────────────────────────────────
-const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
+const LoginForm: React.FC<{ 
+  onAuth: (s: Session) => void;
+  onForgotPassword: () => void;
+}> = ({ onAuth, onForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -121,6 +124,15 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
           <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             {showPassword ? <IconEyeOff /> : <IconEye />}
+          </button>
+        </div>
+        <div className="text-right mt-2">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold"
+          >
+            Mot de passe oublié ?
           </button>
         </div>
       </div>
@@ -219,6 +231,155 @@ const RegisterForm: React.FC<{
         {loading ? <><IconLoader /> Création...</> : <><IconUserPlus /> Créer le compte</>}
       </button>
     </form>
+  );
+};
+
+// ── Formulaire de réinitialisation de mot de passe ─────────────────────────────
+const ResetPasswordForm: React.FC<{
+  onBackToLogin: () => void;
+}> = ({ onBackToLogin }) => {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const result = await resetPassword(email);
+      if (!result.success) {
+        setError(result.error);
+      } else {
+        setSuccess(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center text-center px-2 py-4">
+        <div className="relative mb-6">
+          <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100">
+            <div className="text-emerald-500">
+              <IconMail />
+            </div>
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Email envoyé ! 📧</h2>
+        <p className="text-gray-500 text-sm leading-relaxed mb-1">
+          Si un compte existe avec l'adresse
+        </p>
+        <p className="font-bold text-emerald-700 text-sm mb-5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+          {email}
+        </p>
+        <p className="text-gray-500 text-sm leading-relaxed mb-6">
+          vous recevrez un email avec un lien pour<br />
+          réinitialiser votre mot de passe.
+        </p>
+
+        <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left">
+          <p className="text-xs font-bold text-amber-800 uppercase mb-2">📋 Étapes à suivre</p>
+          <ol className="space-y-1.5">
+            {[
+              'Vérifiez votre boîte email (et les spams)',
+              'Cliquez sur le lien de réinitialisation',
+              'Créez un nouveau mot de passe',
+              'Connectez-vous avec votre nouveau mot de passe',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-amber-700">
+                <span className="w-4 h-4 bg-amber-200 rounded-full flex items-center justify-center font-bold text-amber-800 flex-shrink-0 mt-0.5 text-[10px]">{i + 1}</span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <button
+          onClick={onBackToLogin}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+        >
+          <IconLogin />
+          Retour à la connexion
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3 border-2 border-emerald-100">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className="text-emerald-600">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" x2="12" y1="19" y2="22"/>
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Mot de passe oublié ?</h2>
+        <p className="text-sm text-gray-500">
+          Entrez votre email pour recevoir un lien de réinitialisation.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Adresse email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="exemple@ecole.tg"
+            required
+            autoComplete="email"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm"
+          />
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <IconLoader />
+              Envoi en cours...
+            </>
+          ) : (
+            <>
+              <IconMail />
+              Envoyer le lien
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onBackToLogin}
+          className="w-full py-2.5 text-sm text-gray-600 hover:text-emerald-600 font-semibold transition-colors"
+        >
+          ← Retour à la connexion
+        </button>
+      </form>
+    </div>
   );
 };
 
@@ -374,8 +535,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
           </div>
 
           <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 overflow-hidden">
-            {/* Tabs — masqués sur l'écran de confirmation */}
-            {mode !== 'confirm' && (
+            {/* Tabs — masqués sur l'écran de confirmation et réinitialisation */}
+            {mode !== 'confirm' && mode !== 'reset' && (
               <div className="flex border-b border-gray-100">
                 <button type="button" onClick={() => setMode('login')}
                   className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
@@ -398,6 +559,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
                   email={confirmEmail}
                   onBackToLogin={() => setMode('login')}
                 />
+              ) : mode === 'reset' ? (
+                <ResetPasswordForm
+                  onBackToLogin={() => setMode('login')}
+                />
               ) : (
                 <>
                   <h2 className="text-xl font-bold text-gray-900 mb-1">
@@ -409,7 +574,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
                       : 'Remplissez le formulaire pour commencer.'}
                   </p>
                   {mode === 'login'
-                    ? <LoginForm key="login" onAuth={onAuth} />
+                    ? <LoginForm key="login" onAuth={onAuth} onForgotPassword={() => setMode('reset')} />
                     : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
                   }
                 </>
