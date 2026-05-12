@@ -177,7 +177,7 @@ export default function App({ session, onLogout }: AppProps) {
           console.error('Erreur sauvegarde school info:', err);
           // Ne pas afficher d'alerte pour ne pas gêner l'utilisateur
         });
-    }, 2000); // Augmenté à 2s pour éviter les timeouts
+    }, 1000); // Réduit à 1s pour sauvegarder plus rapidement
     return () => {
       if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
     };
@@ -334,17 +334,17 @@ export default function App({ session, onLogout }: AppProps) {
     return (
       <div className="min-h-screen bg-gray-900">
         <div className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
               onClick={() => setView('manage')}
-              className="flex items-center gap-2 text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+              className="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-emerald-600 font-medium transition-colors"
             >
               <ChevronRight className="w-5 h-5 rotate-180" />
-              Retour à la gestion
+              <span className="hidden sm:inline">Retour à la gestion</span>
             </button>
-            <div className="h-6 w-px bg-gray-200" />
-            <span className="text-sm text-gray-500 font-medium">
-              Aperçu avant impression ({studentsToPrint.length} élèves)
+            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate max-w-[120px] sm:max-w-none">
+              Aperçu <span className="hidden sm:inline">avant impression</span> ({studentsToPrint.length} <span className="hidden sm:inline">élèves</span>)
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -357,12 +357,12 @@ export default function App({ session, onLogout }: AppProps) {
               {isGeneratingPDF ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Ouverture...
+                  <span className="hidden sm:inline">Ouverture...</span>
                 </>
               ) : (
                 <>
                   <FileDown className="w-5 h-5" />
-                  Télécharger le PDF
+                  <span className="hidden sm:inline">Télécharger le PDF</span>
                 </>
               )}
             </button>
@@ -397,17 +397,17 @@ export default function App({ session, onLogout }: AppProps) {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
-              <SchoolIcon className="w-7 h-7 text-white" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <SchoolIcon className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">Générateur de Cartes</h1>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Scolaire • Togo</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight truncate">Générateur de Cartes</h1>
+              <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider truncate">Scolaire • Togo</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* User info */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-200">
               <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
@@ -426,10 +426,10 @@ export default function App({ session, onLogout }: AppProps) {
             </button>
             <button 
               onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
             >
               <Plus className="w-5 h-5" />
-              Ajouter
+              <span className="hidden sm:inline">Ajouter</span>
             </button>
             <button
               onClick={handleLogout}
@@ -449,8 +449,8 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-6 sm:gap-8">
           
           {/* Sidebar / Config */}
           <div className="lg:col-span-4 space-y-6">
@@ -612,7 +612,12 @@ export default function App({ session, onLogout }: AppProps) {
                     <button
                       key={preset.name}
                       title={preset.name}
-                      onClick={() => setSchoolInfo({ ...schoolInfo, cardColors: preset.colors })}
+                      onClick={() => {
+                        const newInfo = { ...schoolInfo, cardColors: preset.colors };
+                        setSchoolInfo(newInfo);
+                        // Sauvegarde immédiate sans attendre le debounce
+                        saveSchoolInfo(newInfo, session.userId).catch(console.error);
+                      }}
                       className="flex flex-col items-center gap-1 group"
                     >
                       <div
