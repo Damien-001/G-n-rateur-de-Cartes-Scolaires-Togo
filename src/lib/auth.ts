@@ -23,16 +23,16 @@ export async function getSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession();
   if (!data.session?.user) return null;
   
-  // ✅ SÉCURITÉ : Vérifier l'expiration de la session (2 heures d'inactivité)
+  // ✅ SÉCURITÉ : Vérifier l'expiration de la session (30 minutes d'inactivité)
   const lastActivity = localStorage.getItem('last_activity');
   if (lastActivity) {
     const lastActivityTime = parseInt(lastActivity, 10);
     const now = Date.now();
-    const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 heures en millisecondes
+    const THIRTY_MINUTES = 30 * 60 * 1000; // 30 minutes en millisecondes
     
-    if (now - lastActivityTime > TWO_HOURS) {
-      // Session expirée après 2 heures d'inactivité
-      logger.info('Session expired after 2 hours of inactivity');
+    if (now - lastActivityTime > THIRTY_MINUTES) {
+      // Session expirée après 30 minutes d'inactivité
+      logger.info('Session expired after 30 minutes of inactivity');
       await supabase.auth.signOut();
       localStorage.removeItem('last_activity');
       return null;

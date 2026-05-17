@@ -1,8 +1,8 @@
-// Déconnexion automatique après 10 minutes d'inactivité
-// Avertissement à 9 minutes
+// Déconnexion automatique après 30 minutes d'inactivité
+// Avertissement à 29 minutes
 
-const TIMEOUT_MS = 10 * 60 * 1000;  // 10 minutes
-const WARNING_MS =  9 * 60 * 1000;  //  9 minutes
+const TIMEOUT_MS = 30 * 60 * 1000;  // 30 minutes
+const WARNING_MS = 29 * 60 * 1000;  // 29 minutes
 
 let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 let warningTimer: ReturnType<typeof setTimeout> | null = null;

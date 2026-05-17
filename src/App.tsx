@@ -54,7 +54,7 @@ export default function App({ session, onLogout }: AppProps) {
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Timer d'inactivité — déconnexion après 10 min ───────────────────────────
+  // ── Timer d'inactivité — déconnexion après 30 min ───────────────────────────
   useEffect(() => {
     const handleTimeout = async () => {
       setShowInactivityWarning(false);
@@ -62,7 +62,7 @@ export default function App({ session, onLogout }: AppProps) {
       onLogout();
     };
 
-    // Avertissement 1 minute avant la déconnexion (à 9 min d'inactivité)
+    // Avertissement 1 minute avant la déconnexion (à 29 min d'inactivité)
     const handleWarning = () => {
       setShowInactivityWarning(true);
       warningTimer.current = setTimeout(() => setShowInactivityWarning(false), 60000);
@@ -75,6 +75,31 @@ export default function App({ session, onLogout }: AppProps) {
       if (warningTimer.current) clearTimeout(warningTimer.current);
     };
   }, [onLogout]);
+
+  // ── Déconnexion lors de la fermeture de l'application ───────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+      // Déconnexion synchrone lors de la fermeture
+      await logout();
+    };
+
+    const handleVisibilityChange = async () => {
+      // Déconnexion lorsque l'onglet est fermé ou l'utilisateur quitte
+      if (document.visibilityState === 'hidden') {
+        // Utiliser sendBeacon pour garantir l'envoi même si la page se ferme
+        await logout();
+      }
+    };
+
+    // Écouter la fermeture de la fenêtre/onglet
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
 
   const generatePDF = async () => {
@@ -114,29 +139,41 @@ export default function App({ session, onLogout }: AppProps) {
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
 
-      // A4 en mm: 210 × 297
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const A4_W_MM = 210;
-      const A4_H_MM = 297;
-
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-        const canvas = await html2canvas(page, {
-          scale: 5,           // ✅ Résolution maximale (5x) pour qualité professionnelle
-          useCORS: true,      // images cross-origin (photos Supabase)
-          allowTaint: false,
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
-        });
-
-        // ✅ Utiliser PNG pour éviter la compression JPEG et garder la netteté maximale
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        if (i > 0) pdf.addPage();
-        // Compression NONE pour qualité maximale (fichier plus lourd mais meilleure qualité)
-        pdf.addImage(imgData, 'PNG', 0, 0, A4_W_MM, A4_H_MM, undefined, 'NONE');
+      // ✅ NOUVELLE APPROCHE: Capturer toutes les pages en une seule fois
+      const container = document.querySelector<HTMLElement>('.print-layout-container');
+      if (!container) {
+        alert('Conteneur d\'impression introuvable.');
+        return;
       }
+
+      // Calculer la hauteur totale nécessaire
+      const totalHeight = Array.from(pages).reduce((sum, page) => sum + page.offsetHeight, 0);
+      const pageWidth = pages[0].offsetWidth;
+
+      // Capturer tout le conteneur en une seule image
+      const canvas = await html2canvas(container, {
+        scale: 3,           // Résolution élevée (réduit de 5 à 3 pour éviter les problèmes de mémoire)
+        useCORS: true,      // images cross-origin (photos Supabase)
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: pageWidth,
+        height: totalHeight,
+      });
+
+      // Créer un PDF avec une seule page de la hauteur nécessaire
+      const A4_W_MM = 210;
+      const heightMM = (totalHeight / pageWidth) * A4_W_MM;
+
+      const pdf = new jsPDF({ 
+        orientation: heightMM > A4_W_MM ? 'portrait' : 'landscape', 
+        unit: 'mm', 
+        format: [A4_W_MM, heightMM] 
+      });
+
+      // ✅ Utiliser PNG pour éviter la compression JPEG et garder la netteté maximale
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      pdf.addImage(imgData, 'PNG', 0, 0, A4_W_MM, heightMM, undefined, 'NONE');
 
       const date = new Date().toISOString().split('T')[0];
       pdf.save(`cartes_scolaires_${date}.pdf`);
