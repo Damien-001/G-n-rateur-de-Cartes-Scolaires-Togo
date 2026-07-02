@@ -159,12 +159,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col md:flex-row">
         {/* Form Section */}
         <div className="flex-1 overflow-y-auto border-r border-gray-100">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-emerald-50 sticky top-0 z-10">
-            <h2 className="text-xl font-bold text-emerald-900">
+          <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 sticky top-0 z-10">
+            <h2 className="text-base font-bold text-gray-900">
               {student ? 'Modifier l\'élève' : 'Ajouter un élève'}
             </h2>
-            <button onClick={handleCancel} className="md:hidden p-2 hover:bg-emerald-100 rounded-full transition-colors">
-              <X className="w-5 h-5 text-emerald-700" />
+            <button onClick={handleCancel} className="md:hidden p-1.5 hover:bg-gray-200 rounded-lg transition-colors">
+              <X className="w-4 h-4 text-gray-500" />
             </button>
           </div>
 
@@ -172,45 +172,45 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Nom</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nom</label>
                 <input
                   required
                   type="text"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   placeholder="Ex: KOFFI"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Prénoms</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Prénoms</label>
                 <input
                   required
                   type="text"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   placeholder="Ex: Jean-Luc"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Matricule</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Matricule</label>
                 <input
                   required
                   type="text"
                   value={formData.matricule}
                   onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   placeholder="Ex: 2024-TG-001"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Centre d'Examen</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Centre d'examen</label>
                 <input
                   type="text"
                   value={formData.examCenter}
                   onChange={(e) => setFormData({ ...formData, examCenter: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   placeholder="Ex: Lycée de Tokoin"
                 />
               </div>
@@ -218,12 +218,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Classe</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Classe</label>
                 <select
                   required
                   value={formData.className}
                   onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all bg-white"
                 >
                   <option value="">Sélectionner une classe</option>
                   {CLASSES_LIST.map(cls => (
@@ -232,12 +232,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Année Scolaire</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Année scolaire</label>
                 <select
                   required
                   value={formData.schoolYear}
                   onChange={(e) => setFormData({ ...formData, schoolYear: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all bg-white"
                 >
                   {SCHOOL_YEARS.map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -246,33 +246,33 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Date Naiss.</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date de naissance</label>
                   <input
                     required
                     type="date"
                     value={formData.birthDate}
                     onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Lieu Naiss.</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Lieu de naissance</label>
                   <input
                     type="text"
                     value={formData.birthPlace}
                     onChange={(e) => setFormData({ ...formData, birthPlace: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                     placeholder="Ex: Lomé"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Date d'Expiration</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Date d'expiration</label>
                 <input
                   type="date"
                   value={formData.expirationDate}
                   onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
             </div>
@@ -391,14 +391,14 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
               type="button"
               onClick={handleCancel}
               disabled={isSubmitting}
-              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -413,14 +413,14 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       <div className="hidden md:flex flex-col w-[400px] bg-gray-50 p-8 items-center justify-center relative">
         <button 
           onClick={handleCancel} 
-          className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
+          className="absolute top-4 right-4 p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-gray-500" />
+          <X className="w-4 h-4 text-gray-400" />
         </button>
         
-        <div className="text-center mb-8">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Prévisualisation en direct</h3>
-          <p className="text-xs text-gray-400 mt-1">Les modifications apparaissent instantanément</p>
+        <div className="text-center mb-6">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Prévisualisation</h3>
+          <p className="text-[10px] text-gray-400 mt-1">Mise à jour en temps réel</p>
         </div>
 
         <div className="scale-[1.1] shadow-2xl rounded-lg overflow-hidden">
@@ -441,9 +441,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           />
         </div>
 
-        <div className="mt-12 p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-          <p className="text-[10px] text-emerald-700 font-medium">
-            Note: Les dimensions réelles seront respectées lors de l'impression A4.
+        <div className="mt-10 p-3 bg-gray-100 rounded-xl text-center">
+          <p className="text-[10px] text-gray-500">
+            Dimensions réelles respectées à l'impression A4.
           </p>
         </div>
       </div>

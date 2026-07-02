@@ -25,68 +25,27 @@ export default function CookieConsent() {
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white border-t border-gray-200 shadow-lg">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div className="flex-shrink-0">
-            <Cookie className="w-6 h-6 text-blue-600" />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Utilisation des Cookies
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Nous utilisons uniquement des cookies essentiels pour l'authentification et le fonctionnement
-              de l'application. Aucun cookie de tracking, analytique ou publicitaire n'est utilisé.
-              Ces cookies sont nécessaires pour vous permettre de vous connecter et d'utiliser l'application.
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50">
+      <div className="bg-gray-900 text-white rounded-2xl p-4 shadow-2xl border border-white/10">
+        <div className="flex items-start gap-3 mb-3">
+          <Cookie className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-white mb-1">Cookies essentiels</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Nous utilisons uniquement des cookies nécessaires à l'authentification. Aucun tracking ni publicité.
             </p>
-            <div className="text-xs text-gray-500 mb-4">
-              <strong>Cookies utilisés :</strong>
-              <ul className="list-disc list-inside mt-1 ml-2">
-                <li>Cookies de session Supabase (authentification)</li>
-                <li>Préférences locales (localStorage)</li>
-              </ul>
-            </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            <button
-              onClick={handleAccept}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Accepter
-            </button>
-            <button
-              onClick={handleReject}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-            >
-              Refuser
-            </button>
-          </div>
-
-          {/* Close button */}
-          <button
-            onClick={handleReject}
-            className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
-            aria-label="Fermer"
-          >
-            <X className="w-5 h-5 text-gray-500" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleAccept}
+            className="flex-1 px-3 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold hover:bg-gray-100 active:scale-95 transition-all">
+            Accepter
+          </button>
+          <button onClick={handleReject}
+            className="px-3 py-1.5 border border-white/20 text-gray-400 rounded-lg text-xs font-medium hover:text-white hover:border-white/40 transition-all">
+            Refuser
           </button>
         </div>
-
-        {/* Note */}
-        <p className="text-xs text-gray-500 mt-3 ml-10">
-          En refusant, certaines fonctionnalités de l'application peuvent ne pas fonctionner correctement.
-          Pour plus d'informations, consultez notre{' '}
-          <button className="text-blue-600 hover:underline">
-            politique de confidentialité
-          </button>
-          .
-        </p>
       </div>
     </div>
   );

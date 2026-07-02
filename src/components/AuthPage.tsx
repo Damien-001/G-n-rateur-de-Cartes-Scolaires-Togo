@@ -518,73 +518,134 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
 
   return (
     <>
-      <style>{`@keyframes auth-spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-100 rounded-full opacity-40 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-teal-100 rounded-full opacity-40 blur-3xl" />
-        </div>
+      <style>{`
+        @keyframes auth-spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
+        @keyframes auth-fade-up { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+        .auth-card { animation: auth-fade-up 0.4s ease both; }
+      `}</style>
 
-        <div className="relative w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl shadow-xl shadow-emerald-200 mb-4 text-white">
-              <IconSchool />
+      {/* Two-column layout on large screens */}
+      <div className="min-h-screen flex">
+
+        {/* Left panel — decorative, hidden on small screens */}
+        <div className="hidden lg:flex lg:w-[45%] bg-emerald-700 relative overflow-hidden flex-col justify-between p-12">
+          {/* Subtle noise texture overlay */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.04,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            backgroundSize: '180px',
+          }} />
+          {/* Radial accent */}
+          <div style={{
+            position: 'absolute', bottom: -120, right: -120,
+            width: 480, height: 480,
+            background: 'radial-gradient(circle, rgba(16,185,129,0.35) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', top: -80, left: -80,
+            width: 320, height: 320,
+            background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Logo */}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-16">
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                <IconSchool />
+              </div>
+              <span className="text-white font-semibold text-sm tracking-wide">Cartes Scolaires Togo</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Générateur de Cartes</h1>
-            <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mt-1">Scolaire • Togo</p>
+
+            <h2 className="text-4xl font-bold text-white leading-tight mb-4" style={{ letterSpacing: '-0.02em' }}>
+              Gérez vos cartes<br />scolaires en toute<br />simplicité.
+            </h2>
+            <p className="text-emerald-200 text-base leading-relaxed max-w-xs">
+              Créez, personnalisez et imprimez les cartes scolaires de votre établissement en quelques minutes.
+            </p>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 overflow-hidden">
-            {/* Tabs — masqués sur l'écran de confirmation et réinitialisation */}
-            {mode !== 'confirm' && mode !== 'reset' && (
-              <div className="flex border-b border-gray-100">
-                <button type="button" onClick={() => setMode('login')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                    mode === 'login' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                  }`}>
-                  <IconLogin /> Connexion
-                </button>
-                <button type="button" onClick={() => setMode('register')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                    mode === 'register' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                  }`}>
-                  <IconUserPlus /> Créer un compte
-                </button>
+          {/* Feature bullets */}
+          <div className="relative z-10 space-y-3">
+            {[
+              'Génération PDF haute qualité',
+              'Import CSV pour les grandes classes',
+              'Personnalisation des couleurs et logos',
+              'Données sécurisées avec Supabase',
+            ].map((feat) => (
+              <div key={feat} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 12 12">
+                    <path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <span className="text-emerald-100 text-sm">{feat}</span>
               </div>
-            )}
+            ))}
+          </div>
+        </div>
 
-            <div className="p-8">
-              {mode === 'confirm' ? (
-                <ConfirmScreen
-                  email={confirmEmail}
-                  onBackToLogin={() => setMode('login')}
-                />
-              ) : mode === 'reset' ? (
-                <ResetPasswordForm
-                  onBackToLogin={() => setMode('login')}
-                />
-              ) : (
-                <>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {mode === 'login' ? 'Bon retour 👋' : 'Créer votre compte'}
+        {/* Right panel — form */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-stone-50 min-h-screen">
+          <div className="w-full max-w-[400px] auth-card">
+
+            {/* Mobile logo */}
+            <div className="lg:hidden text-center mb-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-700 rounded-xl shadow-lg shadow-emerald-200 mb-3 text-white">
+                <IconSchool />
+              </div>
+              <h1 className="text-lg font-bold text-gray-900">Cartes Scolaires Togo</h1>
+            </div>
+
+            {mode === 'confirm' ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <ConfirmScreen email={confirmEmail} onBackToLogin={() => setMode('login')} />
+              </div>
+            ) : mode === 'reset' ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <ResetPasswordForm onBackToLogin={() => setMode('login')} />
+              </div>
+            ) : (
+              <>
+                <div className="mb-7">
+                  <h2 className="text-2xl font-bold text-gray-900" style={{ letterSpacing: '-0.02em' }}>
+                    {mode === 'login' ? 'Bon retour' : 'Créer un compte'}
                   </h2>
-                  <p className="text-sm text-gray-500 mb-6">
+                  <p className="text-sm text-gray-500 mt-1">
                     {mode === 'login'
                       ? 'Connectez-vous pour accéder à vos cartes scolaires.'
                       : 'Remplissez le formulaire pour commencer.'}
                   </p>
-                  {mode === 'login'
-                    ? <LoginForm key="login" onAuth={onAuth} onForgotPassword={() => setMode('reset')} />
-                    : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
-                  }
-                </>
-              )}
-            </div>
-          </div>
+                </div>
 
-          <p className="text-center text-xs text-gray-400 mt-6">
-            Vos données sont sauvegardées dans le cloud Supabase.
-          </p>
+                {/* Tab switcher — minimal pill style */}
+                <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-7">
+                  <button type="button" onClick={() => setMode('login')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                      mode === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}>
+                    <IconLogin /> Connexion
+                  </button>
+                  <button type="button" onClick={() => setMode('register')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                      mode === 'register' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}>
+                    <IconUserPlus /> S'inscrire
+                  </button>
+                </div>
+
+                {mode === 'login'
+                  ? <LoginForm key="login" onAuth={onAuth} onForgotPassword={() => setMode('reset')} />
+                  : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
+                }
+              </>
+            )}
+
+            <p className="text-center text-xs text-gray-400 mt-6">
+              Données sauvegardées dans le cloud · <a href="#" className="hover:text-gray-600 transition-colors">Confidentialité</a>
+            </p>
+          </div>
         </div>
       </div>
     </>

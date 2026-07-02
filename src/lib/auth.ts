@@ -18,34 +18,7 @@ function toSession(user: User): Session {
   };
 }
 
-/** Vérifie la session Supabase active (appelé au démarrage) */
-export async function getSession(): Promise<Session | null> {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.user) return null;
-  
-  // ✅ SÉCURITÉ : Vérifier l'expiration de la session (30 minutes d'inactivité)
-  const lastActivity = localStorage.getItem('last_activity');
-  if (lastActivity) {
-    const lastActivityTime = parseInt(lastActivity, 10);
-    const now = Date.now();
-    const THIRTY_MINUTES = 30 * 60 * 1000; // 30 minutes en millisecondes
-    
-    if (now - lastActivityTime > THIRTY_MINUTES) {
-      // Session expirée après 30 minutes d'inactivité
-      logger.info('Session expired after 30 minutes of inactivity');
-      await supabase.auth.signOut();
-      localStorage.removeItem('last_activity');
-      return null;
-    }
-  }
-  
-  // Mettre à jour le timestamp de dernière activité
-  localStorage.setItem('last_activity', Date.now().toString());
-  
-  return toSession(data.session.user);
-}
-
-/** Inscription */
+/** Connexion */
 export async function register(
   fullName: string,
   email: string,

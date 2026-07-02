@@ -77,30 +77,9 @@ export default function App({ session, onLogout }: AppProps) {
   }, [onLogout]);
 
   // ── Déconnexion lors de la fermeture de l'application ───────────────────────
-  useEffect(() => {
-    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
-      // Déconnexion synchrone lors de la fermeture
-      await logout();
-    };
-
-    const handleVisibilityChange = async () => {
-      // Déconnexion lorsque l'onglet est fermé ou l'utilisateur quitte
-      if (document.visibilityState === 'hidden') {
-        // Utiliser sendBeacon pour garantir l'envoi même si la page se ferme
-        await logout();
-      }
-    };
-
-    // Écouter la fermeture de la fenêtre/onglet
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
+  // NOTE : Pas de déconnexion au beforeunload/visibilitychange.
+  // La déconnexion se fait uniquement après 1h d'inactivité (timer dans inactivity.ts)
+  // ou sur action explicite de l'utilisateur (bouton "Se déconnecter").
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
@@ -360,38 +339,22 @@ export default function App({ session, onLogout }: AppProps) {
   // Écran de chargement initial
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 p-4">
-        <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-700 font-bold text-lg">Chargement des données...</p>
-        <p className="text-gray-500 text-sm">Connexion à Supabase en cours...</p>
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center gap-4 p-4">
+        <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <p className="text-gray-800 font-semibold">Chargement en cours</p>
+          <p className="text-gray-400 text-sm mt-1">Connexion à Supabase...</p>
+        </div>
         {loadingTimeout && (
-          <div className="mt-4 p-6 bg-red-50 border-2 border-red-200 rounded-xl max-w-lg">
-            <p className="text-red-800 font-bold mb-3 text-center text-lg">⚠️ Problème de Connexion Détecté</p>
-            <div className="space-y-3 text-sm text-red-700 mb-4">
-              <p className="font-semibold">Le chargement prend plus de 15 secondes. Causes possibles :</p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Connexion internet lente ou instable</li>
-                <li>Configuration Supabase incorrecte dans le fichier .env</li>
-                <li>Serveur Supabase temporairement indisponible</li>
-                <li>Trop de données à charger (images lourdes)</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <button
-                onClick={() => window.location.reload()}
-                className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
-              >
-                🔄 Recharger la page
-              </button>
-              <a
-                href="https://status.supabase.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full px-4 py-2 bg-white hover:bg-gray-50 text-red-700 font-medium rounded-lg border-2 border-red-200 transition-colors text-center"
-              >
-                Vérifier le statut de Supabase
-              </a>
-            </div>
+          <div className="mt-6 p-6 bg-white border border-red-100 rounded-2xl max-w-md shadow-sm">
+            <p className="text-red-700 font-semibold mb-2">Connexion lente détectée</p>
+            <p className="text-sm text-gray-600 mb-4">Le chargement prend plus de 15 secondes. Vérifiez votre connexion ou la configuration Supabase.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl transition-colors text-sm"
+            >
+              Recharger la page
+            </button>
           </div>
         )}
       </div>
@@ -399,37 +362,36 @@ export default function App({ session, onLogout }: AppProps) {
   }
   if (view === 'preview') {
     return (
-      <div className="min-h-screen bg-gray-900">
-        <div className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
-          <div className="flex items-center gap-2 sm:gap-4">
+      <div className="min-h-screen bg-neutral-900">
+        <div className="fixed top-0 left-0 right-0 h-14 bg-neutral-900/95 backdrop-blur border-b border-white/10 z-50 flex items-center justify-between px-6 no-print">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => setView('manage')}
-              className="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+              className="flex items-center gap-2 text-neutral-400 hover:text-white font-medium transition-colors text-sm"
             >
-              <ChevronRight className="w-5 h-5 rotate-180" />
-              <span className="hidden sm:inline">Retour à la gestion</span>
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              <span className="hidden sm:inline">Retour</span>
             </button>
-            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
-            <span className="text-xs sm:text-sm text-gray-500 font-medium truncate max-w-[120px] sm:max-w-none">
-              Aperçu <span className="hidden sm:inline">avant impression</span> ({studentsToPrint.length} <span className="hidden sm:inline">élèves</span>)
+            <div className="h-4 w-px bg-white/10 hidden sm:block" />
+            <span className="text-neutral-500 text-sm hidden sm:inline">
+              {studentsToPrint.length} carte{studentsToPrint.length > 1 ? 's' : ''} à imprimer
             </span>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={generatePDF}
               disabled={isGeneratingPDF}
-              title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
-              className="flex items-center gap-2 px-6 py-2 bg-[#047857] text-white rounded-full font-bold hover:bg-[#065f46] transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-500 active:scale-95 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingPDF ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="hidden sm:inline">Ouverture...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="hidden sm:inline">Génération...</span>
                 </>
               ) : (
                 <>
-                  <FileDown className="w-5 h-5" />
-                  <span className="hidden sm:inline">Télécharger le PDF</span>
+                  <FileDown className="w-4 h-4" />
+                  <span className="hidden sm:inline">Télécharger PDF</span>
                 </>
               )}
             </button>
@@ -443,297 +405,162 @@ export default function App({ session, onLogout }: AppProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-stone-50 flex flex-col">
       {/* Bandeau d'avertissement inactivité */}
       {showInactivityWarning && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white px-4 py-3 flex items-center justify-between shadow-lg no-print">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⏱️</span>
-            <p className="text-sm font-bold">
-              Inactivité détectée — vous serez déconnecté dans <strong>1 minute</strong>.
-            </p>
-          </div>
-          <button
-            onClick={() => { setShowInactivityWarning(false); }}
-            className="text-white font-bold text-sm underline hover:no-underline ml-4"
-          >
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between shadow-lg no-print">
+          <p className="text-sm font-medium">
+            Inactivité — déconnexion dans <strong>1 minute</strong>.
+          </p>
+          <button onClick={() => setShowInactivityWarning(false)} className="text-white font-semibold text-sm underline hover:no-underline ml-4">
             Rester connecté
           </button>
         </div>
       )}
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
-              <SchoolIcon className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+      <header className="bg-white border-b border-gray-200/80 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center shrink-0">
+              <SchoolIcon className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight truncate">Générateur de Cartes</h1>
-              <p className="text-[10px] sm:text-xs text-gray-500 font-medium uppercase tracking-wider truncate">Scolaire • Togo</p>
+              <h1 className="text-sm font-bold text-gray-900 leading-none">Cartes Scolaires</h1>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Togo</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* User info */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50">
+              <div className="w-6 h-6 bg-emerald-700 rounded-md flex items-center justify-center text-white text-[10px] font-bold">
                 {session.fullName.charAt(0).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-gray-700 max-w-[120px] truncate">{session.fullName}</span>
+              <span className="text-xs font-medium text-gray-600 max-w-[100px] truncate">{session.fullName}</span>
             </div>
-
-            <button 
-              onClick={() => setView('preview')}
-              disabled={students.length === 0}
-              className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileDown className="w-5 h-5" />
+            <button onClick={() => setView('preview')} disabled={students.length === 0}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg font-semibold hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              <FileDown className="w-4 h-4" />
               Télécharger PDF
             </button>
-            <button 
-              onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
-            >
-              <Plus className="w-5 h-5" />
+            <button onClick={() => setIsFormOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-sm shadow-emerald-200">
+              <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Ajouter</span>
             </button>
-            <button
-              onClick={handleLogout}
-              title="Se déconnecter"
-              className="flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-            >
-              <LogOut className="w-5 h-5" />
+            <button onClick={handleLogout} title="Se déconnecter"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+              <LogOut className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => setShowDataManagement(true)}
-              title="Mes données (RGPD)"
-              className="flex items-center gap-2 px-3 py-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-            >
-              <Settings className="w-5 h-5" />
+            <button onClick={() => setShowDataManagement(true)} title="Mes données"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+              <Settings className="w-4 h-4" />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-6 sm:gap-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-6">
           
-          {/* Sidebar / Config */}
-          <div className="lg:col-span-4 space-y-6">
-            <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-emerald-600" />
-                  <h2 className="font-bold text-gray-900">Configuration École</h2>
-                </div>
-                <button
-                  onClick={() => setIsSchoolSettingsOpen(true)}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-colors"
-                >
-                  Paramètres avancés
+          {/* Sidebar */}
+          <div className="lg:col-span-4 space-y-4">
+            <section className="bg-white rounded-2xl p-5 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-gray-400" />
+                  Configuration de l'école
+                </h2>
+                <button onClick={() => setIsSchoolSettingsOpen(true)}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                  Avancé →
                 </button>
               </div>
-              
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nom de l'établissement</label>
-                  <input 
-                    type="text" 
-                    value={schoolInfo.name}
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nom de l'établissement</label>
+                  <input type="text" value={schoolInfo.name}
                     onChange={(e) => setSchoolInfo({ ...schoolInfo, name: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all" />
                 </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Logo de l'école</label>
-                  <div className="flex items-center gap-3 mt-1">
-                    <div className="relative w-12 h-12 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {schoolInfo.logoUrl ? (
-                        <>
-                          <img src={schoolInfo.logoUrl} alt="Logo" crossOrigin="anonymous" className="w-full h-full object-contain" />
-                          <button
-                            type="button"
-                            onClick={() => setSchoolInfo({ ...schoolInfo, logoUrl: undefined })}
-                            className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
-                            title="Supprimer le logo"
-                          >
-                            <span style={{ fontSize: 10, lineHeight: 1 }}>✕</span>
-                          </button>
-                        </>
-                      ) : (
-                        <SchoolIcon className="w-6 h-6 text-gray-300" />
-                      )}
+                {/* Logo + Signature + Cachet */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { field: 'logoUrl' as const, label: 'Logo', icon: <SchoolIcon className="w-5 h-5 text-gray-200" />, rounded: 'rounded-xl' },
+                    { field: 'signatureUrl' as const, label: 'Signature', icon: <Edit2 className="w-5 h-5 text-gray-200" />, rounded: 'rounded-xl' },
+                    { field: 'stampUrl' as const, label: 'Cachet', icon: <div className="w-5 h-5 border-2 border-gray-200 rounded-full" />, rounded: 'rounded-full' },
+                  ].map(({ field, label, icon, rounded }) => (
+                    <div key={field}>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">{label}</label>
+                      <label className="cursor-pointer block">
+                        <div className={`relative w-full aspect-square bg-gray-50 border border-dashed border-gray-200 ${rounded} flex items-center justify-center overflow-hidden hover:border-emerald-300 hover:bg-emerald-50/50 transition-all`}>
+                          {schoolInfo[field] ? (
+                            <>
+                              <img src={schoolInfo[field]} alt={label} crossOrigin="anonymous" className="w-full h-full object-contain p-1.5" />
+                              <button type="button"
+                                onClick={(e) => { e.preventDefault(); setSchoolInfo({ ...schoolInfo, [field]: undefined }); }}
+                                className="absolute top-1 right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow text-[8px] transition-colors">✕</button>
+                            </>
+                          ) : icon}
+                        </div>
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) { const r = new FileReader(); r.onloadend = () => setSchoolInfo({ ...schoolInfo, [field]: r.result as string }); r.readAsDataURL(file); }
+                          }} />
+                      </label>
                     </div>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setSchoolInfo({ ...schoolInfo, logoUrl: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                    />
-                  </div>
+                  ))}
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Signature</label>
-                    <div className="flex flex-col gap-2">
-                      <div className="relative w-full h-8 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                        {schoolInfo.signatureUrl ? (
-                          <>
-                            <img src={schoolInfo.signatureUrl} alt="Signature" crossOrigin="anonymous" className="w-full h-full object-contain" />
-                            <button
-                              type="button"
-                              onClick={() => setSchoolInfo({ ...schoolInfo, signatureUrl: undefined })}
-                              className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
-                              title="Supprimer la signature"
-                            >
-                              <span style={{ fontSize: 8, lineHeight: 1 }}>✕</span>
-                            </button>
-                          </>
-                        ) : (
-                          <Edit2 className="w-4 h-4 text-gray-300" />
-                        )}
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setSchoolInfo({ ...schoolInfo, signatureUrl: reader.result as string });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="block w-full text-xs text-gray-500 file:mr-1 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cachet</label>
-                    <div className="flex flex-col gap-2">
-                      <div className="relative w-8 h-8 mx-auto bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center overflow-hidden">
-                        {schoolInfo.stampUrl ? (
-                          <>
-                            <img src={schoolInfo.stampUrl} alt="Cachet" crossOrigin="anonymous" className="w-full h-full object-contain" />
-                            <button
-                              type="button"
-                              onClick={() => setSchoolInfo({ ...schoolInfo, stampUrl: undefined })}
-                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow transition-colors"
-                              title="Supprimer le cachet"
-                            >
-                              <span style={{ fontSize: 8, lineHeight: 1 }}>✕</span>
-                            </button>
-                          </>
-                        ) : (
-                          <div className="w-4 h-4 border border-gray-300 rounded-full" />
-                        )}
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setSchoolInfo({ ...schoolInfo, stampUrl: reader.result as string });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="block w-full text-xs text-gray-500 file:mr-1 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-[10px] text-gray-400">Cliquez sur une zone pour importer</p>
               </div>
             </section>
 
-            {/* Color Customization */}
-            <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-5">
-                <Palette className="w-5 h-5 text-emerald-600" />
-                <h2 className="font-bold text-gray-900">Couleurs de la carte</h2>
-              </div>
-
-              {/* Presets */}
-              <div className="mb-5">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-3">Thèmes prédéfinis</p>
+            {/* Couleurs */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-200">
+              <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
+                <Palette className="w-4 h-4 text-gray-400" />
+                Couleurs de la carte
+              </h2>
+              <div className="mb-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5">Thèmes</p>
                 <div className="grid grid-cols-4 gap-2">
                   {COLOR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      title={preset.name}
+                    <button key={preset.name} title={preset.name}
                       onClick={() => {
                         const newInfo = { ...schoolInfo, cardColors: preset.colors };
                         setSchoolInfo(newInfo);
-                        // Sauvegarde immédiate sans attendre le debounce
                         saveSchoolInfo(newInfo, session.userId).catch(console.error);
                       }}
-                      className="flex flex-col items-center gap-1 group"
-                    >
-                      <div
-                        className="w-full h-8 rounded-lg border-2 transition-all group-hover:scale-105"
+                      className="group flex flex-col items-center gap-1.5">
+                      <div className="w-full h-7 rounded-lg transition-all group-hover:scale-105"
                         style={{
-                          background: `linear-gradient(135deg, ${preset.colors.headerBg} 60%, ${preset.colors.footerBar} 100%)`,
-                          borderColor: schoolInfo.cardColors?.headerBg === preset.colors.headerBg
-                            ? preset.colors.headerBg
-                            : 'transparent',
-                          boxShadow: schoolInfo.cardColors?.headerBg === preset.colors.headerBg
-                            ? `0 0 0 2px ${preset.colors.headerBg}40`
-                            : 'none',
-                        }}
-                      />
-                      <span className="text-[10px] text-gray-500 font-medium">{preset.name}</span>
+                          background: `linear-gradient(135deg, ${preset.colors.headerBg} 55%, ${preset.colors.footerBar} 100%)`,
+                          outline: schoolInfo.cardColors?.headerBg === preset.colors.headerBg ? `2px solid ${preset.colors.headerBg}` : '2px solid transparent',
+                          outlineOffset: 2,
+                        }} />
+                      <span className="text-[9px] text-gray-400">{preset.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Custom pickers */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-500 uppercase">Personnaliser</p>
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Personnaliser</p>
                 {[
-                  { key: 'headerBg' as keyof CardColors, label: 'Fond du header' },
-                  { key: 'headerText' as keyof CardColors, label: 'Texte du header' },
+                  { key: 'headerBg' as keyof CardColors, label: 'Fond header' },
+                  { key: 'headerText' as keyof CardColors, label: 'Texte header' },
                   { key: 'footerBar' as keyof CardColors, label: 'Barre du bas' },
-                  { key: 'matriculeText' as keyof CardColors, label: 'Couleur matricule' },
+                  { key: 'matriculeText' as keyof CardColors, label: 'Matricule' },
                 ].map(({ key, label }) => {
                   const currentColors = { ...DEFAULT_CARD_COLORS, ...schoolInfo.cardColors };
                   return (
                     <div key={key} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600 font-medium">{label}</span>
+                      <span className="text-xs text-gray-500">{label}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-mono">{currentColors[key]}</span>
+                        <span className="text-[10px] text-gray-300 font-mono">{currentColors[key]}</span>
                         <label className="cursor-pointer">
-                          <div
-                            className="w-7 h-7 rounded-md border-2 border-gray-200 overflow-hidden shadow-sm hover:scale-110 transition-transform"
-                            style={{ backgroundColor: currentColors[key] }}
-                          />
-                          <input
-                            type="color"
-                            value={currentColors[key]}
-                            onChange={(e) => setSchoolInfo({
-                              ...schoolInfo,
-                              cardColors: { ...currentColors, [key]: e.target.value }
-                            })}
-                            className="sr-only"
-                          />
+                          <div className="w-6 h-6 rounded-md border border-gray-100 hover:scale-110 transition-transform shadow-sm" style={{ backgroundColor: currentColors[key] }} />
+                          <input type="color" value={currentColors[key]}
+                            onChange={(e) => setSchoolInfo({ ...schoolInfo, cardColors: { ...currentColors, [key]: e.target.value } })}
+                            className="sr-only" />
                         </label>
                       </div>
                     </div>
@@ -742,164 +569,137 @@ export default function App({ session, onLogout }: AppProps) {
               </div>
             </section>
 
-            <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-6">
-                <Download className="w-5 h-5 text-emerald-600" />
-                <h2 className="font-bold text-gray-900">Import / Export</h2>
-              </div>
+            <section className="bg-white rounded-2xl p-5 border border-gray-200">
+              <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-4">
+                <Download className="w-4 h-4 text-gray-400" />
+                Import / Export
+              </h2>
               <ImportExport onImport={handleImport} students={students} />
             </section>
 
-            <div className="bg-emerald-600 rounded-2xl p-6 text-white shadow-xl shadow-emerald-100">
-              <h3 className="font-bold text-lg mb-2">Guide d'impression</h3>
-              <ul className="text-sm space-y-2 opacity-90">
-                <li className="flex gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  Format A4 Portrait
-                </li>
-                <li className="flex gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  Marges: "Aucune" ou "Par défaut"
-                </li>
-                <li className="flex gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  Échelle: 100%
-                </li>
-                <li className="flex gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  Activer "Graphiques d'arrière-plan"
-                </li>
+            <section className="bg-emerald-700 rounded-2xl p-5 text-white">
+              <h3 className="font-bold text-sm mb-3">Guide d'impression</h3>
+              <ul className="text-xs space-y-2 text-emerald-100">
+                {[
+                  'Format A4 Portrait',
+                  'Marges : "Aucune" ou "Par défaut"',
+                  'Échelle : 100%',
+                  'Activer "Graphiques d\'arrière-plan"',
+                ].map((item) => (
+                  <li key={item} className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-300" />
+                    {item}
+                  </li>
+                ))}
               </ul>
-            </div>
+            </section>
           </div>
 
-          {/* Main Content / List */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Barre de recherche */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+          {/* Main content — liste des élèves */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Barre de recherche + stats */}
+            <div className="flex flex-col sm:flex-row gap-3 items-center bg-white p-3 rounded-2xl border border-gray-200">
               <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Rechercher un élève..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <input type="text" placeholder="Rechercher par nom ou matricule..."
+                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all" />
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-500">
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs font-medium text-gray-400 tabular-nums">
                   {students.length} élève{students.length > 1 ? 's' : ''}
                 </span>
-                <button
-                  onClick={handleSelectAll}
-                  disabled={filteredStudents.length === 0}
-                  className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
-                    ? 'Tout désélectionner'
-                    : 'Tout sélectionner'}
+                <button onClick={handleSelectAll} disabled={filteredStudents.length === 0}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-emerald-300 hover:text-emerald-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0 ? 'Désélectionner tout' : 'Tout sélectionner'}
                 </button>
               </div>
             </div>
 
-            {/* Barre d'action contextuelle — suppression massive */}
+            {/* Action contextuelle suppression massive */}
             {selectedStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
+              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <Trash2 className="w-4 h-4 text-red-600" />
+                  <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-800">
-                      {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
-                    </p>
-                    <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
-                  </div>
+                  <p className="text-sm font-semibold text-red-800">
+                    {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedStudents([])}
-                    className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
+                  <button onClick={() => setSelectedStudents([])}
+                    className="text-xs font-semibold px-3 py-1.5 text-gray-500 hover:text-gray-700 transition-colors">
                     Annuler
                   </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Supprimer la sélection
+                  <button onClick={handleBulkDelete}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all active:scale-95">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Supprimer
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {filteredStudents.map((student) => {
                 const isSelected = selectedStudents.includes(student.id);
                 return (
                   <div
                     key={student.id}
                     onClick={() => toggleSelect(student.id)}
-                    className={`group relative bg-white rounded-2xl p-4 border-2 transition-all cursor-pointer select-none ${
+                    className={`group relative bg-white rounded-xl p-4 border transition-all cursor-pointer select-none ${
                       isSelected
-                        ? 'border-emerald-500 ring-2 ring-emerald-200 shadow-md shadow-emerald-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                        ? 'border-emerald-400 ring-2 ring-emerald-100'
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                     }`}
                   >
-                    {/* Checkbox coin supérieur droit */}
+                    {/* Selection indicator */}
                     <div
-                      className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      className={`absolute top-3 right-3 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
                         isSelected
                           ? 'bg-emerald-500 border-emerald-500'
-                          : 'bg-white border-gray-300 opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
+                          : 'bg-white border-gray-200 opacity-0 group-hover:opacity-100'
                       }`}
                     >
                       {isSelected && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
                         </svg>
                       )}
                     </div>
 
-                    <div className="flex gap-4">
-                      <div className={`w-16 h-20 rounded-lg overflow-hidden border flex-shrink-0 transition-all ${
-                        isSelected ? 'border-emerald-300' : 'border-gray-200 bg-gray-100'
+                    <div className="flex gap-3">
+                      <div className={`w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 border bg-gray-50 ${
+                        isSelected ? 'border-emerald-200' : 'border-gray-100'
                       }`}>
                         {student.photoUrl ? (
                           <img src={student.photoUrl} alt="" crossOrigin="anonymous" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <Users className="w-8 h-8 text-gray-300" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Users className="w-6 h-6 text-gray-200" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 pr-6">
-                        <h3 className="font-bold text-gray-900 truncate">{student.lastName} {student.firstName}</h3>
-                        <p className="text-sm text-gray-500 font-medium">{student.className}</p>
-                        <p className="text-xs text-emerald-600 font-bold mt-1">{student.matricule}</p>
+                      <div className="flex-1 min-w-0 pr-5">
+                        <h3 className="font-semibold text-gray-900 text-sm truncate">{student.lastName} {student.firstName}</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">{student.className}</p>
+                        <p className="text-xs text-emerald-600 font-semibold mt-1 tabular-nums">{student.matricule}</p>
                       </div>
                     </div>
 
-                    {/* Actions — stopper la propagation du clic */}
+                    {/* Actions */}
                     <div
-                      className="mt-3 flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      className="mt-3 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        onClick={() => handleEditStudent(student)}
-                        title="Modifier"
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 active:text-emerald-600 active:bg-emerald-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
+                      <button onClick={() => handleEditStudent(student)}
+                        className="p-1.5 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Modifier">
+                        <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => handleDeleteStudent(student.id)}
-                        title="Supprimer"
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 active:text-red-600 active:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                      <button onClick={() => handleDeleteStudent(student.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Supprimer">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -908,15 +708,23 @@ export default function App({ session, onLogout }: AppProps) {
 
 
               {filteredStudents.length === 0 && (
-                <div className="col-span-full py-12 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-200">
-                  <Users className="w-12 h-12 mb-4 opacity-20" />
-                  <p className="font-medium">Aucun élève trouvé</p>
-                  <button 
-                    onClick={() => setIsFormOpen(true)}
-                    className="mt-4 text-emerald-600 font-bold hover:underline"
-                  >
-                    Ajouter votre premier élève
-                  </button>
+                <div className="col-span-full py-16 flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-gray-200">
+                  <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
+                    <Users className="w-7 h-7 text-gray-200" />
+                  </div>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {searchTerm ? 'Aucun résultat' : 'Aucun élève pour l\'instant'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1 mb-5">
+                    {searchTerm ? `Aucun élève ne correspond à "${searchTerm}"` : 'Commencez par ajouter votre premier élève'}
+                  </p>
+                  {!searchTerm && (
+                    <button onClick={() => setIsFormOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg font-semibold transition-all active:scale-95">
+                      <Plus className="w-4 h-4" />
+                      Ajouter un élève
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -951,30 +759,24 @@ export default function App({ session, onLogout }: AppProps) {
 
       {showDataManagement && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Mes Données</h2>
-              <button
-                onClick={() => setShowDataManagement(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">Mes données</h2>
+              <button onClick={() => setShowDataManagement(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400">
                 ✕
               </button>
             </div>
             <div className="overflow-y-auto p-6">
               <DataManagement userId={session.userId} userEmail={session.email} />
             </div>
-            <div className="border-t p-4 bg-gray-50 flex justify-between items-center">
-              <button
-                onClick={() => setShowPrivacyPolicy(true)}
-                className="text-sm text-blue-600 hover:underline"
-              >
+            <div className="border-t border-gray-100 px-6 py-3 bg-gray-50 flex justify-between items-center">
+              <button onClick={() => setShowPrivacyPolicy(true)}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
                 Politique de confidentialité
               </button>
-              <button
-                onClick={() => setShowDataManagement(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
+              <button onClick={() => setShowDataManagement(false)}
+                className="px-4 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
                 Fermer
               </button>
             </div>

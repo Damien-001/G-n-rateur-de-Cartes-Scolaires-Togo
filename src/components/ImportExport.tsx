@@ -69,7 +69,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
   };
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-2">
       <input
         type="file"
         ref={fileInputRef}
@@ -79,14 +79,14 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
       />
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors font-medium shadow-sm"
+        className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all font-medium"
       >
         <Upload className="w-4 h-4" />
         Importer CSV
       </button>
       <button
         onClick={downloadTemplate}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+        className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all font-medium"
       >
         <FileSpreadsheet className="w-4 h-4" />
         Modèle CSV
