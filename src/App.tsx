@@ -15,7 +15,7 @@ import {
   LogOut,
   Loader2
 } from 'lucide-react';
-import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
+import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors, CLASSES_LIST } from './types';
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
@@ -45,11 +45,23 @@ export default function App({ session, onLogout }: AppProps) {
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
   const [view, setView] = useState<'manage' | 'preview'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
+  const [classFilter, setClassFilter] = useState<string>('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,7 +102,7 @@ export default function App({ session, onLogout }: AppProps) {
       // Récupérer toutes les pages A4 rendues dans le DOM
       const pages = document.querySelectorAll<HTMLElement>('.a4-page');
       if (pages.length === 0) {
-        alert('Aucune page à exporter.');
+        console.error('Aucune page à exporter.');
         return;
       }
 
@@ -121,7 +133,7 @@ export default function App({ session, onLogout }: AppProps) {
       // ✅ NOUVELLE APPROCHE: Capturer toutes les pages en une seule fois
       const container = document.querySelector<HTMLElement>('.print-layout-container');
       if (!container) {
-        alert('Conteneur d\'impression introuvable.');
+        console.error('Conteneur d\'impression introuvable.');
         return;
       }
 
@@ -157,8 +169,7 @@ export default function App({ session, onLogout }: AppProps) {
       const date = new Date().toISOString().split('T')[0];
       pdf.save(`cartes_scolaires_${date}.pdf`);
     } catch (error) {
-      console.error('Erreur génération PDF:', error);
-      alert('Erreur lors de la génération du PDF: ' + (error instanceof Error ? error.message : String(error)));
+      console.error('Erreur génération PDF:', error instanceof Error ? error.message : String(error));
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -223,7 +234,7 @@ export default function App({ session, onLogout }: AppProps) {
           console.error('Erreur sauvegarde school info:', err);
           // Ne pas afficher d'alerte pour ne pas gêner l'utilisateur
         });
-    }, 1000); // Réduit à 1s pour sauvegarder plus rapidement
+    }, 3000); // Augmenté à 3s pour éviter trop d'appels réseau
     return () => {
       if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
     };
@@ -262,35 +273,51 @@ export default function App({ session, onLogout }: AppProps) {
   }, [session.userId]);
 
   const handleDeleteStudent = useCallback(async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) return;
-    try {
-      await deleteStudent(id, session.userId);
-      setStudents(prev => prev.filter(s => s.id !== id));
-      setSelectedStudents(prev => prev.filter(sid => sid !== id));
-    } catch (err) {
-      console.error('Erreur suppression:', err);
-      alert('Erreur lors de la suppression.');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Supprimer cet élève ?',
+      message: 'Cette action est irréversible. L\'élève sera définitivement supprimé de la base de données.',
+      onConfirm: async () => {
+        try {
+          await deleteStudent(id, session.userId);
+          setStudents(prev => prev.filter(s => s.id !== id));
+          setSelectedStudents(prev => prev.filter(sid => sid !== id));
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          console.error('Erreur suppression:', err);
+          alert('Erreur lors de la suppression.');
+        }
+      },
+    });
   }, [session.userId]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedStudents.length === 0) return;
     const n = selectedStudents.length;
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${n} élève${n > 1 ? 's' : ''} ? Cette action est irréversible.`)) return;
-    try {
-      await deleteStudents(selectedStudents, session.userId);
-      setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
-      setSelectedStudents([]);
-    } catch (err) {
-      console.error('Erreur suppression massive:', err);
-      alert('Erreur lors de la suppression en masse.');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: `Supprimer ${n} élève${n > 1 ? 's' : ''} ?`,
+      message: `Cette action est irréversible. ${n} élève${n > 1 ? 's seront définitivement supprimés' : ' sera définitivement supprimé'} de la base de données.`,
+      onConfirm: async () => {
+        try {
+          await deleteStudents(selectedStudents, session.userId);
+          setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
+          setSelectedStudents([]);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          console.error('Erreur suppression massive:', err);
+          alert('Erreur lors de la suppression en masse.');
+        }
+      },
+    });
   }, [selectedStudents, session.userId]);
 
   const filteredStudents = React.useMemo(() =>
-    students.filter(s =>
-      `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [students, searchTerm]
+    students.filter(s => {
+      const matchSearch = `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchClass = !classFilter || s.className === classFilter;
+      return matchSearch && matchClass;
+    }), [students, searchTerm, classFilter]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -307,7 +334,7 @@ export default function App({ session, onLogout }: AppProps) {
       setStudents(prev => [...prev, ...saved]);
     } catch (err) {
       console.error('Erreur import:', err);
-      alert('Erreur lors de l\'import : ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
+      // L'erreur est gérée et affichée dans ImportExport.tsx
     }
   }, [session.userId]);
 
@@ -597,7 +624,7 @@ export default function App({ session, onLogout }: AppProps) {
 
           {/* Main content — liste des élèves */}
           <div className="lg:col-span-8 space-y-4">
-            {/* Barre de recherche + stats */}
+            {/* Barre de recherche + filtre classe + stats */}
             <div className="flex flex-col sm:flex-row gap-3 items-center bg-white p-3 rounded-2xl border border-gray-200">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
@@ -605,9 +632,19 @@ export default function App({ session, onLogout }: AppProps) {
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all" />
               </div>
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="shrink-0 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-gray-600"
+              >
+                <option value="">Toutes les classes</option>
+                {CLASSES_LIST.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-xs font-medium text-gray-400 tabular-nums">
-                  {students.length} élève{students.length > 1 ? 's' : ''}
+                  {filteredStudents.length}/{students.length} élève{students.length > 1 ? 's' : ''}
                 </span>
                 <button onClick={handleSelectAll} disabled={filteredStudents.length === 0}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-emerald-300 hover:text-emerald-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
@@ -713,12 +750,16 @@ export default function App({ session, onLogout }: AppProps) {
                     <Users className="w-7 h-7 text-gray-200" />
                   </div>
                   <p className="font-semibold text-gray-900 text-sm">
-                    {searchTerm ? 'Aucun résultat' : 'Aucun élève pour l\'instant'}
+                    {searchTerm || classFilter ? 'Aucun résultat' : 'Aucun élève pour l\'instant'}
                   </p>
                   <p className="text-xs text-gray-400 mt-1 mb-5">
-                    {searchTerm ? `Aucun élève ne correspond à "${searchTerm}"` : 'Commencez par ajouter votre premier élève'}
+                    {classFilter
+                      ? `Aucun élève en ${classFilter}${searchTerm ? ` correspondant à "${searchTerm}"` : ''}`
+                      : searchTerm
+                      ? `Aucun élève ne correspond à "${searchTerm}"`
+                      : 'Commencez par ajouter votre premier élève'}
                   </p>
-                  {!searchTerm && (
+                  {!searchTerm && !classFilter && (
                     <button onClick={() => setIsFormOpen(true)}
                       className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg font-semibold transition-all active:scale-95">
                       <Plus className="w-4 h-4" />
@@ -785,6 +826,17 @@ export default function App({ session, onLogout }: AppProps) {
       )}
 
       <CookieConsent />
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmButtonText="Supprimer"
+        cancelButtonText="Annuler"
+        variant="danger"
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

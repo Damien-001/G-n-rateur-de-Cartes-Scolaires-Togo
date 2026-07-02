@@ -72,7 +72,11 @@ export const CLASSES_LIST = [
   "Tle A4", "Tle C", "Tle D", "Tle G1", "Tle G2", "Tle G3"
 ];
 
-export const SCHOOL_YEARS = [
-  "2023-2024", "2024-2025", "2025-2026", "2026-2027", "2027-2028"
-];
+export const SCHOOL_YEARS = (() => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 6 }, (_, i) => {
+    const y = currentYear - 1 + i;
+    return `${y}-${y + 1}`;
+  });
+})();
 
