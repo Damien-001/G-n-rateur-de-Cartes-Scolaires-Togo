@@ -3,6 +3,8 @@ import { login, register, resendConfirmation, Session } from '../lib/auth';
 
 interface AuthPageProps {
   onAuth: (session: Session) => void;
+  onBackToHome?: () => void;
+  initialMode?: 'login' | 'register';
 }
 
 type Mode = 'login' | 'register' | 'confirm';
@@ -343,8 +345,8 @@ const ConfirmScreen: React.FC<{
 };
 
 // ── Page principale Auth ───────────────────────────────────────────────────────
-export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
-  const [mode, setMode] = useState<Mode>('login');
+export const AuthPage: React.FC<AuthPageProps> = ({ onAuth, onBackToHome, initialMode = 'login' }) => {
+  const [mode, setMode] = useState<Mode>(initialMode === 'register' ? 'register' : 'login');
   const [confirmEmail, setConfirmEmail] = useState('');
 
   const handleNeedsConfirmation = (email: string) => {
@@ -356,6 +358,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
     <>
       <style>{`@keyframes auth-spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>
       <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center p-4 relative overflow-hidden">
+        {onBackToHome && (
+          <button 
+            onClick={onBackToHome}
+            className="absolute top-6 left-6 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-emerald-700 transition-colors cursor-pointer z-50"
+          >
+            ← Retour à l'accueil
+          </button>
+        )}
         {/* Ambient mesh background orbs */}
         <div className="absolute -top-40 -right-40 w-[30rem] h-[30rem] rounded-full bg-emerald-100/40 blur-[100px] pointer-events-none" />
         <div className="absolute -bottom-40 -left-40 w-[30rem] h-[30rem] rounded-full bg-emerald-50/50 blur-[120px] pointer-events-none" />
