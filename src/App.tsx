@@ -21,7 +21,6 @@ import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
 import { SchoolSettings } from './components/SchoolSettings';
-import { DashboardHeader } from './components/DashboardHeader';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
 import { SchoolSettingsView } from './components/SchoolSettingsView';
