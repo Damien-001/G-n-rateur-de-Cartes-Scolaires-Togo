@@ -10,7 +10,8 @@ import {
   Plus,
   Users,
   Palette,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
