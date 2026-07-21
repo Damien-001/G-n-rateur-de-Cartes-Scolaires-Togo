@@ -212,9 +212,9 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
     const row: DbSchoolInfo = {
       user_id: userId,
       name: info.name,
-      logo_url: info.logoUrl,
-      signature_url: info.signatureUrl,
-      stamp_url: info.stampUrl,
+      logo_url: info.logoUrl || null,
+      signature_url: info.signatureUrl || null,
+      stamp_url: info.stampUrl || null,
       card_colors: info.cardColors ?? DEFAULT_CARD_COLORS,
       updated_at: new Date().toISOString(),
     };

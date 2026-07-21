@@ -55,9 +55,9 @@ export interface DbSchoolInfo {
   id?: string;
   user_id: string;
   name: string;
-  logo_url?: string;
-  signature_url?: string;
-  stamp_url?: string;
+  logo_url?: string | null;
+  signature_url?: string | null;
+  stamp_url?: string | null;
   card_colors?: {
     headerBg: string;
     headerText: string;
