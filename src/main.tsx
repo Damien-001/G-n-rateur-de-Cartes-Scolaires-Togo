@@ -6,6 +6,27 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { onAuthStateChange, Session } from './lib/auth.ts';
 import './index.css';
 
+// Monkey-patch global Node DOM methods to prevent browser extensions (like translation tools or password managers) from crashing React.
+if (typeof Node !== 'undefined' && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child && child.parentNode !== this) {
+      console.warn('Prevented removeChild crash: child node is not a child of this parent.', child, this);
+      return child;
+    }
+    return originalRemoveChild.call(this, child) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      console.warn('Prevented insertBefore crash: reference node is not a child of this parent.', referenceNode, this);
+      return newNode;
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T;
+  };
+}
+
 // Debug - disponible dans la console avec window.debugDatabase()
 import './debug-db.ts';
 
