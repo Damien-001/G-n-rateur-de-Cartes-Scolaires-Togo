@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AuthPage } from './components/AuthPage.tsx';
+import { AdminLoginPage } from './components/AdminLoginPage.tsx';
 import { LandingPage } from './components/LandingPage.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { onAuthStateChange, Session } from './lib/auth.ts';
@@ -38,7 +39,7 @@ if (window.location.hash && window.location.hash.includes('error=')) {
 
 function Root() {
   const [session, setSession] = useState<Session | null>(null);
-  const [page, setPage] = useState<'landing' | 'auth' | 'dashboard'>('landing');
+  const [page, setPage] = useState<'landing' | 'auth' | 'admin-login' | 'dashboard'>('landing');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [ready, setReady] = useState(false);
   const prevSessionRef = useRef<Session | null>(null);
@@ -77,7 +78,20 @@ function Root() {
         onStartAuth={(mode) => {
           setAuthMode(mode === 'signup' ? 'register' : 'login');
           setPage('auth');
-        }} 
+        }}
+        onAdminLogin={() => setPage('admin-login')}
+      />
+    );
+  }
+
+  if (page === 'admin-login' && !session) {
+    return (
+      <AdminLoginPage
+        onAuth={(s) => {
+          setSession(s);
+          setPage('dashboard');
+        }}
+        onBackToLanding={() => setPage('landing')}
       />
     );
   }
@@ -102,7 +116,8 @@ function Root() {
         onStartAuth={(mode) => {
           setAuthMode(mode === 'signup' ? 'register' : 'login');
           setPage('auth');
-        }} 
+        }}
+        onAdminLogin={() => setPage('admin-login')}
       />
     );
   }

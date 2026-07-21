@@ -19,6 +19,7 @@ import { IDCardBack } from './IDCardBack';
 
 interface LandingPageProps {
   onStartAuth: (mode: 'signup' | 'signin') => void;
+  onAdminLogin?: () => void;
 }
 
 const dummyStudent = {
@@ -45,7 +46,7 @@ const dummySchool = {
   }
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLogin }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
@@ -432,8 +433,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth }) => {
             <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
-          <div className="text-xs text-gray-500 text-center md:text-right font-medium">
-            &copy; 2026 CardSchool. Tous droits réservés.
+          <div className="text-xs text-gray-500 text-center md:text-right font-medium flex flex-col items-end gap-2">
+            <span>&copy; 2026 CardSchool. Tous droits réservés.</span>
+            {onAdminLogin && (
+              <button
+                onClick={onAdminLogin}
+                className="text-[10px] text-gray-700 hover:text-gray-500 transition-colors font-mono tracking-widest cursor-pointer uppercase"
+                title="Accès administration système"
+              >
+                ⬡ Portail Admin
+              </button>
+            )}
           </div>
         </div>
       </footer>
