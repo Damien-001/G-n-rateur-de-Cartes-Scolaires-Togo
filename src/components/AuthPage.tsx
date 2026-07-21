@@ -141,6 +141,10 @@ const RegisterForm: React.FC<{
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [schoolType, setSchoolType] = useState('Lycée');
+  const [location, setLocation] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
@@ -149,11 +153,22 @@ const RegisterForm: React.FC<{
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!schoolName.trim()) { setError("Veuillez entrer le nom de l'établissement."); return; }
+    if (!location.trim()) { setError("Veuillez renseigner la ville / localité."); return; }
+    if (!phone.trim()) { setError("Veuillez entrer un numéro de téléphone."); return; }
     if (!fullName.trim()) { setError('Veuillez entrer votre nom complet.'); return; }
     if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas.'); return; }
     setLoading(true);
     try {
-      const result = await register(fullName, email, password);
+      const result = await register(
+        fullName, 
+        email, 
+        password, 
+        schoolName, 
+        schoolType, 
+        location, 
+        phone
+      );
       if (!result.success) {
         setError(result.error);
       } else if (result.needsConfirmation) {
@@ -168,50 +183,90 @@ const RegisterForm: React.FC<{
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+      {/* 2-Column Grid for School Info */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Nom de l'établissement</label>
+          <input type="text" value={schoolName} onChange={e => setSchoolName(e.target.value)}
+            placeholder="Lycée de Tokoin" required
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Type d'établissement</label>
+          <select value={schoolType} onChange={e => setSchoolType(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm bg-white cursor-pointer font-semibold">
+            <option value="Lycée">Lycée (Second cycle)</option>
+            <option value="Collège">Collège (Premier cycle)</option>
+            <option value="Complexe Scolaire">Complexe Scolaire (Primaire & Sec.)</option>
+            <option value="Primaire">Primaire / Maternelle</option>
+            <option value="Université / Institut">Université / Institut Sup.</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Ville / Localité</label>
+          <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+            placeholder="Lomé, Togo" required
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Téléphone WhatsApp</label>
+          <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder="+228 90 12 34 56" required
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
+        </div>
+      </div>
+
       <div>
-        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Nom complet</label>
+        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Nom complet du Responsable</label>
         <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
-          placeholder="Jean Dupont" required autoComplete="name"
+          placeholder="M. Koffi ADANOU (Directeur)" required autoComplete="name"
           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
       </div>
+
       <div>
-        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Adresse email</label>
+        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Adresse email de l'école</label>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-          placeholder="exemple@ecole.tg" required autoComplete="email"
+          placeholder="direction@ecole.tg" required autoComplete="email"
           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
       </div>
-      <div>
-        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mot de passe</label>
-        <div className="relative">
-          <input type={showPassword ? 'text' : 'password'} value={password}
-            onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 caractères" required
-            autoComplete="new-password" data-lpignore="true" data-form-type="other"
-            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {showPassword ? <IconEyeOff /> : <IconEye />}
-          </button>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mot de passe</label>
+          <div className="relative">
+            <input type={showPassword ? 'text' : 'password'} value={password}
+              onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 car." required
+              autoComplete="new-password" data-lpignore="true" data-form-type="other"
+              className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Confirmer</label>
+          <div className="relative">
+            <input type={showConfirm ? 'text' : 'password'} value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required
+              autoComplete="new-password" data-lpignore="true" data-form-type="other"
+              className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
+            <button type="button" tabIndex={-1} onClick={() => setShowConfirm(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showConfirm ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
         </div>
       </div>
-      <div>
-        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Confirmer le mot de passe</label>
-        <div className="relative">
-          <input type={showConfirm ? 'text' : 'password'} value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required
-            autoComplete="new-password" data-lpignore="true" data-form-type="other"
-            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
-          <button type="button" tabIndex={-1} onClick={() => setShowConfirm(v => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {showConfirm ? <IconEyeOff /> : <IconEye />}
-          </button>
-        </div>
-        {confirmPassword && (
-          <p className={`text-xs mt-1.5 flex items-center gap-1 ${password === confirmPassword ? 'brand-text' : 'text-red-500'}`}>
-            <IconCheck />
-            {password === confirmPassword ? 'Les mots de passe correspondent' : 'Ne correspondent pas'}
-          </p>
-        )}
-      </div>
+      {confirmPassword && (
+        <p className={`text-xs mt-1.5 flex items-center gap-1 ${password === confirmPassword ? 'brand-text' : 'text-red-500'}`}>
+          <IconCheck />
+          {password === confirmPassword ? 'Les mots de passe correspondent' : 'Ne correspondent pas'}
+        </p>
+      )}
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
       <button type="submit" disabled={loading}
         className="w-full flex items-center justify-center gap-2 py-3 btn-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2">
@@ -371,7 +426,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth, onBackToHome, initia
         <div className="absolute -bottom-40 -left-40 w-[30rem] h-[30rem] rounded-full bg-emerald-50/50 blur-[120px] pointer-events-none" />
         <div className="absolute top-1/2 left-1/3 w-[20rem] h-[20rem] rounded-full bg-teal-100/30 blur-[80px] pointer-events-none" />
 
-        <div className="relative w-full max-w-md">
+        <div className={`relative w-full transition-all duration-300 ${mode === 'register' ? 'max-w-2xl' : 'max-w-md'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-600 rounded-[2rem] p-0.5 shadow-lg shadow-emerald-950/10 mb-5 relative group">
               <div className="w-full h-full bg-emerald-500 rounded-[calc(2rem-0.125rem)] flex items-center justify-center text-white border border-emerald-400/20">

@@ -130,7 +130,16 @@ export default function App({ session, onLogout }: AppProps) {
       try {
         // Charger school_info d'abord (plus rapide)
         const fetchedSchool = await fetchSchoolInfo(session.userId);
-        setSchoolInfo(fetchedSchool ?? DEFAULT_SCHOOL_INFO);
+        if (fetchedSchool) {
+          setSchoolInfo(fetchedSchool);
+        } else {
+          setSchoolInfo({
+            ...DEFAULT_SCHOOL_INFO,
+            name: session.schoolName 
+              ? `${session.schoolName.toUpperCase()} (${session.location ? session.location.toUpperCase() : ''})` 
+              : DEFAULT_SCHOOL_INFO.name,
+          });
+        }
         
         // Puis charger les étudiants
         const fetchedStudents = await fetchStudents(session.userId);

@@ -7,6 +7,10 @@ export interface Session {
   userId: string;
   email: string;
   fullName: string;
+  schoolName?: string;
+  schoolType?: string;
+  location?: string;
+  phone?: string;
 }
 
 function toSession(user: User): Session {
@@ -14,6 +18,10 @@ function toSession(user: User): Session {
     userId: user.id,
     email: user.email ?? '',
     fullName: (user.user_metadata?.full_name as string) ?? user.email ?? '',
+    schoolName: user.user_metadata?.school_name as string,
+    schoolType: user.user_metadata?.school_type as string,
+    location: user.user_metadata?.location as string,
+    phone: user.user_metadata?.phone as string,
   };
 }
 
@@ -28,7 +36,11 @@ export async function getSession(): Promise<Session | null> {
 export async function register(
   fullName: string,
   email: string,
-  password: string
+  password: string,
+  schoolName: string,
+  schoolType: string,
+  location: string,
+  phone: string
 ): Promise<
   | { success: true; session: Session; needsConfirmation: false }
   | { success: true; session: null; needsConfirmation: true; email: string }
@@ -39,7 +51,13 @@ export async function register(
       email: email.trim().toLowerCase(),
       password,
       options: {
-        data: { full_name: fullName.trim() },
+        data: { 
+          full_name: fullName.trim(),
+          school_name: schoolName.trim(),
+          school_type: schoolType.trim(),
+          location: location.trim(),
+          phone: phone.trim()
+        },
       },
     });
 
