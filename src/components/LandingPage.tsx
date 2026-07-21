@@ -132,56 +132,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth }) => {
           </div>
         </div>
 
-        {/* 3D Flipping Card Visual Preview */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center">
-          <div 
-            className="cursor-pointer"
-            style={{ perspective: 1000 }}
-            onClick={() => setIsFlipped(!isFlipped)}
-          >
-            <div
-              style={{
-                width: 350,
-                height: 198,
-                position: 'relative',
-                transformStyle: 'preserve-3d',
-                transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              }}
-            >
-              {/* Front side */}
-              <div 
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                }}
-              >
+        {/* Card Visual Previews */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-6">
+          <div className="flex flex-col gap-5">
+            {/* Front Card */}
+            <div className="flex flex-col gap-1.5 items-center">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
+              <div className="shadow-xl shadow-gray-200 rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform duration-200 bg-white">
                 <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
               </div>
+            </div>
 
-              {/* Back side */}
-              <div 
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                }}
-              >
+            {/* Back Card */}
+            <div className="flex flex-col gap-1.5 items-center">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Verso (Dos)</span>
+              <div className="shadow-xl shadow-gray-200 rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform duration-200 bg-white">
                 <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
               </div>
             </div>
           </div>
-          
-          <button 
-            onClick={() => setIsFlipped(!isFlipped)}
-            className="mt-6 flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-xs font-bold text-emerald-700 rounded-xl shadow-sm cursor-pointer transition-colors active:scale-95"
-          >
-            <Sparkles className="w-4 h-4" /> Tourner la carte (Aperçu Recto/Verso)
-          </button>
         </div>
       </section>
 
