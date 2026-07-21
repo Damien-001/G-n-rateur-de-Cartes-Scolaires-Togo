@@ -33,6 +33,9 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   const [schoolType, setSchoolType] = useState(schoolInfo.schoolType || 'Lycée');
   const [location, setLocation] = useState(schoolInfo.location || '');
   const [phone, setPhone] = useState(schoolInfo.phone || '');
+  const [logoUrl, setLogoUrl] = useState(schoolInfo.logoUrl || '');
+  const [signatureUrl, setSignatureUrl] = useState(schoolInfo.signatureUrl || '');
+  const [stampUrl, setStampUrl] = useState(schoolInfo.stampUrl || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
@@ -53,6 +56,9 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
         schoolType: schoolType,
         location: location.trim(),
         phone: phone.trim(),
+        logoUrl: logoUrl || undefined,
+        signatureUrl: signatureUrl || undefined,
+        stampUrl: stampUrl || undefined,
         // Keep subscription fields
         subscriptionPlan: currentPlan,
         subscriptionExpiresAt: schoolInfo.subscriptionExpiresAt,
@@ -146,6 +152,125 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                       placeholder="+228 90 12 34 56"
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm font-semibold"
                     />
+                  </div>
+                </div>
+
+                {/* Logo, Signature & Cachet uploads */}
+                <div className="pt-6 border-t border-gray-100 space-y-5">
+                  <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Documents officiels (Cartes)</h3>
+                  
+                  {/* Logo de l'école */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Logo de l'école</label>
+                    <div className="flex items-center gap-4 bg-gray-55 p-3.5 rounded-2xl border border-gray-150">
+                      <div className="relative w-14 h-14 bg-white border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                        {logoUrl ? (
+                          <>
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                            <button
+                              type="button"
+                              onClick={() => setLogoUrl('')}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 hover:bg-red-650 text-white rounded-full flex items-center justify-center shadow transition-colors cursor-pointer"
+                              title="Supprimer le logo"
+                            >
+                              <span style={{ fontSize: 9, lineHeight: 1 }}>✕</span>
+                            </button>
+                          </>
+                        ) : (
+                          <Building2 className="w-6 h-6 text-gray-300" />
+                        )}
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setLogoUrl(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Signature & Cachet side-by-side */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Signature */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Signature</label>
+                      <div className="flex flex-col gap-3 bg-gray-55 p-3.5 rounded-2xl border border-gray-150">
+                        <div className="relative w-full h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+                          {signatureUrl ? (
+                            <>
+                              <img src={signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                              <button
+                                type="button"
+                                onClick={() => setSignatureUrl('')}
+                                className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 hover:bg-red-650 text-white rounded-full flex items-center justify-center shadow transition-colors cursor-pointer"
+                                title="Supprimer la signature"
+                              >
+                                <span style={{ fontSize: 7, lineHeight: 1 }}>✕</span>
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-gray-350 font-bold italic">Aucune signature</span>
+                          )}
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setSignatureUrl(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="block w-full text-xs text-gray-555 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cachet */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Cachet</label>
+                      <div className="flex flex-col gap-3 bg-gray-55 p-3.5 rounded-2xl border border-gray-150">
+                        <div className="relative w-10 h-10 mx-auto bg-white border border-gray-200 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                          {stampUrl ? (
+                            <>
+                              <img src={stampUrl} alt="Cachet" className="w-full h-full object-contain" />
+                              <button
+                                type="button"
+                                onClick={() => setStampUrl('')}
+                                className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 hover:bg-red-650 text-white rounded-full flex items-center justify-center shadow transition-colors cursor-pointer"
+                                title="Supprimer le cachet"
+                              >
+                                <span style={{ fontSize: 7, lineHeight: 1 }}>✕</span>
+                              </button>
+                            </>
+                          ) : (
+                            <div className="w-3.5 h-3.5 border border-gray-200 rounded-full border-dashed" />
+                          )}
+                        </div>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setStampUrl(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="block w-full text-xs text-gray-555 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
