@@ -11,7 +11,8 @@ import {
   Users,
   Palette,
   Settings,
-  LogOut
+  LogOut,
+  CreditCard
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -46,7 +47,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
-  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings' | 'billing'>('students');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -356,7 +357,8 @@ export default function App({ session, onLogout }: AppProps) {
               {[
                 { id: 'students', label: 'Gestion des élèves', icon: Users },
                 { id: 'print', label: 'Impression des cartes', icon: FileDown },
-                { id: 'settings', label: "Paramètres & Plan", icon: Settings },
+                { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+                { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
               ].map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -512,7 +514,8 @@ export default function App({ session, onLogout }: AppProps) {
             {[
               { id: 'students', label: 'Gestion des élèves', icon: Users },
               { id: 'print', label: 'Impression des cartes', icon: FileDown },
-              { id: 'settings', label: "Paramètres & Plan", icon: Settings },
+              { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+              { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
             ].map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -581,6 +584,19 @@ export default function App({ session, onLogout }: AppProps) {
             session={session}
             schoolInfo={schoolInfo}
             studentsCount={students.length}
+            mode="profile"
+            onSaveSchoolInfo={async (newInfo) => {
+              setSchoolInfo(newInfo);
+              await saveSchoolInfo(newInfo, session.userId);
+            }}
+            onBack={() => setActiveTab('students')}
+          />
+        ) : activeTab === 'billing' ? (
+          <SchoolSettingsView 
+            session={session}
+            schoolInfo={schoolInfo}
+            studentsCount={students.length}
+            mode="billing"
             onSaveSchoolInfo={async (newInfo) => {
               setSchoolInfo(newInfo);
               await saveSchoolInfo(newInfo, session.userId);
