@@ -37,20 +37,21 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-emerald-50">
-          <div className="flex items-center gap-3">
-            <Settings className="w-6 h-6 text-emerald-700" />
-            <h2 className="text-xl font-bold text-emerald-900">Paramètres de l'École</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
+      <div className="double-bezel-outer w-full max-w-4xl overflow-hidden shadow-2xl">
+        <div className="double-bezel-inner overflow-hidden max-h-[90vh] flex flex-col bg-white">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-emerald-50/50">
+            <div className="flex items-center gap-3">
+              <Settings className="w-6 h-6 text-emerald-800" />
+              <h2 className="text-xl font-bold text-emerald-800">Paramètres de l'École</h2>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-emerald-100/50 rounded-full transition-colors cursor-pointer">
+              <X className="w-5 h-5 text-emerald-800" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-emerald-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-emerald-700" />
-          </button>
-        </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="overflow-y-auto flex-1">
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
             {/* Informations générales */}
             <div className="space-y-4">
@@ -65,7 +66,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus-brand outline-none transition-all"
                   placeholder="Ex: ÉCOLE NATIONALE DU TOGO"
                 />
               </div>
@@ -107,7 +108,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                         const file = e.target.files?.[0];
                         if (file) handleImageUpload('logoUrl', file);
                       }}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:brand-50 file:brand-text hover:file:bg-brand-50 transition-all cursor-pointer"
                     />
                     <p className="mt-1 text-xs text-gray-500">Format recommandé: PNG ou SVG, fond transparent</p>
                   </div>
@@ -146,7 +147,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                         const file = e.target.files?.[0];
                         if (file) handleImageUpload('signatureUrl', file);
                       }}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:brand-50 file:brand-text hover:file:bg-brand-50 transition-all cursor-pointer"
                     />
                     <p className="mt-1 text-xs text-gray-500">Format recommandé: PNG avec fond transparent</p>
                   </div>
@@ -185,7 +186,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                         const file = e.target.files?.[0];
                         if (file) handleImageUpload('stampUrl', file);
                       }}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer"
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:brand-50 file:brand-text hover:file:bg-brand-50 transition-all cursor-pointer"
                     />
                     <p className="mt-1 text-xs text-gray-500">Format recommandé: PNG circulaire avec fond transparent</p>
                   </div>
@@ -209,7 +210,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                       key={preset.name}
                       type="button"
                       onClick={() => applyColorPreset(preset.colors)}
-                      className="p-3 rounded-lg border-2 border-gray-200 hover:border-emerald-300 transition-colors group"
+                      className="p-3 rounded-lg border-2 border-gray-200 hover-border-brand transition-colors group"
                       title={`Appliquer le thème ${preset.name}`}
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -222,7 +223,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                           style={{ backgroundColor: preset.colors.footerBar }}
                         />
                       </div>
-                      <div className="text-xs font-medium text-gray-700 group-hover:text-emerald-700">
+                      <div className="text-xs font-medium text-gray-700 group-hover:brand-text">
                         {preset.name}
                       </div>
                     </button>
@@ -251,7 +252,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                         ...formData,
                         cardColors: { ...formData.cardColors, headerBg: e.target.value }
                       })}
-                      className="flex-1 px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm font-mono"
+                      className="flex-1 px-3 py-2 rounded border border-gray-300 focus-brand outline-none text-sm font-mono"
                     />
                   </div>
                 </div>
@@ -275,7 +276,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
                         ...formData,
                         cardColors: { ...formData.cardColors, footerBar: e.target.value }
                       })}
-                      className="flex-1 px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm font-mono"
+                      className="flex-1 px-3 py-2 rounded border border-gray-300 focus-brand outline-none text-sm font-mono"
                     />
                   </div>
                 </div>
@@ -293,7 +294,7 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
               </button>
               <button
                 type="submit"
-                className="px-6 py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
+                className="px-6 py-3 rounded-lg btn-primary"
               >
                 Enregistrer
               </button>
@@ -302,5 +303,6 @@ export const SchoolSettings: React.FC<SchoolSettingsProps> = ({ schoolInfo, onUp
         </div>
       </div>
     </div>
+  </div>
   );
 };

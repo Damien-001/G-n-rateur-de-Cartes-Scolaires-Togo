@@ -106,7 +106,7 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Adresse email</label>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
           placeholder="exemple@ecole.tg" required autoComplete="email"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
       </div>
       <div>
         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mot de passe</label>
@@ -114,7 +114,7 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
           <input type={showPassword ? 'text' : 'password'} value={password}
             onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
             autoComplete="current-password" data-lpignore="true" data-form-type="other"
-            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
           <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             {showPassword ? <IconEyeOff /> : <IconEye />}
@@ -123,7 +123,7 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
       </div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
       <button type="submit" disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2">
+        className="w-full flex items-center justify-center gap-2 py-3 btn-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2">
         {loading ? <><IconLoader /> Connexion...</> : <><IconLogin /> Se connecter</>}
       </button>
     </form>
@@ -170,13 +170,13 @@ const RegisterForm: React.FC<{
         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Nom complet</label>
         <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
           placeholder="Jean Dupont" required autoComplete="name"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
       </div>
       <div>
         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Adresse email</label>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)}
           placeholder="exemple@ecole.tg" required autoComplete="email"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
       </div>
       <div>
         <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Mot de passe</label>
@@ -184,7 +184,7 @@ const RegisterForm: React.FC<{
           <input type={showPassword ? 'text' : 'password'} value={password}
             onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 caractères" required
             autoComplete="new-password" data-lpignore="true" data-form-type="other"
-            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
           <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             {showPassword ? <IconEyeOff /> : <IconEye />}
@@ -197,14 +197,14 @@ const RegisterForm: React.FC<{
           <input type={showConfirm ? 'text' : 'password'} value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required
             autoComplete="new-password" data-lpignore="true" data-form-type="other"
-            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm" />
+            className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 focus-brand outline-none text-sm" />
           <button type="button" tabIndex={-1} onClick={() => setShowConfirm(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             {showConfirm ? <IconEyeOff /> : <IconEye />}
           </button>
         </div>
         {confirmPassword && (
-          <p className={`text-xs mt-1.5 flex items-center gap-1 ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
+          <p className={`text-xs mt-1.5 flex items-center gap-1 ${password === confirmPassword ? 'brand-text' : 'text-red-500'}`}>
             <IconCheck />
             {password === confirmPassword ? 'Les mots de passe correspondent' : 'Ne correspondent pas'}
           </p>
@@ -212,7 +212,7 @@ const RegisterForm: React.FC<{
       </div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
       <button type="submit" disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed mt-2">
+        className="w-full flex items-center justify-center gap-2 py-3 btn-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2">
         {loading ? <><IconLoader /> Création...</> : <><IconUserPlus /> Créer le compte</>}
       </button>
     </form>
@@ -252,13 +252,13 @@ const ConfirmScreen: React.FC<{
     <div className="flex flex-col items-center text-center px-2 py-4">
       {/* Icône animée */}
       <div className="relative mb-6">
-        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100">
-          <div className="text-emerald-500">
+        <div className="w-24 h-24 brand-50 rounded-full flex items-center justify-center border-4" style={{ borderColor: 'rgba(4,120,87,0.12)' }}>
+            <div style={{ color: 'var(--brand-dark)' }}>
             <IconMail />
           </div>
         </div>
         {/* Badge succès */}
-        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow">
+        <div className="absolute -bottom-1 -right-1 w-8 h-8 brand-icon rounded-full flex items-center justify-center border-2 border-white shadow">
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
@@ -269,7 +269,7 @@ const ConfirmScreen: React.FC<{
       <p className="text-gray-500 text-sm leading-relaxed mb-1">
         Un email de confirmation a été envoyé à
       </p>
-      <p className="font-bold text-emerald-700 text-sm mb-5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+      <p className="font-bold brand-text text-sm mb-5 brand-50 px-3 py-1.5 rounded-lg" style={{ borderColor: 'rgba(4,120,87,0.12)' }}>
         {email}
       </p>
       <p className="text-gray-500 text-sm leading-relaxed mb-6">
@@ -297,7 +297,7 @@ const ConfirmScreen: React.FC<{
 
       {/* Feedback renvoi */}
       {resendStatus === 'sent' && (
-        <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+        <div className="w-full brand-50 text-sm px-4 py-3 rounded-xl mb-4 flex items-center gap-2" style={{ border: '1px solid rgba(4,120,87,0.12)', color: 'var(--brand-dark)' }}>
           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
@@ -312,7 +312,7 @@ const ConfirmScreen: React.FC<{
       <div className="w-full space-y-3">
         <button
           onClick={onBackToLogin}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+          className="w-full flex items-center justify-center gap-2 py-3 btn-primary"
         >
           <IconLogin />
           Aller à la connexion
@@ -320,7 +320,7 @@ const ConfirmScreen: React.FC<{
         <button
           onClick={handleResend}
           disabled={resendStatus === 'sending' || cooldown > 0}
-          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:border-emerald-400 hover:text-emerald-600 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover-border-brand hover-text-brand transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {resendStatus === 'sending' ? (
             <span style={{
@@ -355,67 +355,75 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
   return (
     <>
       <style>{`@keyframes auth-spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-100 rounded-full opacity-40 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-teal-100 rounded-full opacity-40 blur-3xl" />
-        </div>
+      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Ambient mesh background orbs */}
+        <div className="absolute -top-40 -right-40 w-[30rem] h-[30rem] rounded-full bg-emerald-100/40 blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-[30rem] h-[30rem] rounded-full bg-emerald-50/50 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/3 w-[20rem] h-[20rem] rounded-full bg-teal-100/30 blur-[80px] pointer-events-none" />
 
         <div className="relative w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-2xl shadow-xl shadow-emerald-200 mb-4 text-white">
-              <IconSchool />
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-600 rounded-[2rem] p-0.5 shadow-lg shadow-emerald-950/10 mb-5 relative group">
+              <div className="w-full h-full bg-emerald-500 rounded-[calc(2rem-0.125rem)] flex items-center justify-center text-white border border-emerald-400/20">
+                <IconSchool />
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Générateur de Cartes</h1>
-            <p className="text-sm text-gray-500 font-medium uppercase tracking-wider mt-1">Scolaire • Togo</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Générateur de Cartes</h1>
+            <p className="text-xs text-emerald-800 font-bold uppercase tracking-[0.2em] mt-1.5">Scolaire • Togo</p>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 border border-gray-100 overflow-hidden">
-            {/* Tabs — masqués sur l'écran de confirmation */}
-            {mode !== 'confirm' && (
-              <div className="flex border-b border-gray-100">
-                <button type="button" onClick={() => setMode('login')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                    mode === 'login' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                  }`}>
-                  <IconLogin /> Connexion
-                </button>
-                <button type="button" onClick={() => setMode('register')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
-                    mode === 'register' ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50/50' : 'text-gray-400 hover:text-gray-600'
-                  }`}>
-                  <IconUserPlus /> Créer un compte
-                </button>
-              </div>
-            )}
-
-            <div className="p-8">
-              {mode === 'confirm' ? (
-                <ConfirmScreen
-                  email={confirmEmail}
-                  onBackToLogin={() => setMode('login')}
-                />
-              ) : (
-                <>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {mode === 'login' ? 'Bon retour 👋' : 'Créer votre compte'}
-                  </h2>
-                  <p className="text-sm text-gray-500 mb-6">
-                    {mode === 'login'
-                      ? 'Connectez-vous pour accéder à vos cartes scolaires.'
-                      : 'Remplissez le formulaire pour commencer.'}
-                  </p>
-                  {mode === 'login'
-                    ? <LoginForm key="login" onAuth={onAuth} />
-                    : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
-                  }
-                </>
+          <div className="double-bezel-outer">
+            <div className="double-bezel-inner overflow-hidden">
+              {/* Segmented Control Tabs — masqués sur l'écran de confirmation */}
+              {mode !== 'confirm' && (
+                <div className="flex p-1.5 bg-gray-50/80 border-b border-gray-100 gap-1.5">
+                  <button type="button" onClick={() => setMode('login')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                      mode === 'login' 
+                        ? 'bg-white text-emerald-800 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-black/[0.02]' 
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                    }`}>
+                    <IconLogin /> Connexion
+                  </button>
+                  <button type="button" onClick={() => setMode('register')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                      mode === 'register' 
+                        ? 'bg-white text-emerald-800 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-black/[0.02]' 
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                    }`}>
+                    <IconUserPlus /> Créer un compte
+                  </button>
+                </div>
               )}
+
+              <div className="p-8">
+                {mode === 'confirm' ? (
+                  <ConfirmScreen
+                    email={confirmEmail}
+                    onBackToLogin={() => setMode('login')}
+                  />
+                ) : (
+                  <>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">
+                      {mode === 'login' ? 'Bon retour 👋' : 'Créer votre compte'}
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                      {mode === 'login'
+                        ? 'Connectez-vous pour accéder à vos cartes scolaires.'
+                        : 'Remplissez le formulaire pour commencer.'}
+                    </p>
+                    {mode === 'login'
+                      ? <LoginForm key="login" onAuth={onAuth} />
+                      : <RegisterForm key="register" onAuth={onAuth} onNeedsConfirmation={handleNeedsConfirmation} />
+                    }
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            Vos données sont sauvegardées dans le cloud Supabase.
+            Vos données sont sauvegardées de manière sécurisée avec Supabase.
           </p>
         </div>
       </div>

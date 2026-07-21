@@ -53,8 +53,8 @@ function Root() {
 
   if (!ready || transitioning) {
     return (
-      <div className="min-h-screen bg-emerald-50 flex flex-col items-center justify-center gap-3">
-        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
+        <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin" />
         <p className="text-sm text-gray-500 font-medium">Chargement...</p>
       </div>
     );
@@ -76,3 +76,11 @@ createRoot(document.getElementById('root')!).render(
     <Root />
   </ErrorBoundary>,
 );
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
+      .catch(err => console.error('Erreur d\'enregistrement du Service Worker:', err));
+  });
+}

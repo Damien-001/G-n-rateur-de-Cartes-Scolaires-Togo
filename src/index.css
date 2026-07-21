@@ -1,13 +1,141 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+:root {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --brand: #059669; /* Luxurious emerald green representing Togo's primary identity but with modern saturation */
+  --brand-dark: #047857;
+  --brand-light: #10b981;
+  --brand-50: #f0fdf4;
+  --brand-100: #dcfce7;
+  --brand-shadow: rgba(5, 150, 105, 0.12);
+  --focus: 3px;
+  --spring-easing: cubic-bezier(0.32, 0.72, 0, 1);
+  --spring-duration: 0.6s;
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: var(--font-sans);
+    background-color: #faf9f6; /* Elegant cream-white off-white background */
+    @apply text-gray-900 antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Premium Buttons */
+  .btn-primary {
+    background-color: var(--brand);
+    color: white;
+    border-radius: 9999px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    box-shadow: 0 4px 12px var(--brand-shadow), inset 0 1px 0px rgba(255, 255, 255, 0.2);
+    transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), background-color 0.2s ease;
+    border: 1px solid rgba(5, 150, 105, 0.2);
+    cursor: pointer;
+  }
+  .btn-primary:hover {
+    background-color: var(--brand-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.2), inset 0 1px 0px rgba(255, 255, 255, 0.25);
+  }
+  .btn-primary:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .btn-secondary {
+    background-color: #ffffff;
+    color: #1f2937;
+    border-radius: 9999px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease;
+    cursor: pointer;
+  }
+  .btn-secondary:hover {
+    border-color: rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  }
+  .btn-secondary:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: #4b5563;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+  .btn-ghost:hover {
+    background-color: var(--brand-50);
+    color: var(--brand-dark);
+  }
+
+  /* Double-Bezel nested container classes */
+  .double-bezel-outer {
+    background-color: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    padding: 0.375rem;
+    border-radius: 1.5rem;
+  }
+  
+  .double-bezel-inner {
+    background-color: #ffffff;
+    border-radius: calc(1.5rem - 0.375rem);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  }
+
+  /* Grain/noise texture overlay */
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .brand-icon { background-color: var(--brand); color: #fff; }
+  .brand-bg { background-color: var(--brand); }
+  .brand-text { color: var(--brand-dark); }
+  .brand-50 { background-color: var(--brand-50); }
+  .brand-border { border-color: rgba(5,150,105,0.12); }
+
+  .shadow-brand { box-shadow: 0 8px 24px var(--brand-shadow); }
+
+  /* Focus and accessibility styling */
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  
+  /* Small helper utilities (non-Tailwind) */
+  .brand-text { color: var(--brand-dark); }
+  .text-brand { color: var(--brand); }
+  .brand-bg { background-color: var(--brand); color: white; }
+  .brand-icon { background-color: var(--brand); color: #fff; }
+  .brand-50 { background-color: var(--brand-50); }
+  .brand-border { border-color: rgba(5,150,105,0.12); }
+
+  .focus-brand:focus { box-shadow: 0 0 0 var(--focus) rgba(5,150,105,0.18); border-color: var(--brand); }
+  .hover-brand:hover { color: var(--brand-dark); }
+  .hover-bg-brand:hover { background-color: var(--brand-50); }
 }
 
 @media print {

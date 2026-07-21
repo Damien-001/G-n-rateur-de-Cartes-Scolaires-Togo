@@ -1,5 +1,6 @@
 import React from 'react';
 import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
+import { QRGenerator } from './QRGenerator';
 
 interface IDCardProps {
   student: Student;
@@ -30,29 +31,50 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
   const GRAY_BG = '#f3f4f6';
   const GRAY_BORDER = '#d1d5db';
 
+  const labelStyle = {
+    fontSize: 5.5,
+    color: '#64748b',
+    textTransform: 'uppercase' as const,
+    fontWeight: '800',
+    letterSpacing: '0.08em',
+    marginBottom: 1.5,
+    lineHeight: 1,
+  };
+
+  const valueStyle = {
+    fontSize: 8.5,
+    fontWeight: '800' as const,
+    color: '#0f172a',
+    lineHeight: 1.1,
+  };
+
   return (
     <div style={{
       position: 'relative',
       backgroundColor: '#ffffff',
-      border: '1px solid #d1d5db',
+      border: '1px solid #e2e8f0',
       overflow: 'hidden',
       width: '350px',
       height: '198px',
-      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontFamily: "'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      boxShadow: showCuttingMarks ? 'none' : '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+      borderRadius: showCuttingMarks ? 0 : 12,
     }}>
 
       {/* Cutting marks */}
       {showCuttingMarks && (
         <>
-          <div style={{ position: 'absolute', top: 0, left: -4, width: 10, height: 1, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', top: -4, left: 0, width: 1, height: 10, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', top: 0, right: -4, width: 10, height: 1, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', top: -4, right: 0, width: 1, height: 10, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', bottom: 0, left: -4, width: 10, height: 1, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', bottom: -4, left: 0, width: 1, height: 10, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', bottom: 0, right: -4, width: 10, height: 1, backgroundColor: '#000' }} />
-          <div style={{ position: 'absolute', bottom: -4, right: 0, width: 1, height: 10, backgroundColor: '#000' }} />
+          <div style={{ position: 'absolute', top: 0, left: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', top: -4, left: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', top: 0, right: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', top: -4, right: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', bottom: -4, left: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', bottom: 0, right: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
+          <div style={{ position: 'absolute', bottom: -4, right: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
         </>
       )}
 
@@ -60,332 +82,517 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
       <div style={{
         backgroundColor: HEADER_BG,
         color: HEADER_TEXT,
-        padding: '4px 8px',
+        padding: '5px 10px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 8,
-        height: 46,
+        height: 48,
         boxSizing: 'border-box',
+        zIndex: 2,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', flex: 1 }}>
           {schoolInfo.logoUrl ? (
             <img
               src={schoolInfo.logoUrl}
               alt="Logo"
               style={{
-                width: 34,
-                height: 34,
+                width: 32,
+                height: 32,
                 objectFit: 'contain',
                 backgroundColor: '#ffffff',
-                borderRadius: 3,
-                padding: 2,
+                borderRadius: 6,
+                padding: 1.5,
+                border: '1px solid rgba(255,255,255,0.2)',
                 flexShrink: 0,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               }}
             />
           ) : (
             <div style={{
-              width: 34,
-              height: 34,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              borderRadius: 3,
+              width: 32,
+              height: 32,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderRadius: 6,
               flexShrink: 0,
-            }} />
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: 12, color: HEADER_TEXT }}>🏫</span>
+            </div>
           )}
-          <div style={{ overflow: 'hidden' }}>
+          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <div style={{
-              fontSize: 10,
-              fontWeight: 'bold',
+              fontSize: 8.5,
+              fontWeight: '900',
               textTransform: 'uppercase',
-              lineHeight: 1.2,
+              lineHeight: 1.1,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               color: HEADER_TEXT,
+              letterSpacing: '0.01em',
             }}>
               {schoolInfo.name}
             </div>
-            <div style={{ fontSize: 8, opacity: 0.9, color: HEADER_TEXT }}>
+            <div style={{ 
+              fontSize: 6.5, 
+              opacity: 0.85, 
+              color: HEADER_TEXT,
+              fontWeight: '700',
+              letterSpacing: '0.06em',
+              lineHeight: 1,
+            }}>
               RÉPUBLIQUE TOGOLAISE
             </div>
           </div>
         </div>
         
-        {/* Année Scolaire */}
+        {/* Année Scolaire Badge */}
         <div style={{ 
           textAlign: 'right',
           flexShrink: 0,
-          paddingRight: 4,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 2,
         }}>
-          <div style={{ 
-            fontSize: 7, 
-            opacity: 0.85, 
+          <div style={{
+            fontSize: 7,
+            fontWeight: '900',
             color: HEADER_TEXT,
+            backgroundColor: 'rgba(255,255,255,0.18)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 20,
+            padding: '1.5px 6px',
+            letterSpacing: '0.04em',
+            lineHeight: 1,
             textTransform: 'uppercase',
-            fontWeight: 'bold',
-            letterSpacing: 0.3,
-            marginBottom: 1,
           }}>
-            Année Scolaire
+            Carte d'élève
           </div>
           <div style={{ 
-            fontSize: 9, 
-            fontWeight: 'bold', 
+            fontSize: 7.5, 
+            fontWeight: '800', 
             color: HEADER_TEXT,
             whiteSpace: 'nowrap',
+            opacity: 0.9,
+            letterSpacing: '0.02em',
           }}>
-            {student.schoolYear}
+            A.S. {student.schoolYear}
           </div>
         </div>
       </div>
 
-      {/* Body */}
+      {/* Official Togo Flag Strip separator with diagonal security lines overlay */}
       <div style={{
+        display: 'flex',
+        height: 4,
+        width: '100%',
+        position: 'relative',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        zIndex: 2,
+      }}>
+        {/* Red Canton with white star */}
+        <div style={{
+          width: 24,
+          height: 4,
+          backgroundColor: '#d21034',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <svg viewBox="0 0 10 10" width="3.2" height="3.2" fill="#ffffff">
+            <polygon points="5,1 6,4 9,4 7,6 8,9 5,7 2,9 3,6 1,4 4,4" />
+          </svg>
+        </div>
+        {/* 5 Alternating stripes */}
+        <div style={{
+          flex: 1,
+          height: 4,
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div style={{ flex: 1, backgroundColor: '#006a4e' }} />
+          <div style={{ flex: 1, backgroundColor: '#ffc72c' }} />
+          <div style={{ flex: 1, backgroundColor: '#006a4e' }} />
+          <div style={{ flex: 1, backgroundColor: '#ffc72c' }} />
+          <div style={{ flex: 1, backgroundColor: '#006a4e' }} />
+        </div>
+      </div>
+
+      {/* Body Area */}
+      <div style={{
+        position: 'relative',
         display: 'flex',
         gap: 10,
         padding: '8px 10px',
-        height: 148,
+        height: 142,
         boxSizing: 'border-box',
+        flex: 1,
       }}>
 
-        {/* Left column: photo + matricule */}
+        {/* Background Guilloché (security wave lines) & Watermark */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+          <svg width="100%" height="100%" opacity="0.03" stroke="#000" fill="none">
+            <path d="M 0,15 Q 30,5 60,15 T 120,15 T 180,15 T 240,15 T 300,15 T 360,15" strokeWidth="0.5" />
+            <path d="M 0,35 Q 30,25 60,35 T 120,35 T 180,35 T 240,35 T 300,35 T 360,35" strokeWidth="0.5" />
+            <path d="M 0,55 Q 30,45 60,55 T 120,55 T 180,55 T 240,55 T 300,55 T 360,55" strokeWidth="0.5" />
+            <path d="M 0,75 Q 30,65 60,75 T 120,75 T 180,75 T 240,75 T 300,75 T 360,75" strokeWidth="0.5" />
+            <path d="M 0,95 Q 30,85 60,95 T 120,95 T 180,95 T 240,95 T 300,95 T 360,95" strokeWidth="0.5" />
+            <path d="M 0,115 Q 30,105 60,115 T 120,115 T 180,115 T 240,115 T 300,115 T 360,115" strokeWidth="0.5" />
+            <path d="M 0,135 Q 30,125 60,135 T 120,135 T 180,135 T 240,135 T 300,135 T 360,135" strokeWidth="0.5" />
+          </svg>
+
+          {/* Central coat-of-arms-inspired Togo watermark */}
+          <svg viewBox="0 0 120 120" style={{
+            position: 'absolute',
+            top: '55%',
+            left: '52%',
+            transform: 'translate(-50%, -50%)',
+            width: '94px',
+            height: '94px',
+            opacity: 0.04,
+            color: HEADER_BG,
+          }}>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2,2" />
+            <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="1" />
+            <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="0.5" />
+            <path d="M45,45 Q60,40 75,45 Q78,65 60,85 Q42,65 45,45 Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <polygon points="60,46 62,52 68,52 63,56 65,62 60,58 55,62 57,56 52,52 58,52" fill="currentColor" />
+            <text x="60" y="74" textAnchor="middle" fontSize="12" fontWeight="900" fontFamily="monospace" fill="currentColor">RT</text>
+            <path d="M36,50 Q28,68 44,84" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1,1.5" />
+            <path d="M84,50 Q92,68 76,84" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1,1.5" />
+            <line x1="15" y1="60" x2="25" y2="60" stroke="currentColor" strokeWidth="0.5" />
+            <line x1="95" y1="60" x2="105" y2="60" stroke="currentColor" strokeWidth="0.5" />
+          </svg>
+        </div>
+
+        {/* Left Column: Photo + Matricule */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 4,
-          width: 72,
+          width: 68,
           flexShrink: 0,
+          zIndex: 1,
         }}>
-          {/* Photo */}
+          {/* Photo frame with double-bezel borders */}
           <div style={{
             width: 68,
-            height: 82,
-            backgroundColor: GRAY_BG,
-            border: `1px solid ${GRAY_BORDER}`,
-            borderRadius: 3,
-            overflow: 'hidden',
+            height: 80,
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 6,
+            padding: 2,
+            boxSizing: 'border-box',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0,
             position: 'relative',
+            overflow: 'hidden',
           }}>
-            {student.photoUrl ? (
-              <img
-                src={student.photoUrl}
-                alt="Student"
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
-              />
-            ) : (
-              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke={GRAY_BORDER} strokeWidth="1.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            )}
+            <div style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 4,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f1f5f9',
+            }}>
+              {student.photoUrl ? (
+                <img
+                  src={student.photoUrl}
+                  alt="Student"
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              )}
+            </div>
           </div>
 
-          {/* Matricule */}
+          {/* Monospace Matricule badge */}
           <div style={{
-            fontSize: 7,
-            fontWeight: 'bold',
+            fontSize: 6.5,
+            fontWeight: '800',
             color: MATRICULE_COLOR,
-            letterSpacing: 0.5,
+            backgroundColor: `${MATRICULE_COLOR}12`,
+            border: `1px solid ${MATRICULE_COLOR}25`,
+            borderRadius: 4,
+            padding: '3px 4px',
+            letterSpacing: '0.05em',
             textAlign: 'center',
             lineHeight: 1,
+            width: 68,
+            boxSizing: 'border-box',
+            marginTop: 5,
+            fontFamily: "'Courier New', Courier, monospace",
+            textTransform: 'uppercase',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
           }}>
             {student.matricule}
           </div>
         </div>
 
-        {/* Right column: info */}
+        {/* Middle Column: Details Grid */}
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          overflow: 'hidden',
           minWidth: 0,
+          zIndex: 1,
         }}>
-          <div style={{ display: 'flex', gap: 3 }}>
-            {/* Colonnes 1 et 2 : Toutes les infos */}
-            <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Nom & Prénoms */}
-              <div style={{ marginBottom: 0 }}>
-                <div style={{
-                  fontSize: 6,
-                  color: GRAY_LABEL,
-                  textTransform: 'uppercase',
-                  fontWeight: 'bold',
-                  marginBottom: 1,
-                  letterSpacing: 0.3,
-                }}>
-                  Noms et Prénoms
-                </div>
-                <div style={{
-                  fontSize: 13,
-                  fontWeight: 'bold',
-                  color: '#111827',
-                  textTransform: 'uppercase',
-                  lineHeight: 1.1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {student.lastName} {student.firstName}
-                </div>
-              </div>
-
-              {/* Ligne 1: Classe + Centre d'examen */}
-              <div style={{ display: 'flex', gap: 3 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 6, color: GRAY_LABEL, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 1, letterSpacing: 0.3 }}>
-                    Classe
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: '600', color: GRAY_VALUE }}>
-                    {student.className}
-                  </div>
-                </div>
-                
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 6, color: GRAY_LABEL, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 1, letterSpacing: 0.3 }}>
-                    Centre d'examen
-                  </div>
-                  <div style={{
-                    fontSize: 9,
-                    fontWeight: '600',
-                    color: GRAY_VALUE,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {student.examCenter || '----'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Ligne 2: Né(e) le + Lieu */}
-              <div style={{ display: 'flex', gap: 3 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 6, color: GRAY_LABEL, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 1, letterSpacing: 0.3 }}>
-                    Né(e) le
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: '600', color: GRAY_VALUE, marginBottom: 3 }}>
-                    {formatDate(student.birthDate)}
-                  </div>
-                  
-                  {/* Signature sous la date de naissance */}
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 6, fontStyle: 'italic', color: GRAY_LABEL, marginBottom: 2 }}>
-                      Le Proviseur
-                    </div>
-                    <div style={{
-                      height: 24,
-                      width: 60,
-                      borderBottom: '1px solid #e5e7eb',
-                      position: 'relative',
-                    }}>
-                      {schoolInfo.signatureUrl && (
-                        <img
-                          src={schoolInfo.signatureUrl}
-                          alt="Signature"
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            opacity: 0.9,
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 6, color: GRAY_LABEL, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 1, letterSpacing: 0.3 }}>
-                    à
-                  </div>
-                  <div style={{
-                    fontSize: 9,
-                    fontWeight: '600',
-                    color: GRAY_VALUE,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    marginBottom: 3,
-                  }}>
-                    {student.birthPlace || '----'}
-                  </div>
-                  
-                  {/* Date d'expiration sous le lieu de naissance */}
-                  <div>
-                    <div style={{ fontSize: 6, color: GRAY_LABEL, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 1, letterSpacing: 0.3 }}>
-                      Expire le
-                    </div>
-                    <div style={{
-                      fontSize: 9,
-                      fontWeight: '600',
-                      color: GRAY_VALUE,
-                    }}>
-                      {student.expirationDate ? formatDate(student.expirationDate) : '----'}
-                    </div>
-                  </div>
-                </div>
+          <div>
+            {/* Student Name field */}
+            <div style={{ marginBottom: 4 }}>
+              <div style={labelStyle}>Noms et Prénoms</div>
+              <div style={{
+                fontSize: 10.5,
+                fontWeight: '900',
+                color: '#0f172a',
+                textTransform: 'uppercase',
+                lineHeight: 1.1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {student.lastName} {student.firstName}
               </div>
             </div>
 
-            {/* Colonne 3: Cachet sur toute la hauteur (3 lignes) */}
-            <div style={{ flex: '0 0 40%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 6, fontStyle: 'italic', color: GRAY_LABEL, marginBottom: 2 }}>
-                  Cachet
-                </div>
+            {/* Inner Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1.1fr',
+              gap: '4px 6px',
+            }}>
+              {/* Classe */}
+              <div>
+                <div style={labelStyle}>Classe</div>
+                <div style={valueStyle}>{student.className}</div>
+              </div>
+              
+              {/* Centre d'examen */}
+              <div>
+                <div style={labelStyle}>Centre d'examen</div>
                 <div style={{
-                  height: 60,
-                  width: 60,
-                  border: '1px dashed #e5e7eb',
-                  borderRadius: '50%',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {schoolInfo.stampUrl ? (
-                    <img
-                      src={schoolInfo.stampUrl}
-                      alt="Cachet"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        opacity: 0.9,
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      fontSize: 14,
-                      color: GRAY_BORDER,
-                      textAlign: 'center',
-                      lineHeight: 1,
-                    }}>
-                      ○
-                    </div>
-                  )}
+                  ...valueStyle,
+                  fontSize: 7.5,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }} title={student.examCenter || '----'}>
+                  {student.examCenter || '----'}
                 </div>
               </div>
+
+              {/* Date de naissance */}
+              <div>
+                <div style={labelStyle}>Né(e) le</div>
+                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
+              </div>
+              
+              {/* Lieu de naissance */}
+              <div>
+                <div style={labelStyle}>À (Lieu)</div>
+                <div style={{
+                  ...valueStyle,
+                  fontSize: 7.5,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }} title={student.birthPlace || '----'}>
+                  {student.birthPlace || '----'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Secure Barcode area at bottom of details */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <svg viewBox="0 0 100 20" style={{ width: 75, height: 13, opacity: 0.8 }}>
+                <rect x="0" width="2.5" height="20" fill="#000" />
+                <rect x="4" width="1" height="20" fill="#000" />
+                <rect x="6" width="3" height="20" fill="#000" />
+                <rect x="11" width="1" height="20" fill="#000" />
+                <rect x="13" width="2" height="20" fill="#000" />
+                <rect x="16" width="4.5" height="20" fill="#000" />
+                <rect x="22" width="1" height="20" fill="#000" />
+                <rect x="24" width="2" height="20" fill="#000" />
+                <rect x="27" width="3.5" height="20" fill="#000" />
+                <rect x="32" width="1" height="20" fill="#000" />
+                <rect x="34" width="4" height="20" fill="#000" />
+                <rect x="39" width="2" height="20" fill="#000" />
+                <rect x="42" width="1" height="20" fill="#000" />
+                <rect x="44" width="3" height="20" fill="#000" />
+                <rect x="49" width="1" height="20" fill="#000" />
+                <rect x="52" width="2.5" height="20" fill="#000" />
+                <rect x="56" width="4" height="20" fill="#000" />
+                <rect x="61" width="1" height="20" fill="#000" />
+                <rect x="63" width="2" height="20" fill="#000" />
+                <rect x="66" width="3.5" height="20" fill="#000" />
+                <rect x="71" width="1" height="20" fill="#000" />
+                <rect x="73" width="4" height="20" fill="#000" />
+                <rect x="78" width="2" height="20" fill="#000" />
+                <rect x="81" width="1" height="20" fill="#000" />
+                <rect x="83" width="3" height="20" fill="#000" />
+                <rect x="88" width="1.5" height="20" fill="#000" />
+                <rect x="91" width="2" height="20" fill="#000" />
+                <rect x="94" width="4" height="20" fill="#000" />
+                <rect x="99" width="1" height="20" fill="#000" />
+              </svg>
+              <div style={{ fontSize: 4.5, color: '#94a3b8', fontFamily: 'monospace', letterSpacing: 0.5, textAlign: 'center', marginTop: 1, lineHeight: 1 }}>
+                * {student.matricule || 'STUDENT'} *
+              </div>
+            </div>
+            
+            {/* Dynamic Security QR Code & Micro Hologram */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <QRGenerator value={student.matricule || 'PREVIEW'} size={25} fgColor="#0f172a" />
+              
+              {/* Micro Hologram sticker next to it */}
+              <div style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ff0077 0%, #00ffcc 50%, #ffcc00 100%)',
+                opacity: 0.65,
+                border: '0.75px solid rgba(255,255,255,0.8)',
+                boxShadow: '0 0.5px 1.5px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}>
+                <div style={{ fontSize: 4.5, fontWeight: '900', color: '#ffffff', transform: 'rotate(-15deg)', fontFamily: 'sans-serif', textShadow: '0 0.5px 0.5px rgba(0,0,0,0.2)' }}>RT</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Expiration, Stamp & Signature */}
+        <div style={{
+          width: 78,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderLeft: '1px dashed #e2e8f0',
+          paddingLeft: 6,
+          boxSizing: 'border-box',
+          zIndex: 1,
+        }}>
+          {/* Expiration date as a green security badge */}
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            <div style={{ ...labelStyle, textAlign: 'center' }}>Expire le</div>
+            <div style={{
+              fontSize: 7.5,
+              fontWeight: '800',
+              color: '#047857',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              borderRadius: 12,
+              padding: '2px 4px',
+              textAlign: 'center',
+              width: '100%',
+              boxSizing: 'border-box',
+              marginTop: 1,
+              lineHeight: 1,
+            }}>
+              {student.expirationDate ? formatDate(student.expirationDate) : '----'}
+            </div>
+          </div>
+
+          {/* Cachet stamp location */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <div style={{ fontSize: 5, fontStyle: 'italic', color: '#94a3b8', fontWeight: '800', marginBottom: 1, lineHeight: 1 }}>CACHET</div>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: '50%',
+              border: '1px dashed #cbd5e1',
+              backgroundColor: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              {schoolInfo.stampUrl ? (
+                <img
+                  src={schoolInfo.stampUrl}
+                  alt="Cachet"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    opacity: 0.95,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  fontSize: 7,
+                  color: '#cbd5e1',
+                  textAlign: 'center',
+                  lineHeight: 1,
+                  fontFamily: 'monospace',
+                }}>
+                  SEAL
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Signature Proviseur */}
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: 5, fontStyle: 'italic', color: '#94a3b8', fontWeight: '800', lineHeight: 1 }}>LE PROVISEUR</div>
+            <div style={{
+              height: 18,
+              width: '100%',
+              borderBottom: '1px solid #f1f5f9',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 1,
+            }}>
+              {schoolInfo.signatureUrl && (
+                <img
+                  src={schoolInfo.signatureUrl}
+                  alt="Signature"
+                  style={{
+                    position: 'absolute',
+                    maxHeight: '100%',
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                    opacity: 0.95,
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Footer green bar */}
+      {/* Footer bar */}
       <div style={{
         position: 'absolute',
         bottom: 0,
@@ -393,6 +600,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
         right: 0,
         height: 4,
         backgroundColor: FOOTER_BAR,
+        zIndex: 2,
       }} />
     </div>
   );
