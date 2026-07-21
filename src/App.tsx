@@ -43,6 +43,8 @@ export default function App({ session, onLogout }: AppProps) {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
+  const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -332,34 +334,85 @@ export default function App({ session, onLogout }: AppProps) {
             </button>
             <div className="h-6 w-px bg-gray-200" />
             <span className="text-sm text-gray-500 font-medium">
-              Aperçu avant impression ({studentsToPrint.length} élèves)
+              Aperçu ({studentsToPrint.length} élèves)
             </span>
           </div>
+
+          {/* Interactive Print Options */}
+          <div className="hidden md:flex items-center gap-6">
+            {/* Print Mode Selector */}
             <div className="flex items-center gap-2">
-              <Palette className="w-5 h-5 brand-text" />
-              <h2 className="font-bold text-gray-900">Couleurs de la carte</h2>
+              <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
+              <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                <button
+                  onClick={() => setPrintMode('recto')}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Recto Seul
+                </button>
+                <button
+                  onClick={() => setPrintMode('recto-verso')}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Recto/Verso
+                </button>
+              </div>
             </div>
-            <button
-              onClick={generatePDF}
-              title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isGeneratingPDF}
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Ouverture...
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-5 h-5" />
-                  Télécharger le PDF
-                </>
-              )}
-            </button>
+
+            {/* Cards Density Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase">Cartes / Page:</span>
+              <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                <button
+                  onClick={() => setCardsPerPage(8)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  8 (Espacé)
+                </button>
+                <button
+                  onClick={() => setCardsPerPage(10)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                    cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  10 (Compact)
+                </button>
+              </div>
+            </div>
           </div>
+
+          <button
+            onClick={generatePDF}
+            title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isGeneratingPDF}
+          >
+            {isGeneratingPDF ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Ouverture...
+              </>
+            ) : (
+              <>
+                <FileDown className="w-5 h-5" />
+                Télécharger le PDF
+              </>
+            )}
+          </button>
+        </div>
         <div className="pt-20 pb-12 print:pt-0 print:pb-0">
-          <PrintLayout students={studentsToPrint} schoolInfo={schoolInfo} />
+          <PrintLayout 
+            students={studentsToPrint} 
+            schoolInfo={schoolInfo} 
+            printMode={printMode}
+            cardsPerPage={cardsPerPage}
+          />
         </div>
       </div>
     );
