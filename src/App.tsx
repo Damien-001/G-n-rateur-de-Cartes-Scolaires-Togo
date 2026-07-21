@@ -403,15 +403,7 @@ export default function App({ session, onLogout }: AppProps) {
         <div className="flex-1 min-w-0 overflow-y-auto">
           <div className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setActiveTab('students')}
-                className="flex items-center gap-2 text-gray-600 hover-brand font-medium transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-5 h-5 rotate-180" />
-                Retour
-              </button>
-              <div className="h-6 w-px bg-gray-200" />
-              <span className="text-sm text-gray-500 font-medium">
+              <span className="text-sm text-gray-800 font-bold">
                 Aperçu d'impression ({studentsToPrint.length} élèves)
               </span>
             </div>

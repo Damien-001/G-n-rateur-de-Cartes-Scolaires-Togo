@@ -75,12 +75,6 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
         {/* Navigation & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={onBack}
-              className="p-2 bg-white hover:bg-gray-50 border border-gray-100 rounded-xl transition-all shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
                 <Settings className="w-6 h-6 text-emerald-600" />
