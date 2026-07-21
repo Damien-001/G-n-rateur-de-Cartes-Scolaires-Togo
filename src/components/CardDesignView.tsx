@@ -358,7 +358,7 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
             </h2>
 
             {/* Recto / Verso stacked frame */}
-            <div className="flex flex-col sm:flex-row gap-8 items-center justify-center scale-95 sm:scale-100 transition-all duration-300">
+            <div className="flex flex-col gap-6 items-center justify-center scale-95 sm:scale-100 transition-all duration-300">
               {/* Front side */}
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
