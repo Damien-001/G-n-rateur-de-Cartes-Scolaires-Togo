@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Student, SchoolInfo, CLASSES_LIST, SCHOOL_YEARS } from '../types';
 import { X, Upload, Plus, Trash2, Edit2, Camera, User, Calendar, MapPin, Shield, Landmark, BookOpen, AlertCircle } from 'lucide-react';
 import { IDCard } from './IDCard';
+import { IDCardBack } from './IDCardBack';
 
 interface StudentFormProps {
   student?: Student;
@@ -215,6 +216,18 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       setIsSubmitting(false);
     }
   };
+
+  const previewStudent: Student = {
+    ...formData,
+    id: student?.id || 'preview',
+    firstName: formData.firstName || 'Prénoms',
+    lastName: formData.lastName || 'NOM',
+    matricule: formData.matricule || 'MATRICULE',
+    className: formData.className || 'CLASSE',
+    schoolYear: formData.schoolYear || '2025-2026',
+    birthDate: formData.birthDate || 'DATE',
+    birthPlace: formData.birthPlace || 'LIEU',
+  } as Student;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
@@ -516,42 +529,44 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       </div>
 
       {/* Preview Section */}
-      <div className="hidden md:flex flex-col w-[420px] bg-gray-50/50 p-8 items-center justify-center relative border-l border-gray-100">
+      <div className="hidden md:flex flex-col w-[420px] bg-gray-50/50 p-8 items-center justify-start overflow-y-auto relative border-l border-gray-100 max-h-[90vh]">
         <button 
           onClick={onCancel} 
-          className="absolute top-4 right-4 p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer"
+          className="absolute top-4 right-4 p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
         
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 pt-6">
           <span className="text-[10px] font-extrabold text-emerald-800 tracking-[0.2em] uppercase bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/50">
             Aperçu en temps réel
           </span>
           <p className="text-xs text-gray-400 mt-2 font-medium">Les modifications apparaissent instantanément</p>
         </div>
 
-        <div className="p-3 bg-gray-100/60 rounded-3xl border border-gray-200/50 shadow-sm scale-105">
-          <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-300 bg-white">
-            <IDCard 
-              student={{
-                ...formData,
-                id: student?.id || 'preview',
-                firstName: formData.firstName || 'Prénoms',
-                lastName: formData.lastName || 'NOM',
-                matricule: formData.matricule || 'MATRICULE',
-                className: formData.className || 'CLASSE',
-                schoolYear: formData.schoolYear || '2025-2026',
-                birthDate: formData.birthDate || 'DATE',
-                birthPlace: formData.birthPlace || 'LIEU',
-              } as Student} 
-              schoolInfo={schoolInfo} 
-              showCuttingMarks={false}
-            />
+        <div className="flex flex-col gap-6 items-center w-full py-4 shrink-0">
+          {/* Recto */}
+          <div className="flex flex-col items-center gap-1.5 w-full">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
+            <div className="p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-95 origin-center bg-white">
+              <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
+                <IDCard student={previewStudent} schoolInfo={schoolInfo} showCuttingMarks={false} />
+              </div>
+            </div>
+          </div>
+
+          {/* Verso */}
+          <div className="flex flex-col items-center gap-1.5 w-full">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Verso (Dos)</span>
+            <div className="p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-95 origin-center bg-white">
+              <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
+                <IDCardBack student={previewStudent} schoolInfo={schoolInfo} />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 px-5 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-[280px]">
+        <div className="mt-4 px-5 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-[280px] w-full shrink-0">
           <p className="text-[10px] text-emerald-850 font-bold leading-relaxed text-center">
             Note : Les dimensions réelles de la carte (85x54mm) seront respectées lors de l'impression.
           </p>
