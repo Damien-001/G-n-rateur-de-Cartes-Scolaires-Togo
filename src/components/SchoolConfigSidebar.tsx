@@ -251,6 +251,46 @@ export const SchoolConfigSidebar: React.FC<SchoolConfigSidebarProps> = ({
                 </div>
               );
             })}
+
+            {/* Background Security Template Selector */}
+            <div className="pt-4 border-t border-gray-100 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Motif de fond (Sécurité)</label>
+                <select
+                  value={currentColors.bgTemplate || 'guilloche'}
+                  onChange={(e) => setSchoolInfo({
+                    ...schoolInfo,
+                    cardColors: { ...currentColors, bgTemplate: e.target.value as any }
+                  })}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 outline-none text-xs font-semibold bg-white focus-brand transition-all cursor-pointer"
+                >
+                  <option value="guilloche">Motif Guilloché (Ondes)</option>
+                  <option value="flag">Dégradé Couleurs Togo</option>
+                  <option value="geometric">Géométrique Institutionnel</option>
+                  <option value="minimal">Minimaliste (Blanc uni)</option>
+                </select>
+              </div>
+
+              {currentColors.bgTemplate !== 'minimal' && (
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Opacité du motif</label>
+                    <span className="text-xs text-emerald-800 font-extrabold">{currentColors.bgOpacity !== undefined ? currentColors.bgOpacity : 4}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="18"
+                    value={currentColors.bgOpacity !== undefined ? currentColors.bgOpacity : 4}
+                    onChange={(e) => setSchoolInfo({
+                      ...schoolInfo,
+                      cardColors: { ...currentColors, bgOpacity: parseInt(e.target.value) }
+                    })}
+                    className="w-full accent-emerald-600 cursor-pointer"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </div>

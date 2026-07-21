@@ -17,6 +17,8 @@ export interface CardColors {
   headerText: string;  // Header text
   footerBar: string;   // Bottom accent bar
   matriculeText: string; // Matricule color
+  bgTemplate?: 'guilloche' | 'flag' | 'geometric' | 'minimal';
+  bgOpacity?: number;   // 0 to 100 (percentage)
 }
 
 export interface SchoolInfo {
