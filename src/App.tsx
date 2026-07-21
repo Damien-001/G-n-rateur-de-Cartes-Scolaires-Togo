@@ -26,6 +26,7 @@ import { SchoolSettings } from './components/SchoolSettings';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
 import { SchoolSettingsView } from './components/SchoolSettingsView';
+import { CardDesignView } from './components/CardDesignView';
 
 
 interface AppProps {
@@ -47,7 +48,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
-  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings' | 'billing'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -356,6 +357,7 @@ export default function App({ session, onLogout }: AppProps) {
             <nav className="space-y-1">
               {[
                 { id: 'students', label: 'Gestion des élèves', icon: Users },
+                { id: 'design', label: 'Design de la carte', icon: Palette },
                 { id: 'print', label: 'Impression des cartes', icon: FileDown },
                 { id: 'settings', label: "Paramètres de l'école", icon: Settings },
                 { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
@@ -513,6 +515,7 @@ export default function App({ session, onLogout }: AppProps) {
           <nav className="space-y-1">
             {[
               { id: 'students', label: 'Gestion des élèves', icon: Users },
+              { id: 'design', label: 'Design de la carte', icon: Palette },
               { id: 'print', label: 'Impression des cartes', icon: FileDown },
               { id: 'settings', label: "Paramètres de l'école", icon: Settings },
               { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
@@ -579,7 +582,16 @@ export default function App({ session, onLogout }: AppProps) {
         )}
 
         {/* Tab switcher render */}
-        {activeTab === 'settings' ? (
+        {activeTab === 'design' ? (
+          <CardDesignView 
+            schoolInfo={schoolInfo}
+            studentsCount={students.length}
+            onSaveSchoolInfo={async (newInfo) => {
+              setSchoolInfo(newInfo);
+              await saveSchoolInfo(newInfo, session.userId);
+            }}
+          />
+        ) : activeTab === 'settings' ? (
           <SchoolSettingsView 
             session={session}
             schoolInfo={schoolInfo}
