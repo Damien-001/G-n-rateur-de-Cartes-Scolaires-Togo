@@ -286,3 +286,149 @@ export function dataUrlToFile(dataUrl: string, filename: string): File {
   for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
   return new File([array], filename, { type: mime });
 }
+
+// ─── Admin SaaS Helpers ────────────────────────────────────────────────────────
+
+export interface AdminSchoolDetail extends SchoolInfo {
+  userId: string;
+  updatedAt?: string;
+  studentCount?: number;
+}
+
+/** Fetches all school info entries for SaaS administration */
+export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
+  try {
+    const { data: schoolsData, error: schoolsError } = await supabase
+      .from('school_info')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (schoolsError) throw schoolsError;
+    if (!schoolsData) return [];
+
+    // For each school, fetch student counts using Promise.all
+    const schoolsWithCounts = await Promise.all(
+      (schoolsData as DbSchoolInfo[]).map(async (row) => {
+        const baseInfo = dbToSchoolInfo(row);
+        
+        // Fetch student count for this user_id
+        let studentCount = 0;
+        try {
+          const { count, error } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', row.user_id);
+          
+          if (!error && count !== null) {
+            studentCount = count;
+          }
+        } catch (err) {
+          console.error(`Error counting students for user ${row.user_id}:`, err);
+        }
+
+        return {
+          ...baseInfo,
+          userId: row.user_id,
+          updatedAt: row.updated_at,
+          studentCount: studentCount
+        };
+      })
+    );
+
+    return schoolsWithCounts;
+  } catch (e: any) {
+    console.error('fetchAllSchools error:', e.message);
+    return [];
+  }
+}
+
+/** Fetches total count of all student cards in the system */
+export async function fetchAllStudentsCount(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('students')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return count ?? 0;
+  } catch (e: any) {
+    console.error('fetchAllStudentsCount error:', e.message);
+    return 0;
+  }
+}
+
+/** Upgrade or modify a school's subscription plan directly */
+export async function updateSchoolSubscription(
+  schoolUserId: string,
+  plan: 'free' | 'pro',
+  expiresAt: string
+): Promise<boolean> {
+  try {
+    // 1. Fetch current school info
+    const { data: currentData, error: fetchError } = await supabase
+      .from('school_info')
+      .select('*')
+      .eq('user_id', schoolUserId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!currentData) return false;
+
+    // 2. Prepare updated colors and subscription data
+    const currentColors = currentData.card_colors ?? DEFAULT_CARD_COLORS;
+    const updatedRow = {
+      ...currentData,
+      card_colors: {
+        ...currentColors,
+        subscriptionPlan: plan,
+        subscriptionExpiresAt: expiresAt
+      },
+      updated_at: new Date().toISOString()
+    };
+
+    // 3. Upsert update
+    const { error: updateError } = await supabase
+      .from('school_info')
+      .upsert(updatedRow, { onConflict: 'user_id' });
+
+    if (updateError) throw updateError;
+    
+    // Log the audit event
+    await saveAdminLog(
+      schoolUserId,
+      'subscription_updated',
+      `Plan mis à jour vers: ${plan.toUpperCase()} (Expire le: ${expiresAt})`
+    );
+
+    return true;
+  } catch (e: any) {
+    console.error('updateSchoolSubscription error:', e.message);
+    return false;
+  }
+}
+
+/** Save log entry to Supabase audit_logs (with catch block fallback) */
+export async function saveAdminLog(
+  schoolUserId: string | null,
+  action: string,
+  details: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('audit_logs')
+      .insert({
+        school_id: schoolUserId,
+        action: action,
+        details: details,
+        created_at: new Date().toISOString()
+      });
+      
+    if (error) {
+      // Muted as audit_logs table may not exist yet or not have RLS public write config
+      console.warn('saveAdminLog silent skip:', error.message);
+    }
+  } catch (e) {
+    // Fail silently so it doesn't break user actions
+  }
+}
+

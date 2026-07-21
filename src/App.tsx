@@ -27,6 +27,7 @@ import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
 import { SchoolSettingsView } from './components/SchoolSettingsView';
 import { CardDesignView } from './components/CardDesignView';
+import { AdminDashboardView } from './components/AdminDashboardView';
 
 
 interface AppProps {
@@ -49,6 +50,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
+  const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -333,13 +335,31 @@ export default function App({ session, onLogout }: AppProps) {
       </div>
     );
   }
-  
+  if (isAdminView) {
+    return (
+      <AdminDashboardView 
+        session={session}
+        onLogout={handleLogout}
+        onSwitchToSchoolView={() => setIsAdminView(false)}
+      />
+    );
+  }
+
   if (activeTab === 'print') {
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
         {/* Global Sidebar */}
         <aside className="w-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
           <div className="space-y-8">
+            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+              <button
+                onClick={() => setIsAdminView(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
+              >
+                <Shield className="w-4 h-4" />
+                Console d'administration
+              </button>
+            )}
             {/* School logo & identity */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
@@ -498,8 +518,17 @@ export default function App({ session, onLogout }: AppProps) {
       {/* Global Navigation Sidebar */}
       <aside className="w-full md:h-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
         <div className="space-y-8">
-          {/* Logo & School Name */}
-          <div className="flex items-center gap-3">
+            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+              <button
+                onClick={() => setIsAdminView(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
+              >
+                <Shield className="w-4 h-4" />
+                Console d'administration
+              </button>
+            )}
+            {/* Logo & School Name */}
+            <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
               <Palette className="w-5 h-5" />
             </div>
