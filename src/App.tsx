@@ -38,7 +38,6 @@ export default function App({ session, onLogout }: AppProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSchoolSettingsOpen, setIsSchoolSettingsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
-  const [view, setView] = useState<'manage' | 'preview' | 'settings'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +46,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
+  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings'>('students');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -331,10 +331,7 @@ export default function App({ session, onLogout }: AppProps) {
       </div>
     );
   }
-
-  // Active Tab state for Global Sidebar
-  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings'>('students');
-
+  
   if (activeTab === 'print') {
     return (
       <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
