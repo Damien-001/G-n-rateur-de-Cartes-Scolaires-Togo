@@ -23,6 +23,7 @@ import { SchoolSettings } from './components/SchoolSettings';
 import { DashboardHeader } from './components/DashboardHeader';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
+import { SchoolSettingsView } from './components/SchoolSettingsView';
 
 
 interface AppProps {
@@ -36,7 +37,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSchoolSettingsOpen, setIsSchoolSettingsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
-  const [view, setView] = useState<'manage' | 'preview'>('manage');
+  const [view, setView] = useState<'manage' | 'preview' | 'settings'>('manage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -329,6 +330,20 @@ export default function App({ session, onLogout }: AppProps) {
       </div>
     );
   }
+  if (view === 'settings') {
+    return (
+      <SchoolSettingsView
+        session={session}
+        schoolInfo={schoolInfo}
+        studentsCount={students.length}
+        onSaveSchoolInfo={async (newInfo) => {
+          setSchoolInfo(newInfo);
+          await saveSchoolInfo(newInfo, session.userId);
+        }}
+        onBack={() => setView('manage')}
+      />
+    );
+  }
   if (view === 'preview') {
     return (
       <div className="min-h-screen bg-gray-900">
@@ -453,6 +468,7 @@ export default function App({ session, onLogout }: AppProps) {
         studentsCount={students.length}
         onPreviewClick={() => setView('preview')}
         onAddClick={() => setIsFormOpen(true)}
+        onSettingsClick={() => setView('settings')}
         onLogoutClick={handleLogout}
       />
 

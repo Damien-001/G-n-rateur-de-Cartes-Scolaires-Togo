@@ -27,6 +27,11 @@ export interface SchoolInfo {
   signatureUrl?: string;
   stampUrl?: string;
   cardColors?: CardColors;
+  schoolType?: string;
+  location?: string;
+  phone?: string;
+  subscriptionPlan?: 'free' | 'pro';
+  subscriptionExpiresAt?: string;
 }
 
 export const DEFAULT_CARD_COLORS: CardColors = {

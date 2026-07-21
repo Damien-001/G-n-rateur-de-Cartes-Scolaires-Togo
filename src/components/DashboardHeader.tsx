@@ -1,5 +1,5 @@
 import React from 'react';
-import { School as SchoolIcon, FileDown, Plus, LogOut } from 'lucide-react';
+import { School as SchoolIcon, FileDown, Plus, LogOut, Settings } from 'lucide-react';
 import { Session } from '../lib/auth';
 
 interface DashboardHeaderProps {
@@ -7,6 +7,7 @@ interface DashboardHeaderProps {
   studentsCount: number;
   onPreviewClick: () => void;
   onAddClick: () => void;
+  onSettingsClick: () => void;
   onLogoutClick: () => void;
 }
 
@@ -15,6 +16,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   studentsCount,
   onPreviewClick,
   onAddClick,
+  onSettingsClick,
   onLogoutClick,
 }) => {
   return (
@@ -32,12 +34,21 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
         <div className="flex items-center gap-3">
           {/* User info */}
-          <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50/50 rounded-xl border border-gray-100">
+          <div className="hidden lg:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50/50 rounded-xl border border-gray-100">
             <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-emerald-400/10">
               {session.fullName.charAt(0).toUpperCase()}
             </div>
             <span className="text-sm font-semibold text-gray-700 max-w-[120px] truncate">{session.fullName}</span>
           </div>
+
+          {/* Settings button */}
+          <button 
+            onClick={onSettingsClick}
+            title="Paramètres de l'établissement & Abonnement"
+            className="flex items-center justify-center p-2.5 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl transition-all cursor-pointer active:scale-95 text-gray-600 hover:text-emerald-700 hover:border-emerald-255"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
 
           <button 
             onClick={onPreviewClick}

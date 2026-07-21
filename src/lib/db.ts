@@ -38,12 +38,18 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
 }
 
 function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
+  const cardColors = row.card_colors ?? DEFAULT_CARD_COLORS;
   return {
     name: row.name,
     logoUrl: row.logo_url,
     signatureUrl: row.signature_url,
     stampUrl: row.stamp_url,
-    cardColors: row.card_colors ?? DEFAULT_CARD_COLORS,
+    cardColors: cardColors,
+    schoolType: (row.card_colors as any)?.schoolType ?? 'Lycée',
+    location: (row.card_colors as any)?.location ?? '',
+    phone: (row.card_colors as any)?.phone ?? '',
+    subscriptionPlan: (row.card_colors as any)?.subscriptionPlan ?? 'free',
+    subscriptionExpiresAt: (row.card_colors as any)?.subscriptionExpiresAt ?? '',
   };
 }
 
@@ -215,7 +221,14 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       logo_url: info.logoUrl || null,
       signature_url: info.signatureUrl || null,
       stamp_url: info.stampUrl || null,
-      card_colors: info.cardColors ?? DEFAULT_CARD_COLORS,
+      card_colors: {
+        ...(info.cardColors ?? DEFAULT_CARD_COLORS),
+        schoolType: info.schoolType,
+        location: info.location,
+        phone: info.phone,
+        subscriptionPlan: info.subscriptionPlan ?? 'free',
+        subscriptionExpiresAt: info.subscriptionExpiresAt ?? '',
+      } as any,
       updated_at: new Date().toISOString(),
     };
 
