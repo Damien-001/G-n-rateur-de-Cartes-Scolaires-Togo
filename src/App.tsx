@@ -494,9 +494,9 @@ export default function App({ session, onLogout }: AppProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] flex flex-col md:flex-row">
+    <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
       {/* Global Navigation Sidebar */}
-      <aside className="w-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
+      <aside className="w-full md:h-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
         <div className="space-y-8">
           {/* Logo & School Name */}
           <div className="flex items-center gap-3">
