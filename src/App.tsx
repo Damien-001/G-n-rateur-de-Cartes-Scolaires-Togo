@@ -9,7 +9,8 @@ import {
   Loader2,
   Plus,
   Users,
-  Palette
+  Palette,
+  Settings
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -330,259 +331,399 @@ export default function App({ session, onLogout }: AppProps) {
       </div>
     );
   }
-  if (view === 'settings') {
+
+  // Active Tab state for Global Sidebar
+  const [activeTab, setActiveTab] = useState<'students' | 'print' | 'settings'>('students');
+
+  if (activeTab === 'print') {
     return (
-      <SchoolSettingsView
-        session={session}
-        schoolInfo={schoolInfo}
-        studentsCount={students.length}
-        onSaveSchoolInfo={async (newInfo) => {
-          setSchoolInfo(newInfo);
-          await saveSchoolInfo(newInfo, session.userId);
-        }}
-        onBack={() => setView('manage')}
-      />
-    );
-  }
-  if (view === 'preview') {
-    return (
-      <div className="min-h-screen bg-gray-900">
-        <div className="fixed top-0 left-0 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setView('manage')}
-              className="flex items-center gap-2 text-gray-600 hover-brand font-medium transition-colors"
+      <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
+        {/* Global Sidebar */}
+        <aside className="w-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
+          <div className="space-y-8">
+            {/* School logo & identity */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
+                <Palette className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-black text-white truncate leading-tight uppercase">
+                  {schoolInfo.name.split(' (')[0] || "Mon École"}
+                </h2>
+                <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-[0.1em] mt-0.5">Togo • UEMOA</p>
+              </div>
+            </div>
+
+            {/* Navigation links */}
+            <nav className="space-y-1">
+              {[
+                { id: 'students', label: 'Gestion des élèves', icon: Users },
+                { id: 'print', label: 'Impression des cartes', icon: FileDown },
+                { id: 'settings', label: "Paramètres & Plan", icon: Settings },
+              ].map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id as any)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                      isActive 
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/20' 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Profile & Logout */}
+          <div className="pt-6 border-t border-gray-800 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-emerald-400/10 uppercase shrink-0">
+                {session.fullName.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-gray-200 truncate leading-none mb-1">{session.fullName}</p>
+                <p className="text-[10px] text-gray-500 truncate leading-none">{session.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
             >
-              <ChevronRight className="w-5 h-5 rotate-180" />
-              Retour à la gestion
+              <Loader2 className="w-4 h-4" />
+              Déconnexion
             </button>
-            <div className="h-6 w-px bg-gray-200" />
-            <span className="text-sm text-gray-500 font-medium">
-              Aperçu ({studentsToPrint.length} élèves)
-            </span>
           </div>
+        </aside>
 
-          {/* Interactive Print Options */}
-          <div className="hidden md:flex items-center gap-6">
-            {/* Print Mode Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
-              <div className="bg-gray-100 p-0.5 rounded-lg flex">
-                <button
-                  onClick={() => setPrintMode('recto')}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                    printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Recto Seul
-                </button>
-                <button
-                  onClick={() => setPrintMode('recto-verso')}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                    printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  Recto/Verso
-                </button>
+        {/* Content area */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <div className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setActiveTab('students')}
+                className="flex items-center gap-2 text-gray-600 hover-brand font-medium transition-colors cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5 rotate-180" />
+                Retour
+              </button>
+              <div className="h-6 w-px bg-gray-200" />
+              <span className="text-sm text-gray-500 font-medium">
+                Aperçu d'impression ({studentsToPrint.length} élèves)
+              </span>
+            </div>
+
+            {/* Interactive Print Options */}
+            <div className="hidden md:flex items-center gap-6">
+              {/* Print Mode Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
+                <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                  <button
+                    onClick={() => setPrintMode('recto')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Recto Seul
+                  </button>
+                  <button
+                    onClick={() => setPrintMode('recto-verso')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    Recto/Verso
+                  </button>
+                </div>
+              </div>
+
+              {/* Cards Density Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase">Cartes / Page:</span>
+                <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                  <button
+                    onClick={() => setCardsPerPage(8)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    8 (Espacé)
+                  </button>
+                  <button
+                    onClick={() => setCardsPerPage(10)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    10 (Compact)
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Cards Density Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-400 uppercase">Cartes / Page:</span>
-              <div className="bg-gray-100 p-0.5 rounded-lg flex">
-                <button
-                  onClick={() => setCardsPerPage(8)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                    cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  8 (Espacé)
-                </button>
-                <button
-                  onClick={() => setCardsPerPage(10)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                    cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  10 (Compact)
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={generatePDF}
+              title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isGeneratingPDF}
+            >
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Ouverture...
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-5 h-5" />
+                  Télécharger le PDF
+                </>
+              )}
+            </button>
           </div>
-
-          <button
-            onClick={generatePDF}
-            title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isGeneratingPDF}
-          >
-            {isGeneratingPDF ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Ouverture...
-              </>
-            ) : (
-              <>
-                <FileDown className="w-5 h-5" />
-                Télécharger le PDF
-              </>
-            )}
-          </button>
-        </div>
-        <div className="pt-20 pb-12 print:pt-0 print:pb-0">
-          <PrintLayout 
-            students={studentsToPrint} 
-            schoolInfo={schoolInfo} 
-            printMode={printMode}
-            cardsPerPage={cardsPerPage}
-          />
+          <div className="pt-20 pb-12 print:pt-0 print:pb-0 px-6 print:px-0 flex justify-center">
+            <PrintLayout 
+              students={studentsToPrint} 
+              schoolInfo={schoolInfo} 
+              printMode={printMode}
+              cardsPerPage={cardsPerPage}
+            />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] flex flex-col pt-2">
-      {/* Bandeau d'avertissement inactivité */}
-      {showInactivityWarning && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 text-white px-6 py-3.5 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-950/10 no-print border border-amber-400/20 max-w-md w-full animate-bounce-once">
+    <div className="min-h-screen bg-[#faf9f6] flex flex-col md:flex-row">
+      {/* Global Navigation Sidebar */}
+      <aside className="w-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
+        <div className="space-y-8">
+          {/* Logo & School Name */}
           <div className="flex items-center gap-3">
-            <span className="text-xl">⏱️</span>
-            <p className="text-sm font-semibold">
-              Déconnexion dans <strong>1 minute</strong> par inactivité.
-            </p>
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
+              <Palette className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-black text-white truncate leading-tight uppercase">
+                {schoolInfo.name.split(' (')[0] || "Mon École"}
+              </h2>
+              <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-[0.1em] mt-0.5">Togo • UEMOA</p>
+            </div>
+          </div>
+
+          {/* Navigation links */}
+          <nav className="space-y-1">
+            {[
+              { id: 'students', label: 'Gestion des élèves', icon: Users },
+              { id: 'print', label: 'Impression des cartes', icon: FileDown },
+              { id: 'settings', label: "Paramètres & Plan", icon: Settings },
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                    isActive 
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/20' 
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Profile & Logout */}
+        <div className="pt-6 border-t border-gray-800 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-emerald-400/10 uppercase shrink-0">
+              {session.fullName.charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-gray-200 truncate leading-none mb-1">{session.fullName}</p>
+              <p className="text-[10px] text-gray-500 truncate leading-none">{session.email}</p>
+            </div>
           </div>
           <button
-            onClick={() => { setShowInactivityWarning(false); }}
-            className="text-white font-bold text-xs uppercase tracking-wider bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all ml-4"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
           >
-            Rester
+            <LogOut className="w-4 h-4 text-red-600" />
+            Déconnexion
           </button>
         </div>
-      )}
+      </aside>
 
-      {/* Header */}
-      <DashboardHeader
-        session={session}
-        studentsCount={students.length}
-        onPreviewClick={() => setView('preview')}
-        onAddClick={() => setIsFormOpen(true)}
-        onSettingsClick={() => setView('settings')}
-        onLogoutClick={handleLogout}
-      />
-
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 mt-2">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Sidebar / Config */}
-          <div className="lg:col-span-4 space-y-6">
-            <SchoolConfigSidebar
-              schoolInfo={schoolInfo}
-              setSchoolInfo={setSchoolInfo}
-              setIsSchoolSettingsOpen={setIsSchoolSettingsOpen}
-              students={students}
-              onImport={handleImport}
-            />
+      {/* Main Content Area */}
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        {/* Bandeau d'avertissement inactivité */}
+        {showInactivityWarning && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 text-white px-6 py-3.5 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-950/10 no-print border border-amber-400/20 max-w-md w-full animate-bounce-once">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⏱️</span>
+              <p className="text-sm font-semibold">
+                Déconnexion dans <strong>1 minute</strong> par inactivité.
+              </p>
+            </div>
+            <button
+              onClick={() => { setShowInactivityWarning(false); }}
+              className="text-white font-bold text-xs uppercase tracking-wider bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all ml-4"
+            >
+              Rester
+            </button>
           </div>
+        )}
 
-          {/* Main Content / List */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Barre de recherche */}
-            <div className="double-bezel-outer">
-              <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Rechercher un élève..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-100 bg-gray-50 focus:bg-white focus-brand outline-none transition-all"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-gray-500">
-                    {students.length} élève{students.length > 1 ? 's' : ''}
-                  </span>
-                  <button
-                    onClick={handleSelectAll}
-                    disabled={filteredStudents.length === 0}
-                    className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-sm cursor-pointer"
-                  >
-                    {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
-                      ? 'Tout désélectionner'
-                      : 'Tout sélectionner'}
-                  </button>
-                </div>
+        {/* Tab switcher render */}
+        {activeTab === 'settings' ? (
+          <SchoolSettingsView 
+            session={session}
+            schoolInfo={schoolInfo}
+            studentsCount={students.length}
+            onSaveSchoolInfo={async (newInfo) => {
+              setSchoolInfo(newInfo);
+              await saveSchoolInfo(newInfo, session.userId);
+            }}
+            onBack={() => setActiveTab('students')}
+          />
+        ) : (
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+              <div>
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gestion des élèves</h1>
+                <p className="text-xs text-gray-500 font-medium mt-1">Configurez le visuel des cartes et gérez la liste de vos élèves.</p>
               </div>
+              <button 
+                onClick={() => setIsFormOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 btn-primary active:scale-95 text-sm cursor-pointer shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Ajouter Élève
+              </button>
             </div>
 
-            {/* Barre d'action contextuelle — suppression massive */}
-            {selectedStudents.length > 0 && (
-              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-red-800">
-                      {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
-                    </p>
-                    <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedStudents([])}
-                    className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Supprimer la sélection
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredStudents.map((student) => (
-                <StudentCardItem
-                  key={student.id}
-                  student={student}
-                  isSelected={selectedStudents.includes(student.id)}
-                  onToggleSelect={toggleSelect}
-                  onEdit={handleEditStudent}
-                  onDelete={handleDeleteStudent}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Sidebar / Config */}
+              <div className="lg:col-span-4 space-y-6">
+                <SchoolConfigSidebar
+                  schoolInfo={schoolInfo}
+                  setSchoolInfo={setSchoolInfo}
+                  setIsSchoolSettingsOpen={setIsSchoolSettingsOpen}
+                  students={students}
+                  onImport={handleImport}
                 />
-              ))}
+              </div>
 
-
-              {filteredStudents.length === 0 && (
-                <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-200/60 shadow-sm">
-                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-800 opacity-80 mb-4 border border-emerald-100">
-                    <Users className="w-8 h-8" />
+              {/* Main Content / List */}
+              <div className="lg:col-span-8 space-y-6">
+                {/* Barre de recherche */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white">
+                    <div className="relative flex-1 w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Rechercher un élève..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-sm font-semibold"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-400 uppercase">
+                        {students.length} élève{students.length > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        onClick={handleSelectAll}
+                        disabled={filteredStudents.length === 0}
+                        className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-sm cursor-pointer"
+                      >
+                        {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
+                          ? 'Tout désélectionner'
+                          : 'Tout sélectionner'}
+                      </button>
+                    </div>
                   </div>
-                  <p className="font-bold text-gray-800">Aucun élève trouvé</p>
-                  <p className="text-xs text-gray-400 mt-1 max-w-xs text-center leading-relaxed">
-                    Commencez par ajouter un élève manuellement ou importez une liste au format CSV.
-                  </p>
-                  <button 
-                    onClick={() => setIsFormOpen(true)}
-                    className="mt-6 btn-primary"
-                  >
-                    <Plus className="w-4 h-4" /> Ajouter votre premier élève
-                  </button>
                 </div>
-              )}
+
+                {/* Barre d'action contextuelle — suppression massive */}
+                {selectedStudents.length > 0 && (
+                  <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-red-800">
+                          {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
+                        </p>
+                        <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedStudents([])}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={handleBulkDelete}
+                        className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Supprimer la sélection
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredStudents.map((student) => (
+                    <StudentCardItem
+                      key={student.id}
+                      student={student}
+                      isSelected={selectedStudents.includes(student.id)}
+                      onToggleSelect={toggleSelect}
+                      onEdit={handleEditStudent}
+                      onDelete={handleDeleteStudent}
+                    />
+                  ))}
+
+                  {filteredStudents.length === 0 && (
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-200/60 shadow-sm">
+                      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-800 opacity-80 mb-4 border border-emerald-100">
+                        <Users className="w-8 h-8" />
+                      </div>
+                      <p className="font-bold text-gray-800">Aucun élève trouvé</p>
+                      <p className="text-xs text-gray-400 mt-1 max-w-xs text-center leading-relaxed font-semibold">
+                        Commencez par ajouter un élève manuellement ou importez une liste au format CSV.
+                      </p>
+                      <button 
+                        onClick={() => setIsFormOpen(true)}
+                        className="mt-6 btn-primary cursor-pointer active:scale-95"
+                      >
+                        <Plus className="w-4 h-4" /> Ajouter votre premier élève
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Modals */}
