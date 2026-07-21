@@ -78,7 +78,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
   return (
     <div className="min-h-screen bg-[#faf9f6] pb-16 font-sans">
-      <div className="max-w-6xl mx-auto px-4 pt-8 space-y-6">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* Navigation & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -106,7 +106,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
         </div>
 
         {mode === 'billing' ? (
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="w-full space-y-6">
             {/* Plan Info Card */}
             <div className="double-bezel-outer">
               <div className="double-bezel-inner p-6 space-y-6 bg-white">
@@ -224,7 +224,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto double-bezel-outer">
+          <div className="w-full double-bezel-outer">
             <div className="double-bezel-inner p-6 sm:p-8 space-y-6 bg-white">
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 pb-4 border-b border-gray-100">
                 <Building2 className="w-5 h-5 text-emerald-600" />
