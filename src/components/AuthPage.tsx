@@ -95,8 +95,11 @@ const LoginForm: React.FC<{ onAuth: (s: Session) => void }> = ({ onAuth }) => {
     setLoading(true);
     try {
       const result = await login(email, password);
-      if (!result.success) setError(result.error);
-      else onAuth(result.session);
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        onAuth(result.session);
+      }
     } finally {
       setLoading(false);
     }
@@ -169,7 +172,7 @@ const RegisterForm: React.FC<{
         location, 
         phone
       );
-      if (!result.success) {
+      if (result.success === false) {
         setError(result.error);
       } else if (result.needsConfirmation) {
         onNeedsConfirmation(result.email);
@@ -295,13 +298,13 @@ const ConfirmScreen: React.FC<{
     setResendStatus('sending');
     setResendError('');
     const result = await resendConfirmation(email);
-    if (result.success) {
+    if (result.success === false) {
+      setResendStatus('error');
+      setResendError(result.error);
+    } else {
       setResendStatus('sent');
       setCooldown(60);
       setTimeout(() => setResendStatus('idle'), 4000);
-    } else {
-      setResendStatus('error');
-      setResendError(result.error);
     }
   };
 

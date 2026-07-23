@@ -37,7 +37,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
   const rows = cardsPerPage / 2;
 
   return (
-    <div className="print-container print-layout-container" style={{ backgroundColor: '#111827', minHeight: '100vh', padding: '32px 0' }}>
+    <div className="print-container print-layout-container" style={{ backgroundColor: 'transparent', minHeight: '100vh', padding: '32px 0' }}>
       {pageBatches.map((pageStudents, pageIdx) => {
         const frontPage = (
           <div
@@ -47,7 +47,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               width: 794,
               height: 1123,
               backgroundColor: '#ffffff',
-              boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
               margin: '0 auto 32px auto',
               display: 'flex',
               flexDirection: 'column',
@@ -90,7 +90,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               width: 794,
               height: 1123,
               backgroundColor: '#ffffff',
-              boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
               margin: '0 auto 32px auto',
               display: 'flex',
               flexDirection: 'column',

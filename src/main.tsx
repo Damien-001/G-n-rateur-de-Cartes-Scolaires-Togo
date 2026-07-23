@@ -142,9 +142,19 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
-      .catch(err => console.error('Erreur d\'enregistrement du Service Worker:', err));
-  });
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker enregistré avec succès !', reg.scope))
+        .catch(err => console.error('Erreur d\'enregistrement du Service Worker:', err));
+    });
+  } else {
+    // En développement, désenregistrer les Service Workers existants pour ne pas perturber Vite HMR / WebSockets
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    });
+  }
 }
+

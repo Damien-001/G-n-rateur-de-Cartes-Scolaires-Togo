@@ -140,17 +140,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-gray-50 flex flex-col md:flex-row font-sans">
       
       {/* Side Menu Navigation */}
-      <aside className="w-full md:w-64 bg-gray-900 text-gray-400 flex flex-col justify-between p-6 shrink-0 border-r border-gray-800">
+      <aside className="w-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 border-r border-slate-200/80 shadow-sm">
         <div className="space-y-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-sm shrink-0">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
               <Shield className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-white truncate leading-tight uppercase tracking-wider">
+              <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-wider">
                 Console Admin
               </h2>
-              <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-[0.1em] mt-0.5">CardSchool SaaS</p>
+              <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.1em] mt-0.5">CardSchool SaaS</p>
             </div>
           </div>
 
@@ -169,8 +169,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   onClick={() => setActiveSubTab(item.id as any)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
                     isActive 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/20' 
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -181,10 +181,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </nav>
         </div>
 
-        <div className="pt-6 border-t border-gray-800 space-y-4">
+        <div className="pt-6 border-t border-slate-200/80 space-y-4">
           <button
             onClick={onSwitchToSchoolView}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-gray-950 hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/10 cursor-pointer active:scale-95"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm cursor-pointer active:scale-95"
           >
             <Sparkles className="w-4 h-4" />
             Simuler Vue École
@@ -192,7 +192,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4 text-red-600" />
             Déconnexion

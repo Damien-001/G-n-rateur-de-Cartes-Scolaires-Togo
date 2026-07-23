@@ -27,15 +27,11 @@ const SAMPLE_STUDENT: Student = {
   firstName: 'Abla',
   lastName: 'KOFFI',
   matricule: 'TG-2026-007',
+  className: 'Seconde S',
+  schoolYear: '2025-2026',
   birthDate: '2009-04-12',
   birthPlace: 'Lomé',
-  class: 'Séconde S',
   photoUrl: '', // empty to trigger sample profile icon
-  qrCodeData: 'SAMPLE-CARD-VERIFICATION-DATA',
-  nationality: 'Togolaise',
-  sex: 'F',
-  bloodGroup: 'B+',
-  contactPhone: '+228 90 99 88 77'
 };
 
 export const CardDesignView: React.FC<CardDesignViewProps> = ({

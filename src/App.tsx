@@ -12,7 +12,8 @@ import {
   Palette,
   Settings,
   LogOut,
-  CreditCard
+  CreditCard,
+  Shield
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -347,14 +348,14 @@ export default function App({ session, onLogout }: AppProps) {
 
   if (activeTab === 'print') {
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col md:flex-row">
+      <div className="min-h-screen bg-[#faf9f6] flex flex-col md:flex-row">
         {/* Global Sidebar */}
-        <aside className="w-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
+        <aside className="w-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm">
           <div className="space-y-8">
             {session.email.toLowerCase() === 'admin@cardschool.tg' && (
               <button
                 onClick={() => setIsAdminView(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
               >
                 <Shield className="w-4 h-4" />
                 Console d'administration
@@ -362,14 +363,14 @@ export default function App({ session, onLogout }: AppProps) {
             )}
             {/* School logo & identity */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
+              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
                 <Palette className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-black text-white truncate leading-tight uppercase">
+                <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
                   {schoolInfo.name.split(' (')[0] || "Mon École"}
                 </h2>
-                <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-[0.1em] mt-0.5">Togo • UEMOA</p>
+                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
               </div>
             </div>
 
@@ -390,8 +391,8 @@ export default function App({ session, onLogout }: AppProps) {
                     onClick={() => setActiveTab(item.id as any)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
                       isActive 
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/20' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -403,21 +404,21 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
 
           {/* Profile & Logout */}
-          <div className="pt-6 border-t border-gray-800 space-y-4">
+          <div className="pt-6 border-t border-slate-200/80 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-emerald-400/10 uppercase shrink-0">
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
                 {session.fullName.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-gray-200 truncate leading-none mb-1">{session.fullName}</p>
-                <p className="text-[10px] text-gray-500 truncate leading-none">{session.email}</p>
+                <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
             >
-              <Loader2 className="w-4 h-4" />
+              <Loader2 className="w-4 h-4 text-red-600" />
               Déconnexion
             </button>
           </div>
@@ -516,12 +517,12 @@ export default function App({ session, onLogout }: AppProps) {
   return (
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
       {/* Global Navigation Sidebar */}
-      <aside className="w-full md:h-full md:w-64 bg-gray-950 text-gray-400 flex flex-col justify-between p-6 shrink-0 no-print border-r border-gray-850">
+      <aside className="w-full md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm">
         <div className="space-y-8">
             {session.email.toLowerCase() === 'admin@cardschool.tg' && (
               <button
                 onClick={() => setIsAdminView(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
               >
                 <Shield className="w-4 h-4" />
                 Console d'administration
@@ -529,14 +530,14 @@ export default function App({ session, onLogout }: AppProps) {
             )}
             {/* Logo & School Name */}
             <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shrink-0">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
               <Palette className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-white truncate leading-tight uppercase">
+              <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
                 {schoolInfo.name.split(' (')[0] || "Mon École"}
               </h2>
-              <p className="text-[9px] text-emerald-400 font-extrabold uppercase tracking-[0.1em] mt-0.5">Togo • UEMOA</p>
+              <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
             </div>
           </div>
 
@@ -557,8 +558,8 @@ export default function App({ session, onLogout }: AppProps) {
                   onClick={() => setActiveTab(item.id as any)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
                     isActive 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/20' 
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -570,19 +571,19 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
 
         {/* Profile & Logout */}
-        <div className="pt-6 border-t border-gray-800 space-y-4">
+        <div className="pt-6 border-t border-slate-200/80 space-y-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-emerald-400/10 uppercase shrink-0">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
               {session.fullName.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-gray-200 truncate leading-none mb-1">{session.fullName}</p>
-              <p className="text-[10px] text-gray-500 truncate leading-none">{session.email}</p>
+              <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+              <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4 text-red-600" />
             Déconnexion
