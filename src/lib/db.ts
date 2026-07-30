@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
+import { Student, SchoolInfo, DEFAULT_CARD_COLORS, LicenseKey } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
 
 // ─── Helpers de conversion ────────────────────────────────────────────────────
@@ -50,6 +50,8 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
     phone: (row.card_colors as any)?.phone ?? '',
     subscriptionPlan: (row.card_colors as any)?.subscriptionPlan ?? 'free',
     subscriptionExpiresAt: (row.card_colors as any)?.subscriptionExpiresAt ?? '',
+    region: (row.card_colors as any)?.region ?? 'Grand Lomé',
+    customQuota: (row.card_colors as any)?.customQuota ?? 15,
   };
 }
 
@@ -431,4 +433,161 @@ export async function saveAdminLog(
     // Fail silently so it doesn't break user actions
   }
 }
+
+/** Update custom quota for a school */
+export async function updateSchoolCustomQuota(
+  schoolUserId: string,
+  newQuota: number
+): Promise<boolean> {
+  try {
+    const { data: currentData, error: fetchError } = await supabase
+      .from('school_info')
+      .select('*')
+      .eq('user_id', schoolUserId)
+      .single();
+
+    if (fetchError || !currentData) return false;
+
+    const currentColors = currentData.card_colors ?? DEFAULT_CARD_COLORS;
+    const updatedRow = {
+      ...currentData,
+      card_colors: {
+        ...currentColors,
+        customQuota: newQuota
+      },
+      updated_at: new Date().toISOString()
+    };
+
+    const { error: updateError } = await supabase
+      .from('school_info')
+      .upsert(updatedRow, { onConflict: 'user_id' });
+
+    if (updateError) throw updateError;
+    await saveAdminLog(schoolUserId, 'quota_updated', `Nouveau quota attribué : ${newQuota} cartes`);
+    return true;
+  } catch (e: any) {
+    console.error('updateSchoolCustomQuota error:', e.message);
+    return false;
+  }
+}
+
+// ─── License Keys & CSV Export Helpers ─────────────────────────────────────────
+
+const LICENSE_KEYS_STORAGE_KEY = 'cardschool_admin_license_keys';
+
+export function fetchAllLicenseKeys(): LicenseKey[] {
+  try {
+    const stored = localStorage.getItem(LICENSE_KEYS_STORAGE_KEY);
+    if (!stored) {
+      // Default demo keys for testing
+      const initialKeys: LicenseKey[] = [
+        {
+          id: '1',
+          code: 'TOGO-PRO-2026-X89A',
+          plan: 'pro',
+          durationMonths: 12,
+          isUsed: false,
+          createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+          note: 'Paiement Espèces Lomé (Lycée Tokoin)'
+        },
+        {
+          id: '2',
+          code: 'TOGO-PRO-2026-B34M',
+          plan: 'pro',
+          durationMonths: 12,
+          isUsed: true,
+          usedBySchoolId: 'demo-school-id',
+          usedBySchoolName: 'Collège Notre Dame Lomé',
+          usedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+          createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+          note: 'Partenariat Rentrée 2026'
+        }
+      ];
+      localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(initialKeys));
+      return initialKeys;
+    }
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export function generateLicenseKey(durationMonths: number = 12, note?: string): LicenseKey {
+  const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const randomSegment2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const code = `TOGO-PRO-2026-${randomSegment}${randomSegment2}`;
+
+  const newKey: LicenseKey = {
+    id: Date.now().toString(),
+    code,
+    plan: 'pro',
+    durationMonths,
+    isUsed: false,
+    createdAt: new Date().toISOString(),
+    note: note || 'Généré depuis la Console Admin'
+  };
+
+  const currentKeys = fetchAllLicenseKeys();
+  const updatedKeys = [newKey, ...currentKeys];
+  localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(updatedKeys));
+  
+  saveAdminLog(null, 'license_generated', `Clé de licence PRO créée: ${code}`);
+  return newKey;
+}
+
+export async function redeemLicenseKey(code: string, schoolUserId: string, schoolName: string): Promise<{ success: boolean; message: string }> {
+  const keys = fetchAllLicenseKeys();
+  const foundKey = keys.find(k => k.code.trim().toUpperCase() === code.trim().toUpperCase());
+
+  if (!foundKey) {
+    return { success: false, message: 'Clé de licence invalide ou inexistante.' };
+  }
+  if (foundKey.isUsed) {
+    return { success: false, message: `Cette clé a déjà été activée le ${foundKey.usedAt ? new Date(foundKey.usedAt).toLocaleDateString() : ''} par ${foundKey.usedBySchoolName || 'un autre établissement'}.` };
+  }
+
+  // Activate Pro plan for 1 year
+  const nextYear = new Date();
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  const expiresAtStr = nextYear.toISOString().split('T')[0];
+
+  const updated = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr);
+  if (!updated) {
+    return { success: false, message: "Erreur lors de l'activation de la licence sur votre compte." };
+  }
+
+  // Mark key as used
+  foundKey.isUsed = true;
+  foundKey.usedBySchoolId = schoolUserId;
+  foundKey.usedBySchoolName = schoolName;
+  foundKey.usedAt = new Date().toISOString();
+
+  localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(keys));
+  return { success: true, message: `Félicitations ! Votre abonnement PRO est actif jusqu'au ${expiresAtStr}.` };
+}
+
+export function exportSchoolsToCSV(schools: AdminSchoolDetail[]) {
+  const headers = ['Nom Établissement', 'Type', 'Région', 'Localisation', 'Téléphone', 'Cartes Édités', 'Plan', 'Quota Custom', 'Date Inscription'];
+  const rows = schools.map(s => [
+    `"${(s.name || '').replace(/"/g, '""')}"`,
+    `"${(s.schoolType || 'Lycée').replace(/"/g, '""')}"`,
+    `"${(s.region || 'Grand Lomé').replace(/"/g, '""')}"`,
+    `"${(s.location || '').replace(/"/g, '""')}"`,
+    `"${(s.phone || '').replace(/"/g, '""')}"`,
+    s.studentCount || 0,
+    `"${(s.subscriptionPlan || 'free').toUpperCase()}"`,
+    s.customQuota || 15,
+    `"${s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : ''}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `CardSchool_Ecoles_Togo_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 

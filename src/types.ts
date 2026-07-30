@@ -32,7 +32,31 @@ export interface SchoolInfo {
   phone?: string;
   subscriptionPlan?: 'free' | 'pro';
   subscriptionExpiresAt?: string;
+  region?: string;
+  customQuota?: number;
 }
+
+export interface LicenseKey {
+  id: string;
+  code: string;
+  plan: 'pro';
+  durationMonths: number;
+  isUsed: boolean;
+  usedBySchoolId?: string;
+  usedBySchoolName?: string;
+  usedAt?: string;
+  createdAt: string;
+  note?: string;
+}
+
+export const TOGO_REGIONS = [
+  "Grand Lomé",
+  "Région Maritime",
+  "Région des Plateaux",
+  "Région Centrale",
+  "Région de la Kara",
+  "Région des Savanes"
+];
 
 export const DEFAULT_CARD_COLORS: CardColors = {
   headerBg: '#047857',
@@ -82,4 +106,5 @@ export const CLASSES_LIST = [
 export const SCHOOL_YEARS = [
   "2023-2024", "2024-2025", "2025-2026", "2026-2027", "2027-2028"
 ];
+
 

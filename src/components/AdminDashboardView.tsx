@@ -13,13 +13,31 @@ import {
   TrendingUp, 
   History,
   Check,
-  Power,
   RefreshCw,
   LogOut,
-  Sparkles
+  Sparkles,
+  Key,
+  Download,
+  Copy,
+  Filter,
+  MapPin,
+  Sliders,
+  Plus,
+  CheckCheck
 } from 'lucide-react';
-import { fetchAllSchools, fetchAllStudentsCount, updateSchoolSubscription, AdminSchoolDetail, saveAdminLog } from '../lib/db';
+import { 
+  fetchAllSchools, 
+  fetchAllStudentsCount, 
+  updateSchoolSubscription, 
+  AdminSchoolDetail, 
+  saveAdminLog,
+  fetchAllLicenseKeys,
+  generateLicenseKey,
+  exportSchoolsToCSV,
+  updateSchoolCustomQuota
+} from '../lib/db';
 import { Session } from '../lib/auth';
+import { LicenseKey, TOGO_REGIONS } from '../types';
 
 interface AdminDashboardViewProps {
   session: Session;
@@ -43,12 +61,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [schools, setSchools] = useState<AdminSchoolDetail[]>([]);
   const [totalStudents, setTotalStudents] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'logs'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
   
   // Custom manual quotas state
-  const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
+  const [editingSchool, setEditingSchool] = useState<AdminSchoolDetail | null>(null);
   const [customQuotaVal, setCustomQuotaVal] = useState<number>(15);
+
+  // License keys state
+  const [licenseKeys, setLicenseKeys] = useState<LicenseKey[]>([]);
+  const [keyFilter, setKeyFilter] = useState<'all' | 'available' | 'used'>('all');
+  const [newKeyNote, setNewKeyNote] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Mocked audit logs for real time activity overview fallback
   const [activityLogs, setActivityLogs] = useState<AdminLog[]>([
@@ -67,6 +92,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       const studentCount = await fetchAllStudentsCount();
       setSchools(allSchools);
       setTotalStudents(studentCount);
+      setLicenseKeys(fetchAllLicenseKeys());
     } catch (err) {
       console.error('Error loading admin statistics:', err);
     } finally {
@@ -78,11 +104,51 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     loadData();
   }, []);
 
-  // Filter schools based on search
-  const filteredSchools = schools.filter(school => 
-    school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (school.location && school.location.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filter schools based on search and region
+  const filteredSchools = schools.filter(school => {
+    const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (school.location && school.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (school.phone && school.phone.includes(searchTerm));
+    
+    const matchesRegion = selectedRegion === 'Toutes les régions' || (school.region || 'Grand Lomé') === selectedRegion;
+    return matchesSearch && matchesRegion;
+  });
+
+  // Filter license keys
+  const filteredLicenseKeys = licenseKeys.filter(k => {
+    if (keyFilter === 'available') return !k.isUsed;
+    if (keyFilter === 'used') return k.isUsed;
+    return true;
+  });
+
+  // Generate a new license key
+  const handleCreateLicenseKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    const createdKey = generateLicenseKey(12, newKeyNote.trim() || undefined);
+    setLicenseKeys(fetchAllLicenseKeys());
+    setNewKeyNote('');
+    alert(`Nouvelle Clé PRO générée avec succès :\n${createdKey.code}`);
+  };
+
+  // Copy code to clipboard
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2500);
+  };
+
+  // Save custom quota
+  const handleSaveCustomQuota = async () => {
+    if (!editingSchool) return;
+    const success = await updateSchoolCustomQuota(editingSchool.userId, customQuotaVal);
+    if (success) {
+      alert(`Le quota de "${editingSchool.name}" a été mis à jour à ${customQuotaVal} cartes.`);
+      setEditingSchool(null);
+      loadData();
+    } else {
+      alert("Erreur lors de la mise à jour du quota.");
+    }
+  };
 
   // Upgrade trial schools to Pro subscription plan
   const handleUpgradeToPro = async (schoolUserId: string, schoolName: string) => {
@@ -93,7 +159,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     if (window.confirm(`Confirmez-vous l'activation du Plan PRO (Licence 1 An) pour l'établissement "${schoolName}" ?`)) {
       const success = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr);
       if (success) {
-        // Log locally
         const newLog: AdminLog = {
           id: Math.random().toString(),
           schoolName: schoolName,
@@ -103,7 +168,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         };
         setActivityLogs(prev => [newLog, ...prev]);
         alert(`Félicitations ! L'abonnement PRO a été activé avec succès pour "${schoolName}".`);
-        loadData(); // Reload table
+        loadData();
       } else {
         alert("Erreur lors de la mise à jour de l'abonnement.");
       }
@@ -134,7 +199,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Calculate SaaS global KPI widgets metrics
   const activeProSchoolsCount = schools.filter(s => s.subscriptionPlan === 'pro').length;
   const freeSchoolsCount = schools.length - activeProSchoolsCount;
-  const estimatedAnnualRevenue = activeProSchoolsCount * 30000; // 30,000 F CFA per year per Pro school
+  const estimatedAnnualRevenue = activeProSchoolsCount * 30000;
 
   return (
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-gray-50 flex flex-col md:flex-row font-sans">
@@ -159,6 +224,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               { id: 'overview', label: 'Supervision Globale', icon: TrendingUp },
               { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
               { id: 'payments', label: 'Validation Paiements', icon: CreditCard },
+              { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
               { id: 'logs', label: "Journal d'Activité", icon: History },
             ].map(item => {
               const Icon = item.icon;
@@ -213,13 +279,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Monitoring & Validation mobile money</p>
           </div>
           
-          <button
-            onClick={loadData}
-            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 rounded-xl transition-all cursor-pointer active:scale-95"
-            title="Rafraîchir les statistiques"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => exportSchoolsToCSV(filteredSchools)}
+              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Exporter le registre en CSV"
+            >
+              <Download className="w-4 h-4 text-emerald-600" />
+              Export CSV
+            </button>
+
+            <button
+              onClick={loadData}
+              className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 rounded-xl transition-all cursor-pointer active:scale-95"
+              title="Rafraîchir les statistiques"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </header>
 
         {/* Tab content renderer */}
@@ -231,7 +308,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               {/* Stats Widgets */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
-                {/* School counts widget */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
                     <div className="flex justify-between items-start">
@@ -245,7 +321,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Total Cards count widget */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
                     <div className="flex justify-between items-start">
@@ -257,7 +332,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Conversion metrics */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
                     <div className="flex justify-between items-start">
@@ -271,7 +345,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Revenue estimer */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
                     <div className="flex justify-between items-start">
@@ -285,10 +358,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               </div>
 
-              {/* Split layout: Recent signups & Logs */}
+              {/* Split layout */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                {/* Left column: Recent Schools */}
                 <div className="lg:col-span-7 double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-5 bg-white">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -316,9 +388,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               }`}>
                                 {school.subscriptionPlan || 'free'}
                               </span>
-                              <p className="text-[9px] text-gray-400 mt-1 font-semibold">
-                                {school.studentCount} {school.studentCount === 1 ? 'élève' : 'élèves'}
-                              </p>
                             </div>
                           </div>
                         ))}
@@ -327,7 +396,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Right column: Audit logs preview */}
                 <div className="lg:col-span-5 double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-5 bg-white">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -349,7 +417,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           )}
@@ -357,26 +424,48 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 2: SCHOOLS LIST */}
           {activeSubTab === 'schools' && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Search filter bar */}
               <div className="double-bezel-outer">
                 <div className="double-bezel-inner p-4 bg-white flex flex-col sm:flex-row gap-4 items-center justify-between">
-                  <div className="relative w-full sm:max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Rechercher une école, une ville..." 
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white transition-all"
-                    />
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:max-w-2xl">
+                    <div className="relative w-full sm:flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Rechercher par nom, ville, téléphone..." 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white transition-all"
+                      />
+                    </div>
+                    <div className="relative w-full sm:w-56 shrink-0">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 pointer-events-none" />
+                      <select
+                        value={selectedRegion}
+                        onChange={e => setSelectedRegion(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white appearance-none cursor-pointer"
+                      >
+                        <option value="Toutes les régions">Toutes les régions</option>
+                        {TOGO_REGIONS.map(reg => (
+                          <option key={reg} value={reg}>{reg}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-150">
-                    {filteredSchools.length} école(s) trouvée(s)
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => exportSchoolsToCSV(filteredSchools)}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Export CSV
+                    </button>
+                    <span className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-2 rounded-xl border border-gray-150 shrink-0">
+                      {filteredSchools.length} école(s)
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Schools ledger card table */}
               <div className="double-bezel-outer">
                 <div className="double-bezel-inner p-0 bg-white overflow-hidden">
                   {isLoading ? (
@@ -385,14 +474,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <div className="py-20 text-center text-xs text-gray-500 font-medium">Aucun établissement ne correspond aux filtres.</div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[700px] border-collapse text-left">
+                      <table className="w-full min-w-[800px] border-collapse text-left">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-150 text-[10px] font-black text-gray-500 uppercase tracking-widest">
                             <th className="px-6 py-4">Établissement</th>
-                            <th className="px-6 py-4">Localisation & Tel</th>
-                            <th className="px-6 py-4">Cartes Édités</th>
+                            <th className="px-6 py-4">Région & Contacts</th>
+                            <th className="px-6 py-4">Volume Cartes</th>
+                            <th className="px-6 py-4">Quota Limite</th>
                             <th className="px-6 py-4">Plan & Statut</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
+                            <th className="px-6 py-4 text-right">Actions Admin</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-xs">
@@ -400,14 +490,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <tr key={school.userId} className="hover:bg-gray-50/50 transition-colors">
                               <td className="px-6 py-4">
                                 <p className="font-extrabold text-gray-900">{school.name}</p>
-                                <p className="text-[10px] text-gray-400 font-medium">Inscrit : {school.updatedAt ? new Date(school.updatedAt).toLocaleDateString() : 'N/A'}</p>
                               </td>
                               <td className="px-6 py-4 font-semibold text-gray-600">
-                                <p>{school.location || 'N/A'}</p>
-                                <p className="text-[10px] text-gray-400">{school.phone || 'N/A'}</p>
+                                <p className="flex items-center gap-1 text-emerald-700 font-bold">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  {school.region || 'Grand Lomé'}
+                                </p>
+                                <p className="text-[10px] text-gray-400">{school.location || 'Localisation N/A'} • {school.phone || 'Tel N/A'}</p>
                               </td>
                               <td className="px-6 py-4 font-black text-emerald-850">
-                                {school.studentCount}
+                                {school.studentCount} cartes
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-gray-700">{school.customQuota || 15} cartes</span>
+                                  <button
+                                    onClick={() => {
+                                      setEditingSchool(school);
+                                      setCustomQuotaVal(school.customQuota || 15);
+                                    }}
+                                    className="p-1 hover:bg-gray-200 text-gray-500 rounded transition-colors"
+                                    title="Modifier le quota"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </td>
                               <td className="px-6 py-4">
                                 <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
@@ -420,19 +527,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </td>
                               <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                                 {school.subscriptionPlan === 'free' ? (
-                                  <button
-                                    onClick={() => handleUpgradeToPro(school.userId, school.name)}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                  >
-                                    Activer Pro
-                                  </button>
+                                  <button onClick={() => handleUpgradeToPro(school.userId, school.name)} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-[10px] transition-colors">Activer Pro</button>
                                 ) : (
-                                  <button
-                                    onClick={() => handleResetToFree(school.userId, school.name)}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-extrabold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                  >
-                                    Reset Gratuit
-                                  </button>
+                                  <button onClick={() => handleResetToFree(school.userId, school.name)} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-extrabold rounded-lg text-[10px] transition-colors">Reset Gratuit</button>
                                 )}
                               </td>
                             </tr>
@@ -455,48 +552,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <CreditCard className="w-5 h-5 text-emerald-600" />
                     Validation Manuelle Mobile Money (Togo)
                   </h2>
-                  <p className="text-xs text-gray-500 leading-relaxed font-semibold">
-                    Visualisez les écoles demandant l'activation du Plan Pro. Une fois que vous recevez les fonds correspondants sur vos comptes marchands T-Money (+228 90 00 00 00) ou Flooz (+228 95 00 00 00), cliquez sur "Valider" pour activer immédiatement leur licence.
-                  </p>
-
                   <div className="divide-y divide-gray-100">
                     {schools.filter(s => s.subscriptionPlan === 'free').length === 0 ? (
-                      <p className="text-xs text-gray-500 text-center py-12 font-medium">Aucune demande de paiement en attente. Toutes les écoles actives sont sur le plan PRO.</p>
+                      <p className="text-xs text-gray-500 text-center py-12 font-medium">Aucune demande de paiement en attente.</p>
                     ) : (
-                      schools
-                        .filter(s => s.subscriptionPlan === 'free')
-                        .map((school) => (
-                          <div key={school.userId} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <p className="text-xs font-black text-gray-900">{school.name}</p>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                {school.location || 'Localisation non fournie'} • Tel: {school.phone || 'N/A'}
-                              </p>
-                              <p className="text-[10px] text-amber-800 font-semibold bg-amber-50 inline-block px-2.5 py-0.5 rounded border border-amber-100/50">
-                                Montant attendu : 30 000 F CFA / an
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <a 
-                                href={`https://wa.me/${school.phone?.replace(/[^0-9+]/g, '')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3.5 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl text-[10px] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm bg-white"
-                              >
-                                <PhoneCall className="w-3.5 h-3.5 text-gray-400" />
-                                Contacter WhatsApp
-                              </a>
-                              
-                              <button
-                                onClick={() => handleUpgradeToPro(school.userId, school.name)}
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px] flex items-center gap-1.5 transition-all shadow-md shadow-emerald-200 cursor-pointer active:scale-95"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                Valider le Règlement
-                              </button>
-                            </div>
-                          </div>
-                        ))
+                      schools.filter(s => s.subscriptionPlan === 'free').map((school) => (
+                        <div key={school.userId} className="py-4 flex items-center justify-between">
+                          <p className="text-xs font-black text-gray-900">{school.name}</p>
+                          <button onClick={() => handleUpgradeToPro(school.userId, school.name)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px]">Valider</button>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
@@ -504,29 +569,37 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
           )}
 
-          {/* TAB 4: AUDIT LOGS */}
-          {activeSubTab === 'logs' && (
+          {/* TAB 4: LICENSE KEYS GENERATOR */}
+          {activeSubTab === 'licenses' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="double-bezel-outer">
-                <div className="double-bezel-inner p-6 space-y-5 bg-white">
+                <div className="double-bezel-inner p-6 space-y-4 bg-white">
                   <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-gray-100">
-                    <History className="w-5 h-5 text-emerald-600" />
-                    Registre Général d'Audit & Activités
+                    <Key className="w-5 h-5 text-emerald-600" />
+                    Générateur de Clés de Licence PRO (1 An)
                   </h2>
+                  <form onSubmit={handleCreateLicenseKey} className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <input type="text" placeholder="Note explicative" value={newKeyNote} onChange={e => setNewKeyNote(e.target.value)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white" />
+                    <button type="submit" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all">
+                      <Plus className="w-4 h-4" /> Générer
+                    </button>
+                  </form>
+                </div>
+              </div>
 
+              <div className="double-bezel-outer">
+                <div className="double-bezel-inner p-6 space-y-5 bg-white">
                   <div className="space-y-3">
-                    {activityLogs.map((log) => (
-                      <div key={log.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-150 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-100/50 transition-colors">
+                    {filteredLicenseKeys.map(k => (
+                      <div key={k.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-gray-900">{log.schoolName}</span>
-                            <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-100/60 rounded text-[8px] font-extrabold uppercase">{log.action}</span>
-                          </div>
-                          <p className="text-xs text-gray-500 font-medium leading-relaxed">{log.details}</p>
+                          <span className="font-black text-sm text-gray-900 bg-white px-2.5 py-1 rounded-md border">{k.code}</span>
+                          <p className="text-[10px] text-gray-500 font-medium">Créée le {new Date(k.createdAt).toLocaleDateString()}</p>
                         </div>
-                        <span className="text-[10px] text-gray-400 font-semibold shrink-0">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </span>
+                        <button onClick={() => handleCopyCode(k.code)} className="px-3.5 py-2 bg-white border rounded-xl text-xs flex items-center gap-1.5 shadow-sm">
+                          {copiedCode === k.code ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                          {copiedCode === k.code ? 'Copié !' : 'Copier'}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -535,8 +608,46 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
           )}
 
+          {/* TAB 5: AUDIT LOGS */}
+          {activeSubTab === 'logs' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="double-bezel-outer">
+                <div className="double-bezel-inner p-6 space-y-5 bg-white">
+                  <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-gray-100">
+                    <History className="w-5 h-5 text-emerald-600" />
+                    Registre Général d'Audit & Activités
+                  </h2>
+                  <div className="space-y-3">
+                    {activityLogs.map((log) => (
+                      <div key={log.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-150 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black text-gray-900">{log.schoolName} - {log.action}</p>
+                          <p className="text-xs text-gray-500">{log.details}</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-semibold">{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Modal Edit Custom Quota */}
+      {editingSchool && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-5">
+            <h3 className="text-sm font-black text-gray-900">Modifier Quota d'Élèves : {editingSchool.name}</h3>
+            <input type="number" value={customQuotaVal} onChange={e => setCustomQuotaVal(parseInt(e.target.value) || 15)} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-sm" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setEditingSchool(null)} className="px-4 py-2 bg-gray-100 rounded-xl text-xs">Annuler</button>
+              <button onClick={handleSaveCustomQuota} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

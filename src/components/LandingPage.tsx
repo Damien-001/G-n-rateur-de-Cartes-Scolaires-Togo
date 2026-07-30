@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Sparkles, 
@@ -8,12 +8,13 @@ import {
   ArrowRight, 
   CheckCircle2, 
   ChevronRight, 
-  Lock, 
-  HelpCircle,
   Activity,
   Layers,
-  FileDown
+  FileDown,
+  ArrowUp,
+  RotateCw
 } from 'lucide-react';
+import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
 
@@ -49,19 +50,114 @@ const dummySchool = {
 export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLogin }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Framer Motion scroll progress spring
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 30,
+    restDelta: 0.001
+  });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.12,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 25 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } 
+    }
+  };
+
+  const features = [
+    {
+      icon: Users,
+      title: "Importation Excel/CSV",
+      description: "Importez les listes de classes entières depuis vos fichiers administratifs en 3 secondes. Les données se formatent automatiquement."
+    },
+    {
+      icon: QrCode,
+      title: "QR Codes Dynamiques",
+      description: "Générez des QR Codes de sécurité uniques à partir du matricule de l'élève pour simplifier la vérification de l'authenticité de la carte."
+    },
+    {
+      icon: Shield,
+      title: "Fonds Anti-Falsification",
+      description: "Appliquez des motifs Guillochés géométriques ou des filigranes nationaux transparents aux couleurs de l'école ou du Togo."
+    },
+    {
+      icon: Layers,
+      title: "Imagerie et Webcam",
+      description: "Prenez la photo des élèves directement sur place avec la webcam intégrée et recadrez-la au ratio d'identité standard en un clic."
+    },
+    {
+      icon: FileDown,
+      title: "PDF Haute Résolution",
+      description: "Téléchargez des planches d'impression A4 prêtes au découpage. Ajustez la densité (8 ou 10 cartes par page) selon vos besoins."
+    },
+    {
+      icon: Activity,
+      title: "Mode Hors-Ligne",
+      description: "Poursuivez la saisie et les captures de photos même en cas de coupure internet. L'application stocke les données localement."
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-emerald-600 selection:text-white">
-      {/* Navigation Header */}
-      <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 z-50 px-6 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-emerald-600 selection:text-white relative">
+      {/* Scroll Progress Bar at very top */}
+      <motion.div 
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 z-[100] origin-left shadow-sm shadow-emerald-500/20"
+        style={{ scaleX }}
+      />
+
+      {/* Dynamic Glass Navigation Header */}
+      <motion.nav 
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className={`fixed top-0 left-0 right-0 h-20 z-50 px-6 flex items-center justify-between transition-all duration-300 ${
+          scrolled 
+            ? 'bg-white/90 backdrop-blur-xl border-b border-emerald-100/60 shadow-lg shadow-gray-900/5' 
+            : 'bg-white/70 backdrop-blur-md border-b border-gray-100/80'
+        }`}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-sm shadow-emerald-800/10">
+          <motion.div 
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10 cursor-pointer"
+          >
             <span className="font-extrabold text-lg">C</span>
-          </div>
+          </motion.div>
           <div>
             <h1 className="text-base font-bold text-gray-900 leading-tight">CardSchool SaaS</h1>
             <p className="text-[9px] text-emerald-800 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
@@ -69,10 +165,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
         </div>
 
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors">Fonctionnalités</a>
-          <a href="#how-it-works" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors">Comment ça marche</a>
-          <a href="#pricing" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors">Tarifs</a>
-          <a href="#faq" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors">FAQ</a>
+          <a href="#features" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+            Fonctionnalités
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </a>
+          <a href="#how-it-works" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+            Comment ça marche
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </a>
+          <a href="#pricing" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+            Tarifs
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </a>
+          <a href="#faq" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+            FAQ
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </a>
         </div>
 
         <div className="flex items-center gap-3">
@@ -82,213 +190,306 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
           >
             Connexion
           </button>
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onStartAuth('signup')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-200 active:scale-95 cursor-pointer"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-200 cursor-pointer"
           >
             Créer un compte
-          </button>
+          </motion.button>
         </div>
-      </nav>
+      </motion.nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div className="lg:col-span-7 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-100/50">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
+      <section className="pt-32 pb-24 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative overflow-hidden">
+        {/* Subtle Background Parallax Glow Blobs */}
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.45, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-20 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl -z-10 pointer-events-none"
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-10 right-10 w-80 h-80 bg-teal-200/30 rounded-full blur-3xl -z-10 pointer-events-none"
+        />
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="lg:col-span-7 space-y-6"
+        >
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200/60 shadow-xs">
+            <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-wider">Solution SaaS Éducation 2026</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.1]">
-            Générez les cartes scolaires de vos élèves <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 to-emerald-800 bg-clip-text text-transparent">en quelques clics</span>.
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-medium">
+          </motion.div>
+
+          <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.12]">
+            Générez les cartes scolaires de vos élèves <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
+          </motion.h1>
+
+          <motion.p variants={itemVariants} className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-medium">
             Plateforme tout-en-un pour les directeurs et secrétariats. Importation de listes Excel/CSV, prise de vue par webcam intégrée, impression Recto/Verso automatisée et QR codes de sécurité dynamiques.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <button 
+          </motion.p>
+
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3.5 pt-4">
+            <motion.button 
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onStartAuth('signup')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold px-8 py-4 rounded-xl transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold px-8 py-4 rounded-xl transition-all shadow-lg shadow-emerald-200/80 flex items-center justify-center gap-2 cursor-pointer group"
             >
               Essai Gratuit 14 Jours
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <a 
+              <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+            </motion.button>
+            <motion.a 
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               href="#how-it-works"
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
             >
               Voir la Démo
-            </a>
-          </div>
+            </motion.a>
+          </motion.div>
+
           {/* Mobile Money Visuals */}
-          <div className="pt-6 space-y-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Paiements Locaux UEMOA Supportés</p>
-            <div className="flex items-center gap-4 opacity-75">
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100/50">
+          <motion.div variants={itemVariants} className="pt-6 space-y-2.5">
+            <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">Paiements Locaux UEMOA Supportés</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-sm font-bold text-gray-700 flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
                 <Smartphone className="w-4 h-4 text-emerald-600" /> T-Money (Togo)
               </span>
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100/50">
+              <span className="text-sm font-bold text-gray-700 flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
                 <Smartphone className="w-4 h-4 text-emerald-600" /> Flooz / Moov (Togo)
               </span>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Card Visual Previews */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-6">
-          <div className="flex flex-col gap-5">
-            {/* Front Card */}
-            <div className="flex flex-col gap-1.5 items-center">
-              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
-              <div className="shadow-xl shadow-gray-200 rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform duration-200 bg-white">
-                <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
-              </div>
-            </div>
-
-            {/* Back Card */}
-            <div className="flex flex-col gap-1.5 items-center">
-              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Verso (Dos)</span>
-              <div className="shadow-xl shadow-gray-200 rounded-2xl overflow-hidden hover:scale-[1.02] transition-transform duration-200 bg-white">
-                <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
-              </div>
-            </div>
+        {/* Card Visual Previews with 3D Tilt & Flip */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.92, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="lg:col-span-5 flex flex-col items-center justify-center gap-6"
+        >
+          {/* Card Toggle Control */}
+          <div className="flex items-center gap-2 bg-gray-200/70 p-1.5 rounded-2xl backdrop-blur-md">
+            <button
+              onClick={() => setIsFlipped(false)}
+              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                !isFlipped ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Vue Globale
+            </button>
+            <button
+              onClick={() => setIsFlipped(!isFlipped)}
+              className="px-4 py-1.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCw className="w-3.5 h-3.5 animate-spin-slow" />
+              Basculer Recto/Verso
+            </button>
           </div>
-        </div>
+
+          {/* Cards Showcase Container */}
+          <motion.div 
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            className="flex flex-col gap-5 items-center"
+          >
+            <AnimatePresence mode="wait">
+              {!isFlipped ? (
+                <motion.div
+                  key="side-by-side"
+                  initial={{ opacity: 0, rotateY: -15 }}
+                  animate={{ opacity: 1, rotateY: 0 }}
+                  exit={{ opacity: 0, rotateY: 15 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex flex-col gap-5 items-center"
+                >
+                  {/* Front Card */}
+                  <motion.div 
+                    whileHover={{ scale: 1.03, y: -4 }}
+                    className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+                  >
+                    <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
+                  </motion.div>
+
+                  {/* Back Card */}
+                  <motion.div 
+                    whileHover={{ scale: 1.03, y: -4 }}
+                    className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+                  >
+                    <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
+                  </motion.div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="single-flipped"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.4 }}
+                  className="shadow-2xl shadow-emerald-950/15 rounded-2xl overflow-hidden bg-white border border-gray-100 p-2"
+                >
+                  <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
       </section>
 
-      {/* Features Grid */}
-      <section id="features" className="py-20 bg-white border-y border-gray-100">
+      {/* Features Grid with Scroll Reveal */}
+      <section id="features" className="py-24 bg-white border-y border-gray-100 relative">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-4">
-            <h2 className="text-3xl font-extrabold text-gray-900">Une suite complète d'outils professionnels</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-2xl mx-auto space-y-4"
+          >
+            <div className="inline-block text-xs font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+              Fonctionnalités avancées
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+              Une suite complète d'outils professionnels
+            </h2>
             <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
               Conçu pour répondre aux exigences administratives togolaises en simplifiant le travail quotidien des secrétariats.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Importation Excel/CSV</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Importez les listes de classes entières depuis vos fichiers administratifs en 3 secondes. Les données se formatent automatiquement.
-              </p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <QrCode className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">QR Codes Dynamiques</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Générez des QR Codes de sécurité uniques à partir du matricule de l'élève pour simplifier la vérification de l'authenticité de la carte.
-              </p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <Shield className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Fonds Anti-Falsification</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Appliquez des motifs Guillochés géométriques ou des filigranes nationaux transparents aux couleurs de l'école ou du Togo.
-              </p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <Layers className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Imagerie et Webcam</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Prenez la photo des élèves directement sur place avec la webcam intégrée et recadrez-la au ratio d'identité standard en un clic.
-              </p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <FileDown className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">PDF Haute Résolution</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Téléchargez des planches d'impression A4 prêtes au découpage. Ajustez la densité (8 ou 10 cartes par page) selon vos besoins.
-              </p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 hover:border-emerald-600/30 hover:bg-gray-50/50 transition-all duration-300">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-5 border border-emerald-100/50">
-                <Activity className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Mode Hors-Ligne</h3>
-              <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Poursuivez la saisie et les captures de photos même en cas de coupure internet. L'application stocke les données localement.
-              </p>
-            </div>
+            {features.map((item, index) => {
+              const IconComp = item.icon;
+              return (
+                <motion.div 
+                  key={index}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -6 }}
+                  className="p-8 bg-gray-50/70 rounded-3xl border border-gray-100/90 hover:border-emerald-500/30 hover:bg-white hover:shadow-xl hover:shadow-emerald-950/5 transition-all duration-300 group cursor-default"
+                >
+                  <div className="w-13 h-13 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 border border-emerald-100/80 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                    <IconComp className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-xl text-gray-900 mb-2.5 group-hover:text-emerald-700 transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                    {item.description}
+                  </p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="py-20 bg-gray-50">
+      {/* How it works (Workflow Scroll Reveal) */}
+      <section id="how-it-works" className="py-24 bg-gray-50/70 relative">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-4">
-            <h2 className="text-3xl font-extrabold text-gray-900">Un flux de travail ultra-rapide</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-2xl mx-auto space-y-4"
+          >
+            <div className="inline-block text-xs font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+              Guide rapide
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+              Un flux de travail ultra-rapide
+            </h2>
             <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
               Moins de 10 minutes pour configurer votre école et sortir vos premières planches de cartes.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-16 relative">
-            {/* Step 1 */}
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center font-black text-lg shadow-md shadow-emerald-200">
-                1
-              </div>
-              <h3 className="font-bold text-lg text-gray-900">Identité de l'École</h3>
-              <p className="text-sm text-gray-500 max-w-xs leading-relaxed font-medium">
-                Configurez le nom de l'établissement, le logo, le cachet et la signature du proviseur dans le tableau de bord.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center font-black text-lg shadow-md shadow-emerald-200">
-                2
-              </div>
-              <h3 className="font-bold text-lg text-gray-900">Ajout des élèves</h3>
-              <p className="text-sm text-gray-500 max-w-xs leading-relaxed font-medium">
-                Importez une liste CSV de vos élèves ou ajoutez-les manuellement. Associez les photos via la webcam ou en glissant les fichiers.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center font-black text-lg shadow-md shadow-emerald-200">
-                3
-              </div>
-              <h3 className="font-bold text-lg text-gray-900">Impression A4</h3>
-              <p className="text-sm text-gray-500 max-w-xs leading-relaxed font-medium">
-                Choisissez le mode (Recto Seul ou Recto/Verso), puis téléchargez la planche PDF. Découpez au massicot et plastifiez.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mt-16 relative">
+            {[
+              {
+                step: "1",
+                title: "Identité de l'École",
+                desc: "Configurez le nom de l'établissement, le logo, le cachet et la signature du proviseur dans le tableau de bord."
+              },
+              {
+                step: "2",
+                title: "Ajout des élèves",
+                desc: "Importez une liste CSV de vos élèves ou ajoutez-les manuellement. Associez les photos via la webcam ou en glissant les fichiers."
+              },
+              {
+                step: "3",
+                title: "Impression A4",
+                desc: "Choisissez le mode (Recto Seul ou Recto/Verso), puis téléchargez la planche PDF. Découpez au massicot et plastifiez."
+              }
+            ].map((stepItem, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: i * 0.2 }}
+                whileHover={{ y: -4 }}
+                className="flex flex-col items-center text-center space-y-4 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm shadow-gray-200/50 hover:shadow-md transition-all"
+              >
+                <motion.div 
+                  whileInView={{ scale: [0.8, 1.15, 1] }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: i * 0.2 + 0.2 }}
+                  className="w-14 h-14 bg-emerald-600 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-200 border border-emerald-400/30"
+                >
+                  {stepItem.step}
+                </motion.div>
+                <h3 className="font-bold text-xl text-gray-900">{stepItem.title}</h3>
+                <p className="text-sm text-gray-500 max-w-xs leading-relaxed font-medium">
+                  {stepItem.desc}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-20 bg-white">
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-4">
-            <h2 className="text-3xl font-extrabold text-gray-900">Des tarifs transparents, adaptés à votre école</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-2xl mx-auto space-y-4"
+          >
+            <div className="inline-block text-xs font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+              Offres & Abonnements
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+              Des tarifs transparents, adaptés à votre école
+            </h2>
             <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
               Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-5xl mx-auto items-stretch">
             {/* Plan Gratuit */}
-            <div className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between">
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              whileHover={{ y: -6 }}
+              className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between"
+            >
               <div className="space-y-4">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Découverte</span>
                 <h3 className="text-2xl font-bold text-gray-900">Plan Gratuit</h3>
@@ -297,23 +498,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
                   <span className="text-3xl font-extrabold text-gray-900">0 F CFA</span>
                   <span className="text-sm text-gray-400"> / à vie</span>
                 </div>
-                <ul className="space-y-2.5 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Limité à 15 élèves</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Thèmes de couleurs basiques</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Filigrane CardSchool au dos</li>
+                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Limité à 15 élèves</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Thèmes de couleurs basiques</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Filigrane CardSchool au dos</li>
                 </ul>
               </div>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.97 }}
                 onClick={() => onStartAuth('signup')}
-                className="mt-8 w-full py-3 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
+                className="mt-8 w-full py-3.5 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
               >
                 Commencer gratuitement
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
 
             {/* Plan Établissement (Conseillé) */}
-            <div className="p-8 rounded-3xl border-2 border-emerald-600 bg-white flex flex-col justify-between relative shadow-xl shadow-emerald-950/5">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              whileHover={{ y: -8 }}
+              className="p-8 rounded-3xl border-2 border-emerald-600 bg-white flex flex-col justify-between relative shadow-xl shadow-emerald-950/10 scale-105 z-10"
+            >
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-sm">
                 Recommandé
               </div>
               <div className="space-y-4">
@@ -324,24 +533,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
                   <span className="text-3xl font-extrabold text-emerald-600">30 000 F CFA</span>
                   <span className="text-sm text-gray-400"> / an</span>
                 </div>
-                <ul className="space-y-2.5 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cartes illimitées</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Aucun filigrane de plateforme</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Fonds Guillochés & Togo</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cachet & Signature proviseur</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Support direct par WhatsApp</li>
+                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cartes illimitées</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Aucun filigrane de plateforme</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Fonds Guillochés & Togo</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cachet & Signature proviseur</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Support direct par WhatsApp</li>
                 </ul>
               </div>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => onStartAuth('signup')}
-                className="mt-8 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md shadow-emerald-200 cursor-pointer text-sm"
+                className="mt-8 w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md shadow-emerald-200 cursor-pointer text-sm"
               >
                 S'abonner maintenant
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
 
             {/* Plan Inspecteur / Groupe */}
-            <div className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between">
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              whileHover={{ y: -6 }}
+              className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between"
+            >
               <div className="space-y-4">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Groupe</span>
                 <h3 className="text-2xl font-bold text-gray-900">Inspection / Multi-écoles</h3>
@@ -349,32 +567,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
                 <div className="pt-2">
                   <span className="text-3xl font-extrabold text-gray-900">Sur Mesure</span>
                 </div>
-                <ul className="space-y-2.5 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Gestion multi-établissements</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Comptes opérateurs secrétaires distincts</li>
-                  <li className="flex gap-2 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Statistiques globales de l'inspection</li>
+                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Gestion multi-établissements</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Comptes opérateurs secrétaires distincts</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Statistiques globales de l'inspection</li>
                 </ul>
               </div>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.97 }}
                 onClick={() => window.open('https://wa.me/22890000000', '_blank')}
-                className="mt-8 w-full py-3 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
+                className="mt-8 w-full py-3.5 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
               >
                 Nous contacter sur WhatsApp
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-20 bg-gray-50 border-t border-gray-100">
+      {/* FAQ Section */}
+      <section id="faq" className="py-24 bg-gray-50/70 border-t border-gray-100">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-3xl font-extrabold text-gray-900">Questions Fréquentes</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center space-y-4 mb-16"
+          >
+            <div className="inline-block text-xs font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+              Aide & Support
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Questions Fréquentes</h2>
             <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
               Toutes les réponses à vos interrogations sur la plateforme.
             </p>
-          </div>
+          </motion.div>
 
           <div className="space-y-4">
             {[
@@ -395,35 +623,50 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
                 a: "Grâce à notre technologie de cache hors-ligne (PWA), vous pouvez continuer d'ajouter des élèves, de prendre des photos avec la webcam et de configurer vos cartes sans interruption. Les modifications seront automatiquement synchronisées sur le serveur Supabase dès le retour de votre connexion internet."
               }
             ].map((item, i) => (
-              <div 
+              <motion.div 
                 key={i} 
-                className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xs hover:border-emerald-200 transition-all"
               >
                 <button
                   onClick={() => toggleFaq(i)}
                   className="w-full px-6 py-5 flex items-center justify-between text-left font-bold text-gray-900 hover:text-emerald-800 transition-colors cursor-pointer"
                 >
                   <span>{item.q}</span>
-                  <ChevronRight 
-                    className={`w-5 h-5 text-gray-400 transition-transform duration-350 ${
-                      faqOpen === i ? 'rotate-90 text-emerald-600' : ''
-                    }`} 
-                  />
+                  <motion.div
+                    animate={{ rotate: faqOpen === i ? 90 : 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <ChevronRight className={`w-5 h-5 ${faqOpen === i ? 'text-emerald-600' : 'text-gray-400'}`} />
+                  </motion.div>
                 </button>
-                {faqOpen === i && (
-                  <div className="px-6 pb-5 text-sm text-gray-500 font-medium leading-relaxed border-t border-gray-50 pt-3">
-                    {item.a}
-                  </div>
-                )}
-              </div>
+                <AnimatePresence>
+                  {faqOpen === i && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-5 text-sm text-gray-500 font-medium leading-relaxed border-t border-gray-50 pt-3">
+                        {item.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center border-b border-gray-800 pb-8">
+      <footer className="bg-gray-900 text-white py-14 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center border-b border-gray-800 pb-10">
           <div>
             <span className="font-extrabold text-xl text-emerald-400">CardSchool SaaS</span>
             <p className="text-xs text-gray-400 mt-2 font-medium">Simplifier l'administration scolaire au Togo.</p>
@@ -438,7 +681,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
             {onAdminLogin && (
               <button
                 onClick={onAdminLogin}
-                className="text-[10px] text-gray-700 hover:text-gray-500 transition-colors font-mono tracking-widest cursor-pointer uppercase"
+                className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors font-mono tracking-widest cursor-pointer uppercase"
                 title="Accès administration système"
               >
                 ⬡ Portail Admin
@@ -447,6 +690,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
           </div>
         </div>
       </footer>
+
+      {/* Floating Scroll To Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.5, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={scrollToTop}
+            className="fixed bottom-6 right-6 w-12 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-xl shadow-emerald-950/20 z-50 cursor-pointer border border-emerald-400/30"
+            aria-label="Retour en haut"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -9,10 +9,12 @@ import {
   ArrowLeft,
   Settings,
   Sparkles,
-  PhoneCall
+  PhoneCall,
+  Key
 } from 'lucide-react';
 import { SchoolInfo } from '../types';
 import { Session } from '../lib/auth';
+import { redeemLicenseKey } from '../lib/db';
 
 interface SchoolSettingsViewProps {
   session: Session;
@@ -220,6 +222,48 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                     <PhoneCall className="w-4 h-4" /> Envoyer la preuve de paiement WhatsApp
                   </a>
                 </div>
+              </div>
+            </div>
+
+            {/* License Key Redemption Card */}
+            <div className="double-bezel-outer">
+              <div className="double-bezel-inner p-6 space-y-4 bg-white">
+                <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <Key className="w-4 h-4 text-emerald-600" />
+                  Activer une Clé de Licence PRO
+                </h2>
+                <p className="text-xs text-gray-500 font-semibold leading-relaxed">
+                  Vous avez reçu un code ou une clé de licence PRO de la part de l'administration ? Saisissez-le ci-dessous pour débloquer immédiatement votre compte.
+                </p>
+
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const target = e.currentTarget;
+                    const input = target.querySelector('input') as HTMLInputElement;
+                    const code = input?.value || '';
+                    if (!code.trim()) return;
+
+                    const res = await redeemLicenseKey(code.trim(), session.userId, schoolInfo.name);
+                    alert(res.message);
+                    if (res.success) {
+                      window.location.reload();
+                    }
+                  }}
+                  className="flex flex-col sm:flex-row gap-2"
+                >
+                  <input
+                    type="text"
+                    placeholder="Ex: TOGO-PRO-2026-X89A"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 uppercase font-mono font-bold text-xs outline-none focus-brand bg-white"
+                  />
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
+                  >
+                    Activer la Clé
+                  </button>
+                </form>
               </div>
             </div>
           </div>
