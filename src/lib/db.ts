@@ -801,42 +801,6 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     }
   } catch {}
 
-  // 2.bis Récupérer depuis Supabase audit_logs
-  try {
-    const { data: auditData } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (auditData) {
-      for (const log of auditData) {
-        if (log.school_id && log.school_id !== PLATFORM_SETTINGS_SYSTEM_USER_ID && !deletedBlacklist.has(log.school_id)) {
-          if (!schoolsMap.has(log.school_id)) {
-            let schoolType = 'Lycée';
-            let location = '';
-            const match = log.details?.match(/enregistré \((.*?)\) à (.*)/);
-            if (match) {
-              schoolType = match[1] || 'Lycée';
-              location = match[2] || '';
-            }
-            const localStudents = getStoredStudents(log.school_id);
-            schoolsMap.set(log.school_id, {
-              ...DEFAULT_SCHOOL_INFO,
-              name: log.school_name || 'Établissement Enregistré',
-              schoolType,
-              location,
-              subscriptionPlan: 'free',
-              userId: log.school_id,
-              updatedAt: log.created_at,
-              studentCount: localStudents.length
-            });
-          }
-        }
-      }
-    }
-  } catch {}
-
   // 3. Scanner le Registre persistant de l'application
   const registeredList = getRegisteredSchoolsRegistry();
   for (const reg of registeredList) {
@@ -1224,30 +1188,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
     }
   } catch {}
 
-  // 2. Charger depuis Supabase audit_logs
-  try {
-    const { data: auditData } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(60);
-
-    if (auditData) {
-      for (const log of auditData) {
-        if (log.action === 'SYNC_PLATFORM_SETTINGS') continue;
-        const id = log.id?.toString() || `${log.created_at}-${log.school_id}`;
-        if (!logsMap.has(id)) {
-          logsMap.set(id, {
-            id,
-            schoolName: log.school_name || (log.school_id ? 'Établissement' : 'Système CardSchool'),
-            action: log.action || 'Action',
-            details: log.details || '',
-            createdAt: log.created_at || new Date().toISOString(),
-          });
-        }
-      }
-    }
-  } catch {}
+  // (audit_logs table removed — data consolidated in admin_logs only)
 
   // 3. Fallback / Fusion avec LocalStorage
   try {
@@ -1483,32 +1424,7 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
     // Continue to next tier
   }
 
-  // 2. Try Supabase support_messages (Legacy fallback)
-  try {
-    let query = supabase.from('support_messages').select('*').order('created_at', { ascending: true });
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
-    const { data, error } = await query;
-    if (!error && data && data.length > 0) {
-      data.forEach((d: any) => {
-        addUnique({
-          id: d.id?.toString() || `${d.school_id}_${d.created_at}`,
-          schoolId: d.school_id,
-          schoolName: d.school_name || 'Établissement',
-          senderRole: (d.sender_role || d.sender) === 'admin' ? 'admin' : 'school',
-          message: d.message || '',
-          attachmentUrl: d.attachment_url || undefined,
-          createdAt: d.created_at || new Date().toISOString(),
-          status: d.status || 'sent',
-        });
-      });
-    }
-  } catch (err) {
-    // Continue to next tier
-  }
-
-  // 3. Local storage fallback (Both keys)
+  // 2. Local storage fallback (Both keys)
   try {
     const rawA = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
     const rawB = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY_ALT);
