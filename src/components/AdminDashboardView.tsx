@@ -1627,28 +1627,49 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
                               : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
-                            {platformSettings.fedapayEnabled ? 'Actif' : 'Désactivé'}
+                            {platformSettings.fedapayEnabled ? 'ON — ACTIF' : 'OFF — DÉSACTIVÉ'}
                           </span>
                         </div>
 
                         <div className="space-y-4 pt-1">
-                          {/* Enable Toggle */}
-                          <label className="flex items-start gap-3 p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-xl border border-slate-200/80 cursor-pointer transition-all">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(platformSettings.fedapayEnabled)}
-                              onChange={e => setPlatformSettings(prev => ({ ...prev, fedapayEnabled: e.target.checked }))}
-                              className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
-                            />
-                            <div className="space-y-0.5">
-                              <span className="text-xs font-black text-slate-800 block">
-                                Activer le bouton de paiement instantané FedaPay pour les écoles
-                              </span>
-                              <span className="text-[11px] text-slate-500 font-normal block leading-relaxed">
-                                Les établissements pourront payer directement par T-Money ou Flooz avec pop-up FedaPay et voir leur compte PRO débloqué automatiquement en quelques secondes.
-                              </span>
+                          {/* Real iOS-Style Visual ON / OFF Toggle Switch */}
+                          <div className="flex items-center justify-between p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 gap-4">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-900">
+                                  Interrupteur Paiement FedaPay
+                                </span>
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                                  platformSettings.fedapayEnabled 
+                                    ? 'bg-emerald-600 text-white' 
+                                    : 'bg-slate-300 text-slate-700'
+                                }`}>
+                                  {platformSettings.fedapayEnabled ? 'ON' : 'OFF'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-normal leading-relaxed">
+                                {platformSettings.fedapayEnabled
+                                  ? "Le bouton de paiement direct T-Money / Flooz est activé pour toutes les écoles."
+                                  : "Le bouton FedaPay est désactivé. Seul le paiement manuel avec envoi de reçu sera proposé."}
+                              </p>
                             </div>
-                          </label>
+
+                            {/* Clickable Switch */}
+                            <button
+                              type="button"
+                              onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnabled: !prev.fedapayEnabled }))}
+                              className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-inner ${
+                                platformSettings.fedapayEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                              }`}
+                              aria-label="Activer / Désactiver FedaPay"
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                  platformSettings.fedapayEnabled ? 'translate-x-6' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
 
                           {/* Environment Mode: Sandbox vs Live */}
                           <div className="space-y-2">
@@ -1674,7 +1695,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                  Simulez des paiements avec de faux numéros pour tester sans frais.
+                                  Clé obtenue sur <strong>sandbox.fedapay.com</strong> pour tester sans frais réels.
                                 </p>
                               </button>
 
@@ -1696,25 +1717,54 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                  Encaissez de vrais paiements sur votre compte marchand FedaPay.
+                                  Clé obtenue sur <strong>fedapay.com</strong> pour encaisser les vrais paiements.
                                 </p>
                               </button>
                             </div>
                           </div>
 
-                          {/* Public API Key */}
+                          {/* How to get API Key Step-by-step box */}
+                          <div className="p-3 bg-amber-50/80 border border-amber-200/70 rounded-xl space-y-1.5 text-[11px]">
+                            <p className="font-extrabold text-amber-950 flex items-center gap-1.5">
+                              <Info className="w-4 h-4 text-amber-700 shrink-0" />
+                              Comment obtenir votre propre Clé Publique FedaPay :
+                            </p>
+                            <ol className="list-decimal list-inside space-y-1 text-amber-900 font-medium text-[10px] leading-relaxed">
+                              <li>
+                                Connectez-vous sur votre compte FedaPay :{' '}
+                                <a 
+                                  href={platformSettings.fedapayEnvironment === 'sandbox' ? "https://sandbox.fedapay.com" : "https://fedapay.com"} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="underline font-bold text-amber-950 hover:text-amber-700"
+                                >
+                                  {platformSettings.fedapayEnvironment === 'sandbox' ? "sandbox.fedapay.com (Test)" : "fedapay.com (Production)"} ↗
+                                </a>
+                              </li>
+                              <li>Allez dans le menu <strong>Paramètres &gt; Clés d'API</strong></li>
+                              <li>
+                                Copiez la <strong>Clé Publique (Public Key)</strong> qui commence par{' '}
+                                <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-950">
+                                  {platformSettings.fedapayEnvironment === 'sandbox' ? 'pk_sandbox_...' : 'pk_live_...'}
+                                </code>
+                              </li>
+                              <li>Collez-la dans le champ ci-dessous et cliquez sur <strong>Enregistrer</strong>.</li>
+                            </ol>
+                          </div>
+
+                          {/* Public API Key Input */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                                Clé Publique FedaPay (Public Key)
+                                Votre Clé Publique FedaPay ({platformSettings.fedapayEnvironment === 'sandbox' ? 'Sandbox' : 'Live'})
                               </label>
                               <a
-                                href="https://fedapay.com"
+                                href={platformSettings.fedapayEnvironment === 'sandbox' ? "https://sandbox.fedapay.com" : "https://fedapay.com"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
                               >
-                                Tableau de bord FedaPay <ExternalLink className="w-2.5 h-2.5" />
+                                Ouvrir FedaPay <ExternalLink className="w-2.5 h-2.5" />
                               </a>
                             </div>
                             <div className="relative">
@@ -1723,13 +1773,29 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 type="text"
                                 value={platformSettings.fedapayPublicKey || ''}
                                 onChange={e => setPlatformSettings(prev => ({ ...prev, fedapayPublicKey: e.target.value.trim() }))}
-                                placeholder="pk_live_... ou pk_sandbox_..."
+                                placeholder={platformSettings.fedapayEnvironment === 'sandbox' ? "pk_sandbox_votre_cle_personnelle" : "pk_live_votre_cle_personnelle"}
                                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50/50"
                               />
                             </div>
                             <p className="text-[10px] text-slate-400 font-medium">
-                              Cette clé publique est utilisée de manière sécurisée côté client pour afficher le guichet de paiement.
+                              {platformSettings.fedapayPublicKey === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp' ? (
+                                <span className="text-amber-700 font-bold">⚠️ Clé d'exemple factice détectée. Veuillez la remplacer par votre propre clé Sandbox créée sur sandbox.fedapay.com.</span>
+                              ) : (
+                                "Cette clé publique est transmise au guichet sécurisé côté client."
+                              )}
                             </p>
+                          </div>
+
+                          {/* Quick Save FedaPay Settings Button */}
+                          <div className="pt-2">
+                            <button
+                              type="submit"
+                              disabled={isSavingSettings}
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                              <Save className="w-4 h-4" />
+                              <span>{isSavingSettings ? 'Enregistrement en cours...' : 'Enregistrer la configuration FedaPay'}</span>
+                            </button>
                           </div>
                         </div>
                       </div>

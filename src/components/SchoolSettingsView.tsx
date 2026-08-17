@@ -108,9 +108,15 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
       return;
     }
 
-    const pubKey = platformSettings.fedapayPublicKey || 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp';
+    const pubKey = (platformSettings.fedapayPublicKey || '').trim();
     const environment = platformSettings.fedapayEnvironment || 'sandbox';
     const amount = platformSettings.annualPriceCFA || 30000;
+
+    if (!pubKey || pubKey === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp') {
+      setIsLaunchingFedaPay(false);
+      setFedaPayError("Veuillez renseigner votre vraie clé publique FedaPay dans la Console Admin (Paramètres > Clé Publique FedaPay) pour tester les paiements.");
+      return;
+    }
 
     try {
       const widget = (window as any).FedaPay.init({
