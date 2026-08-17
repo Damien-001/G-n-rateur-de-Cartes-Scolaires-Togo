@@ -1789,7 +1789,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           {/* Quick Save FedaPay Settings Button */}
                           <div className="pt-2">
                             <button
-                              type="submit"
+                              type="button"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsSavingSettings(true);
+                                const ok = await savePlatformSettings(platformSettings);
+                                setIsSavingSettings(false);
+                                if (ok) {
+                                  setSettingsToast({ type: 'success', message: 'Configuration FedaPay enregistrée avec succès !' });
+                                  setTimeout(() => setSettingsToast(null), 3000);
+                                  alert("✅ Configuration FedaPay et clé enregistrées avec succès !");
+                                }
+                              }}
                               disabled={isSavingSettings}
                               className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
                             >

@@ -156,7 +156,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   whatsappNumber: '+228 90 00 00 00',
   officeAddress: 'Lomé, Togo',
   fedapayEnabled: true,
-  fedapayPublicKey: 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp',
+  fedapayPublicKey: '',
   fedapayEnvironment: 'sandbox',
   paymentInstructions: "Effectuez votre transfert T-Money ou Flooz en précisant le nom de votre établissement. Téléversez ensuite votre capture d'écran dans le chat pour validation sous 15 minutes.",
   supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte."

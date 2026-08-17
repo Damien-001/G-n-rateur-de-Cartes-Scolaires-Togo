@@ -1815,6 +1815,11 @@ export function exportSchoolsToCSV(schools: AdminSchoolDetail[]) {
 export const PLATFORM_SETTINGS_STORAGE_KEY = 'cardschool_platform_settings';
 export const PLATFORM_SETTINGS_SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
+function sanitizeKey(k?: string): string {
+  if (!k || k === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp') return '';
+  return k.trim();
+}
+
 /** Fetch platform settings configured by super-admin (Aggregating Supabase & LocalStorage) */
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   // 1. Try Supabase custom table platform_settings
@@ -1838,7 +1843,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         whatsappNumber: data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
         officeAddress: data.office_address || DEFAULT_PLATFORM_SETTINGS.officeAddress,
         fedapayEnabled: data.fedapay_enabled !== undefined ? Boolean(data.fedapay_enabled) : DEFAULT_PLATFORM_SETTINGS.fedapayEnabled,
-        fedapayPublicKey: data.fedapay_public_key || DEFAULT_PLATFORM_SETTINGS.fedapayPublicKey,
+        fedapayPublicKey: sanitizeKey(data.fedapay_public_key),
         fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
@@ -1866,6 +1871,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
           ...parsed,
+          fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey),
           updatedAt: systemRow.updated_at
         };
         localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -1893,6 +1899,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
           const merged: PlatformSettings = {
             ...DEFAULT_PLATFORM_SETTINGS,
             ...parsed,
+            fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey),
             updatedAt: logs[0].created_at
           };
           localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -1910,13 +1917,18 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     const stored = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_PLATFORM_SETTINGS, ...parsed };
+      return { 
+        ...DEFAULT_PLATFORM_SETTINGS, 
+        ...parsed,
+        fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey)
+      };
     }
   } catch {
     // ignore
   }
 
   return DEFAULT_PLATFORM_SETTINGS;
+}
 }
 
 /** Save platform settings updated by super-admin (Writes to LocalStorage & all Supabase tiers) */
