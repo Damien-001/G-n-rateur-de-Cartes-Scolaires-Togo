@@ -1723,13 +1723,13 @@ export function exportSchoolsToCSV(schools: AdminSchoolDetail[]) {
 export const PLATFORM_SETTINGS_STORAGE_KEY = 'cardschool_platform_settings';
 export const PLATFORM_SETTINGS_SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
-function sanitizeKey(k?: string): string {
-  if (!k || k === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp') return '';
+export function sanitizeKey(k?: string): string {
+  if (!k) return '';
   return k.trim();
 }
 
 /** Helper to read fedapayPublicKey from localStorage without discarding it */
-function getLocalFedaKey(): string {
+export function getLocalFedaKey(): string {
   try {
     const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (raw) {

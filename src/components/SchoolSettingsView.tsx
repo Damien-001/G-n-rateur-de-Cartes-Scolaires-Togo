@@ -24,7 +24,28 @@ import {
 } from 'lucide-react';
 import { SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import { Session } from '../lib/auth';
-import { redeemLicenseKey, fetchPlatformSettings, processFedaPaySuccessfulPayment } from '../lib/db';
+import { redeemLicenseKey, fetchPlatformSettings, processFedaPaySuccessfulPayment, getLocalFedaKey } from '../lib/db';
+
+async function ensureFedaPayScript(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if ((window as any).FedaPay) return true;
+  return new Promise((resolve) => {
+    const existing = document.querySelector('script[src*="fedapay.com/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(!!(window as any).FedaPay));
+      existing.addEventListener('error', () => resolve(false));
+      setTimeout(() => resolve(!!(window as any).FedaPay), 2500);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.fedapay.com/checkout.js?v=1.1.7';
+    script.async = true;
+    script.onload = () => resolve(!!(window as any).FedaPay);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+    setTimeout(() => resolve(!!(window as any).FedaPay), 3500);
+  });
+}
 
 interface SchoolSettingsViewProps {
   session: Session;
@@ -45,8 +66,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   mode = 'profile',
   onOpenChat,
 }) => {
+  const [activeTab, setActiveTab] = useState<'profile' | 'billing'>(mode);
   const [name, setName] = useState(schoolInfo.name || '');
   const [schoolType, setSchoolType] = useState(schoolInfo.schoolType || 'Lycée');
+  const [region, setRegion] = useState(schoolInfo.region || 'Maritime');
   const [location, setLocation] = useState(schoolInfo.location || '');
   const [phone, setPhone] = useState(schoolInfo.phone || '');
   const [logoUrl, setLogoUrl] = useState(schoolInfo.logoUrl || '');
@@ -98,23 +121,34 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
     amount: number;
   } | null>(null);
 
-  const handleOpenFedaPay = () => {
+  const handleOpenFedaPay = async () => {
     setFedaPayError(null);
     setIsLaunchingFedaPay(true);
 
-    if (typeof window === 'undefined' || !(window as any).FedaPay) {
+    const isLoaded = await ensureFedaPayScript();
+    if (!isLoaded || !(window as any).FedaPay) {
       setIsLaunchingFedaPay(false);
-      setFedaPayError("Le service FedaPay n'a pas pu être chargé. Vérifiez votre connexion ou optez pour le paiement manuel ci-dessous.");
+      setFedaPayError("Le service FedaPay n'a pas pu être chargé. Vérifiez votre connexion internet ou utilisez les numéros T-Money / Flooz ci-dessous.");
       return;
     }
 
-    const pubKey = (platformSettings.fedapayPublicKey || '').trim();
-    const environment = platformSettings.fedapayEnvironment || 'sandbox';
-    const amount = platformSettings.annualPriceCFA || 30000;
+    // Refresh freshest platform settings directly
+    let activeSettings = platformSettings;
+    try {
+      const fresh = await fetchPlatformSettings();
+      if (fresh) {
+        setPlatformSettings(fresh);
+        activeSettings = fresh;
+      }
+    } catch {}
 
-    if (!pubKey || pubKey === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp') {
+    const pubKey = (activeSettings.fedapayPublicKey || '').trim() || getLocalFedaKey();
+    const environment = activeSettings.fedapayEnvironment || 'sandbox';
+    const amount = activeSettings.annualPriceCFA || 30000;
+
+    if (!pubKey) {
       setIsLaunchingFedaPay(false);
-      setFedaPayError("Le guichet de paiement direct est momentanément indisponible. Veuillez effectuer votre transfert via les numéros T-Money / Flooz ci-dessous.");
+      setFedaPayError("Le guichet de paiement direct est momentanément indisponible (clé FedaPay non configurée). Veuillez effectuer votre transfert via les numéros T-Money / Flooz ci-dessous.");
       return;
     }
 

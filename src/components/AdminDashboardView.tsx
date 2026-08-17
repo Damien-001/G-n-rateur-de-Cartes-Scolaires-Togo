@@ -1780,11 +1780,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               />
                             </div>
                             <p className="text-[10px] text-slate-400 font-medium">
-                              {platformSettings.fedapayPublicKey === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp' ? (
-                                <span className="text-amber-700 font-bold">⚠️ Clé d'exemple factice détectée. Veuillez la remplacer par votre propre clé Sandbox créée sur sandbox.fedapay.com.</span>
-                              ) : (
-                                "Cette clé publique est transmise au guichet sécurisé côté client."
-                              )}
+                              Cette clé publique est transmise au guichet sécurisé FedaPay côté client.
                             </p>
                           </div>
 
