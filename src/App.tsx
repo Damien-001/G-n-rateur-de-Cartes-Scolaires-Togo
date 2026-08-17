@@ -74,7 +74,6 @@ export default function App({ session, onLogout }: AppProps) {
   const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [printClassFilter, setPrintClassFilter] = useState<string>('all');
   const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -506,121 +505,31 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+              <button
+                onClick={() => setIsAdminView(true)}
+                title="Console Admin"
+                className="p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200 cursor-pointer active:scale-95 shadow-xs"
+              >
+                <Shield className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setIsVerificationOpen(true)}
-              title="Vérifier une carte"
-              className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95"
+              title="Vérifier une carte officielle"
+              className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95 shadow-xs"
             >
               <ShieldCheck className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95 shadow-xs"
-              aria-label="Menu"
+              onClick={handleLogout}
+              title="Déconnexion"
+              className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200 cursor-pointer active:scale-95 shadow-xs"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
-
-        {/* Mobile Navigation Drawer */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 md:hidden flex no-print animate-fadeIn">
-            <div 
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            
-            <div className="relative w-4/5 max-w-xs bg-[#f8faf6] h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
-                      <Palette className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h2 className="text-xs font-black text-slate-900 truncate uppercase">
-                        {schoolInfo.name.split(' (')[0] || "Mon École"}
-                      </h2>
-                      <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">CardSchool Togo</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {session.email.toLowerCase() === 'admin@cardschool.tg' && (
-                  <button
-                    onClick={() => { setIsAdminView(true); setIsMobileMenuOpen(false); }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]"
-                  >
-                    <Shield className="w-4 h-4" />
-                    Console d'administration
-                  </button>
-                )}
-
-                <nav className="space-y-1">
-                  {[
-                    { id: 'students', label: 'Gestion des élèves', icon: Users },
-                    { id: 'design', label: 'Design de la carte', icon: Palette },
-                    { id: 'print', label: 'Impression des cartes', icon: FileDown },
-                    { id: 'settings', label: "Paramètres de l'école", icon: Settings },
-                    { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
-                  ].map(item => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => { setActiveTab(item.id as any); setIsMobileMenuOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          isActive 
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </nav>
-
-                <button
-                  onClick={() => { setIsVerificationOpen(true); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>Vérifier une carte</span>
-                </button>
-              </div>
-
-              {/* Profile & Logout */}
-              <div className="pt-4 border-t border-slate-200 space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                    {session.fullName.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                    <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 text-red-600" />
-                  Déconnexion
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Global Sidebar - Fixed on desktop */}
         <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
@@ -880,27 +789,28 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
 
         {/* Mobile Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-1 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
           {[
             { id: 'students', label: 'Élèves', icon: Users },
             { id: 'design', label: 'Design', icon: Palette },
             { id: 'print', label: 'Imprimer', icon: FileDown },
             { id: 'settings', label: 'Réglages', icon: Settings },
+            { id: 'billing', label: 'Abonnement', icon: CreditCard },
           ].map(item => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id || (item.id === 'settings' && activeTab === 'billing');
+            const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer active:scale-95 ${
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
                   isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
                 }`}
               >
                 <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <span className="text-[10px] mt-0.5">{item.label}</span>
+                <span className="text-[9px] sm:text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
@@ -943,121 +853,31 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
+          {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+            <button
+              onClick={() => setIsAdminView(true)}
+              title="Console Admin"
+              className="p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200 cursor-pointer active:scale-95 shadow-xs"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setIsVerificationOpen(true)}
-            title="Vérifier une carte"
-            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95"
+            title="Vérifier une carte officielle"
+            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95 shadow-xs"
           >
             <ShieldCheck className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95 shadow-xs"
-            aria-label="Menu"
+            onClick={handleLogout}
+            title="Déconnexion"
+            className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200 cursor-pointer active:scale-95 shadow-xs"
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
-
-      {/* Mobile Navigation Drawer */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex no-print animate-fadeIn">
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          
-          <div className="relative w-4/5 max-w-xs bg-[#f8faf6] h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
-                    <Palette className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-xs font-black text-slate-900 truncate uppercase">
-                      {schoolInfo.name.split(' (')[0] || "Mon École"}
-                    </h2>
-                    <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">CardSchool Togo</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {session.email.toLowerCase() === 'admin@cardschool.tg' && (
-                <button
-                  onClick={() => { setIsAdminView(true); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]"
-                >
-                  <Shield className="w-4 h-4" />
-                  Console d'administration
-                </button>
-              )}
-
-              <nav className="space-y-1">
-                {[
-                  { id: 'students', label: 'Gestion des élèves', icon: Users },
-                  { id: 'design', label: 'Design de la carte', icon: Palette },
-                  { id: 'print', label: 'Impression des cartes', icon: FileDown },
-                  { id: 'settings', label: "Paramètres de l'école", icon: Settings },
-                  { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
-                ].map(item => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { setActiveTab(item.id as any); setIsMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isActive 
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </nav>
-
-              <button
-                onClick={() => { setIsVerificationOpen(true); setIsMobileMenuOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Vérifier une carte</span>
-              </button>
-            </div>
-
-            {/* Profile & Logout */}
-            <div className="pt-4 border-t border-slate-200 space-y-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                  {session.fullName.charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                  <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 text-red-600" />
-                Déconnexion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Global Navigation Sidebar - Fixed on desktop */}
       <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
@@ -1387,27 +1207,28 @@ export default function App({ session, onLogout }: AppProps) {
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-1 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
         {[
           { id: 'students', label: 'Élèves', icon: Users },
           { id: 'design', label: 'Design', icon: Palette },
           { id: 'print', label: 'Imprimer', icon: FileDown },
           { id: 'settings', label: 'Réglages', icon: Settings },
+          { id: 'billing', label: 'Abonnement', icon: CreditCard },
         ].map(item => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id || (item.id === 'settings' && activeTab === 'billing');
+          const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
-              className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer active:scale-95 ${
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
                 isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
               <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <span className="text-[10px] mt-0.5">{item.label}</span>
+              <span className="text-[9px] sm:text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
             </button>
           );
         })}

@@ -116,7 +116,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'settings' | 'logs'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   
   // Custom manual quotas state
   const [editingSchool, setEditingSchool] = useState<AdminSchoolDetail | null>(null);
@@ -615,119 +614,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setActiveSubTab('payments')}
-            className="relative p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            title="Preuves & Messages"
+            onClick={onSwitchToSchoolView}
+            title="Simuler Vue École"
+            className="p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200 cursor-pointer active:scale-95 shadow-xs"
           >
-            <Bell className="w-4 h-4" />
-            {unreadSchoolMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                {unreadSchoolMessagesCount > 9 ? '9+' : unreadSchoolMessagesCount}
-              </span>
-            )}
+            <Sparkles className="w-4 h-4" />
           </button>
 
           <button
             onClick={loadData}
-            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer active:scale-95"
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer active:scale-95 shadow-xs"
             title="Rafraîchir"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
 
           <button
-            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
-            className="p-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-            aria-label="Menu"
+            onClick={onLogout}
+            title="Déconnexion"
+            className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200 cursor-pointer active:scale-95 shadow-xs"
           >
-            {isMobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
-
-      {/* Mobile Drawer Navigation for Admin */}
-      {isMobileNavOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex animate-fadeIn">
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => setIsMobileNavOpen(false)}
-          />
-          <div className="relative w-4/5 max-w-xs bg-[#f8faf6] h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
-                    <Shield className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xs font-black text-slate-900 truncate uppercase">Console Admin</h2>
-                    <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">Supervision Togo</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsMobileNavOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <nav className="space-y-1">
-                {[
-                  { id: 'overview', label: 'Supervision Globale', icon: TrendingUp },
-                  { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
-                  { id: 'payments', label: 'Chat & Preuves Paiement', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
-                  { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
-                  { id: 'settings', label: 'Paramètres & Contacts', icon: Settings },
-                  { id: 'logs', label: "Journal d'Activité", icon: History },
-                ].map(item => {
-                  const Icon = item.icon;
-                  const isActive = activeSubTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { setActiveSubTab(item.id as any); setIsMobileNavOpen(false); }}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isActive 
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-5 h-5" />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && item.badge > 0 ? (
-                        <span className="bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full">
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200 space-y-3">
-              <button
-                onClick={() => { onSwitchToSchoolView(); setIsMobileNavOpen(false); }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
-              >
-                <Sparkles className="w-4 h-4" />
-                Simuler Vue École
-              </button>
-              
-              <button
-                onClick={onLogout}
-                className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-              >
-                <LogOut className="w-4 h-4 text-red-600" />
-                Déconnexion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Fixed Side Menu Navigation - Desktop Only */}
       <aside className="hidden md:flex md:w-64 md:h-full bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 border-r border-slate-200/80 shadow-sm overflow-y-auto">
@@ -800,7 +710,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       </aside>
 
       {/* Main dashboard panels scroll area */}
-      <main className="flex-1 min-w-0 md:h-full overflow-y-auto bg-gray-50/50 pb-16 md:pb-8">
+      <main className="flex-1 min-w-0 md:h-full overflow-y-auto bg-gray-50/50 pb-20 md:pb-8">
         
         {/* Desktop / Tablet Header toolbar */}
         <header className="hidden md:flex bg-white border-b border-slate-200/70 py-4 px-8 justify-between items-center sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
@@ -2224,6 +2134,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation Bar for Admin */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-1 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+        {[
+          { id: 'overview', label: 'Supervision', icon: TrendingUp },
+          { id: 'schools', label: 'Écoles', icon: Building2 },
+          { id: 'payments', label: 'Paiements', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
+          { id: 'licenses', label: 'Licences', icon: Key },
+          { id: 'settings', label: 'Réglages', icon: Settings },
+        ].map(item => {
+          const Icon = item.icon;
+          const isActive = activeSubTab === item.id || (item.id === 'settings' && activeSubTab === 'logs');
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveSubTab(item.id as any)}
+              className={`relative flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
+                isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+              }`}
+            >
+              <div className={`p-1 rounded-xl transition-all relative ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                {item.badge && item.badge > 0 ? (
+                  <span className="absolute -top-1 -right-1.5 bg-amber-400 text-slate-950 text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </div>
+              <span className="text-[9px] sm:text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
     </div>
   );
