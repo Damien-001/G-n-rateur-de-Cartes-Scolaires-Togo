@@ -217,6 +217,37 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
     }
   };
 
+  const handleSimulateTestPayment = async () => {
+    setIsLaunchingFedaPay(true);
+    setFedaPayError(null);
+    try {
+      const amount = platformSettings.annualPriceCFA || 30000;
+      const txId = 'SIMU_FEDAPAY_' + Math.floor(100000 + Math.random() * 900000);
+      const res = await processFedaPaySuccessfulPayment(
+        session.userId,
+        schoolInfo.name || 'Établissement',
+        txId,
+        amount
+      );
+      if (res.success) {
+        await onSaveSchoolInfo({
+          ...schoolInfo,
+          subscriptionPlan: 'pro',
+          subscriptionExpiresAt: res.expiresAt
+        });
+        setPaymentSuccessData({
+          transactionId: txId,
+          expiresAt: res.expiresAt,
+          amount: amount
+        });
+      }
+    } catch (err: any) {
+      setFedaPayError("Erreur simulation: " + err?.message);
+    } finally {
+      setIsLaunchingFedaPay(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -448,9 +479,20 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         </p>
 
                         {fedaPayError && (
-                          <div className="p-2.5 bg-red-500/20 border border-red-400/40 rounded-xl text-[11px] text-red-200 font-semibold flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-red-300 shrink-0" />
-                            <span>{fedaPayError}</span>
+                          <div className="p-3 bg-red-500/20 border border-red-400/40 rounded-xl text-[11px] text-red-200 font-semibold space-y-2">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-red-300 shrink-0" />
+                              <span>{fedaPayError}</span>
+                            </div>
+                            {platformSettings.fedapayEnvironment === 'sandbox' && (
+                              <button
+                                type="button"
+                                onClick={handleSimulateTestPayment}
+                                className="w-full py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow transition-all active:scale-95"
+                              >
+                                🧪 Simuler un paiement de test immédiat (Sandbox)
+                              </button>
+                            )}
                           </div>
                         )}
 
