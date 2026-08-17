@@ -971,7 +971,6 @@ export async function deleteSchoolByAdmin(userId: string): Promise<boolean> {
     await supabase.from('school_info').delete().eq('user_id', userId);
     await supabase.from('students').delete().eq('user_id', userId);
     await supabase.from('admin_logs').delete().eq('school_id', userId);
-    await supabase.from('audit_logs').delete().eq('school_id', userId);
     await supabase.from('chat_messages').delete().eq('school_id', userId);
   } catch (err) {
     console.warn('deleteSchoolByAdmin Supabase error:', err);
@@ -1144,16 +1143,7 @@ export async function saveAdminLog(
     });
   } catch {}
 
-  // 3. Sauvegarde Supabase audit_logs
-  try {
-    await supabase.from('audit_logs').insert({
-      school_id: schoolUserId,
-      school_name: schoolName,
-      action: action,
-      details: details,
-      created_at: timestamp
-    });
-  } catch {}
+  // (audit_logs table removed — admin_logs is the single source of truth)
 
   // 4. Émettre un événement pour rafraîchissement temps-réel de l'interface admin
   if (typeof window !== 'undefined') {
