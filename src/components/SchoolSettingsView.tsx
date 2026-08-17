@@ -114,7 +114,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
     if (!pubKey || pubKey === 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp') {
       setIsLaunchingFedaPay(false);
-      setFedaPayError("Veuillez renseigner votre vraie clé publique FedaPay dans la Console Admin (Paramètres > Clé Publique FedaPay) pour tester les paiements.");
+      setFedaPayError("Le guichet de paiement direct est momentanément indisponible. Veuillez effectuer votre transfert via les numéros T-Money / Flooz ci-dessous.");
       return;
     }
 
@@ -371,8 +371,8 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                       Tarif annuel PRO : <strong className="text-emerald-800 font-extrabold">{(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA / an</strong> (cartes illimitées pendant 365 jours).
                     </p>
 
-                    {/* FedaPay Primary Instant CTA */}
-                    {platformSettings.fedapayEnabled && (
+                    {/* FedaPay Primary Instant CTA (Displayed only when activated and key configured) */}
+                    {platformSettings.fedapayEnabled && Boolean(platformSettings.fedapayPublicKey?.trim()) && (
                       <div className="p-4 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl text-white space-y-3.5 shadow-lg shadow-emerald-900/10 border border-emerald-700/50">
                         <div className="flex items-start justify-between gap-3">
                           <div>
