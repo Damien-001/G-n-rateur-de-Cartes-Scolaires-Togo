@@ -122,14 +122,14 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 font-sans">
-      <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 font-sans">
+      <div className="flex items-center justify-between mb-6 sm:mb-8 pb-4 border-b border-gray-100">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            <Palette className="w-6 h-6 text-emerald-600 animate-pulse" />
+          <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+            <Palette className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 animate-pulse" />
             Personnalisation & Design de la Carte
           </h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Configurez les visuels de votre établissement et prévisualisez le rendu en temps réel.</p>
+          <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">Configurez les visuels de votre établissement et prévisualisez le rendu en temps réel.</p>
         </div>
       </div>
 

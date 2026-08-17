@@ -113,7 +113,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
   return (
     <div className="min-h-screen bg-[#faf9f6] pb-16 font-sans">
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         
         {/* Navigation & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -121,26 +121,26 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
             <div>
               {mode === 'billing' ? (
                 <>
-                  <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                    <CreditCard className="w-6 h-6 text-emerald-600" />
+                  <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                     Mon Plan & Abonnement
                   </h1>
-                  <p className="text-sm text-gray-500 font-medium">Suivez votre statut d'abonnement SaaS, votre volume de cartes et activez vos licences.</p>
+                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Suivez votre statut d'abonnement SaaS, votre volume de cartes et activez vos licences.</p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-                    <Settings className="w-6 h-6 text-emerald-600" />
+                  <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                    <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                     Paramètres de l'Établissement
                   </h1>
-                  <p className="text-sm text-gray-500 font-medium">Mettez à jour les coordonnées officielles, logo, signature et cachet de l'école.</p>
+                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Mettez à jour les coordonnées officielles, logo, signature et cachet de l'école.</p>
                 </>
               )}
             </div>
           </div>
           <button
             onClick={onBack}
-            className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
+            className="self-start sm:self-auto flex items-center gap-2 px-3.5 sm:px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour à la gestion des élèves

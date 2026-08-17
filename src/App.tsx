@@ -1240,16 +1240,16 @@ export default function App({ session, onLogout }: AppProps) {
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-4 border-b border-gray-100">
               <div>
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gestion des élèves</h1>
-                <p className="text-xs text-gray-500 font-medium mt-1">Configurez le visuel des cartes et gérez la liste de vos élèves.</p>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Gestion des élèves</h1>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">Configurez le visuel des cartes et gérez la liste de vos élèves.</p>
               </div>
               <button 
                 onClick={handleOpenAddStudent}
-                className="flex items-center gap-2 px-5 py-2.5 btn-primary active:scale-95 text-sm cursor-pointer shadow-md"
+                className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 btn-primary active:scale-95 text-xs sm:text-sm cursor-pointer shadow-md w-full sm:w-auto"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 Ajouter Élève
               </button>
             </div>

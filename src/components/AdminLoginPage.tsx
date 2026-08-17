@@ -88,7 +88,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
       {/* Back button */}
       <button
         onClick={onBackToLanding}
-        className="absolute top-6 left-6 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-xs font-bold uppercase tracking-widest cursor-pointer group bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200/80 shadow-sm"
+        className="absolute top-4 sm:top-6 left-4 sm:left-6 flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-[11px] sm:text-xs font-bold uppercase tracking-wider cursor-pointer group bg-white/80 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-200/80 shadow-sm z-20"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" className="group-hover:-translate-x-0.5 transition-transform">
           <path d="M19 12H5"/><path d="m12 5-7 7 7 7"/>

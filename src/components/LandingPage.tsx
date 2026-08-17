@@ -11,7 +11,9 @@ import {
   Activity,
   Layers,
   FileDown,
-  ArrowUp
+  ArrowUp,
+  Menu,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
@@ -50,6 +52,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Framer Motion scroll progress spring
   const { scrollYProgress } = useScroll();
@@ -142,72 +145,159 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className={`fixed top-0 left-0 right-0 h-20 z-50 px-6 flex items-center justify-between transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 h-16 sm:h-20 z-50 px-4 sm:px-8 flex items-center justify-between transition-all duration-300 ${
           scrolled 
-            ? 'bg-white/90 backdrop-blur-xl border-b border-emerald-100/60 shadow-lg shadow-gray-900/5' 
-            : 'bg-white/70 backdrop-blur-md border-b border-gray-100/80'
+            ? 'bg-white/95 backdrop-blur-xl border-b border-emerald-100/80 shadow-md shadow-gray-900/5' 
+            : 'bg-white/80 backdrop-blur-md border-b border-gray-100/80'
         }`}
       >
+        {/* Brand / Logo */}
         <div 
           onClick={scrollToTop}
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
         >
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
-            className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10 shrink-0"
           >
-            <span className="font-extrabold text-lg">C</span>
+            <span className="font-extrabold text-base sm:text-lg">C</span>
           </motion.div>
           <div>
-            <h1 className="text-base font-bold text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors">CardSchool SaaS</h1>
-            <p className="text-[9px] text-emerald-800 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
+            <h1 className="text-xs sm:text-base font-black text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors uppercase tracking-tight">CardSchool SaaS</h1>
+            <p className="text-[8px] sm:text-[9px] text-emerald-700 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop Nav Links */}
+        <div className="hidden lg:flex items-center gap-7">
           <button 
             onClick={scrollToTop} 
-            className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 cursor-pointer bg-transparent border-0"
+            className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 cursor-pointer bg-transparent border-0 uppercase tracking-wide"
           >
             Accueil
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </button>
-          <a href="#features" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+          <a href="#features" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             Fonctionnalités
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </a>
-          <a href="#how-it-works" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+          <a href="#how-it-works" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             Comment ça marche
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </a>
-          <a href="#pricing" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+          <a href="#pricing" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             Tarifs
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </a>
-          <a href="#faq" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
+          <a href="#faq" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             FAQ
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </a>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right CTA Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <button 
             onClick={() => onStartAuth('signin')}
-            className="text-sm font-bold text-gray-700 hover:text-emerald-700 transition-colors px-4 py-2 cursor-pointer"
+            className="text-xs sm:text-sm font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap"
           >
             Connexion
           </button>
+          
           <motion.button 
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onStartAuth('signup')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-200 cursor-pointer"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all shadow-md shadow-emerald-600/20 cursor-pointer whitespace-nowrap flex items-center gap-1.5"
           >
-            Créer un compte
+            <span>Créer un compte</span>
+            <ChevronRight className="w-3.5 h-3.5 hidden sm:inline" />
           </motion.button>
+
+          {/* Mobile hamburger button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer ml-0.5"
+            aria-label="Ouvrir le menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </motion.nav>
+
+      {/* Mobile Drawer Navigation for Landing Page */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 lg:hidden"
+          >
+            <div 
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-16 right-0 bottom-0 w-72 bg-white shadow-2xl p-6 flex flex-col justify-between border-l border-slate-100 overflow-y-auto"
+            >
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Navigation</p>
+                <div className="space-y-1">
+                  {[
+                    { label: 'Accueil', href: '#hero', onClick: () => { scrollToTop(); setMobileMenuOpen(false); } },
+                    { label: 'Fonctionnalités', href: '#features', onClick: () => setMobileMenuOpen(false) },
+                    { label: 'Comment ça marche', href: '#how-it-works', onClick: () => setMobileMenuOpen(false) },
+                    { label: 'Tarifs & Abonnements', href: '#pricing', onClick: () => setMobileMenuOpen(false) },
+                    { label: 'Foire Aux Questions', href: '#faq', onClick: () => setMobileMenuOpen(false) },
+                  ].map((link, idx) => (
+                    <a
+                      key={idx}
+                      href={link.href}
+                      onClick={link.onClick}
+                      className="block px-3 py-2.5 rounded-xl text-sm font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+
+                {onStartOfflineMode && (
+                  <div className="pt-4 border-t border-slate-100">
+                    <button
+                      onClick={() => { onStartOfflineMode(); setMobileMenuOpen(false); }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200"
+                    >
+                      <Activity className="w-4 h-4 text-emerald-600" />
+                      Mode Hors-Ligne (Sans Connexion)
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-6 border-t border-slate-100 space-y-2">
+                <button
+                  onClick={() => { onStartAuth('signin'); setMobileMenuOpen(false); }}
+                  className="w-full py-2.5 text-center font-bold text-xs text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-xl"
+                >
+                  Se Connecter
+                </button>
+                <button
+                  onClick={() => { onStartAuth('signup'); setMobileMenuOpen(false); }}
+                  className="w-full py-2.5 text-center font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md"
+                >
+                  Créer un compte école
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hero Section */}
       <section id="hero" className="pt-32 pb-24 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative overflow-hidden">
