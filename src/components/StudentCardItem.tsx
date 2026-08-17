@@ -30,8 +30,8 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = ({
       <div
         className={`absolute top-4 right-4 w-5.5 h-5.5 rounded-full border flex items-center justify-center transition-all duration-200 ${
           isSelected
-            ? 'bg-emerald-600 border-emerald-600 text-white scale-100'
-            : 'bg-white border-gray-200 opacity-0 group-hover:opacity-100 scale-90'
+            ? 'bg-emerald-600 border-emerald-600 text-white scale-100 opacity-100'
+            : 'bg-white border-gray-300 opacity-70 md:opacity-0 md:group-hover:opacity-100 scale-90'
         }`}
       >
         {isSelected && (
@@ -66,22 +66,22 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = ({
         </div>
       </div>
 
-      {/* Edit and Delete Actions */}
+      {/* Edit and Delete Actions - Visible on mobile touch, hover on desktop */}
       <div
-        className="mt-3 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="mt-3 flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={() => onEdit(student)}
           title="Modifier"
-          className="p-1.5 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer active:scale-90"
+          className="p-2 md:p-1.5 text-gray-500 md:text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer active:scale-90"
         >
           <Edit2 className="w-4 h-4" />
         </button>
         <button
           onClick={() => onDelete(student.id)}
           title="Supprimer"
-          className="p-1.5 text-gray-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors cursor-pointer active:scale-90"
+          className="p-2 md:p-1.5 text-gray-500 md:text-gray-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors cursor-pointer active:scale-90"
         >
           <Trash2 className="w-4 h-4" />
         </button>

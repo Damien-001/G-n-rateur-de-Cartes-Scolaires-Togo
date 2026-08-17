@@ -193,11 +193,11 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
       {!isOpen && (
         <button
           onClick={onOpen}
-          className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 cursor-pointer border-2 border-emerald-400/30"
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 cursor-pointer border-2 border-emerald-400/30"
           title="Assistance & Validation de Paiement"
         >
           <div className="relative">
-            <MessageSquare className="w-6 h-6" />
+            <MessageSquare className="w-5 sm:w-6 h-5 sm:h-6" />
             {unreadCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
                 {unreadCount}
@@ -212,7 +212,7 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
 
       {/* Floating Chat Box */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-full max-w-[390px] sm:w-[420px] h-[580px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slideUp">
+        <div className="fixed inset-x-3 bottom-3 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-auto sm:w-[420px] h-[560px] max-h-[88vh] bg-white rounded-3xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slideUp">
           
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-800 p-4 text-white flex items-center justify-between shadow-md">

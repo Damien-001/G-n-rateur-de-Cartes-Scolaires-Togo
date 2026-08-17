@@ -20,7 +20,9 @@ import {
   Lock,
   Ban,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  Menu,
+  X
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -72,6 +74,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [printClassFilter, setPrintClassFilter] = useState<string>('all');
   const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -488,8 +491,139 @@ export default function App({ session, onLogout }: AppProps) {
   if (activeTab === 'print') {
     return (
       <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
+        {/* Mobile Top Header */}
+        <header className="md:hidden bg-[#f8faf6] border-b border-slate-200/90 px-4 py-3 flex items-center justify-between sticky top-0 z-40 no-print shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
+              <Palette className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
+                {schoolInfo.name.split(' (')[0] || "Mon École"}
+              </h2>
+              <p className="text-[8px] text-emerald-700 font-bold uppercase tracking-wider">Togo • UEMOA</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsVerificationOpen(true)}
+              title="Vérifier une carte"
+              className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95"
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95 shadow-xs"
+              aria-label="Menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile Navigation Drawer */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex no-print animate-fadeIn">
+            <div 
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            
+            <div className="relative w-4/5 max-w-xs bg-[#f8faf6] h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
+                      <Palette className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="text-xs font-black text-slate-900 truncate uppercase">
+                        {schoolInfo.name.split(' (')[0] || "Mon École"}
+                      </h2>
+                      <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">CardSchool Togo</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+                  <button
+                    onClick={() => { setIsAdminView(true); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Console d'administration
+                  </button>
+                )}
+
+                <nav className="space-y-1">
+                  {[
+                    { id: 'students', label: 'Gestion des élèves', icon: Users },
+                    { id: 'design', label: 'Design de la carte', icon: Palette },
+                    { id: 'print', label: 'Impression des cartes', icon: FileDown },
+                    { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+                    { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
+                  ].map(item => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => { setActiveTab(item.id as any); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isActive 
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <button
+                  onClick={() => { setIsVerificationOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Vérifier une carte</span>
+                </button>
+              </div>
+
+              {/* Profile & Logout */}
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                    {session.fullName.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                    <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 text-red-600" />
+                  Déconnexion
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Global Sidebar - Fixed on desktop */}
-        <aside className="w-full md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
+        <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
           <div className="space-y-8">
             {session.email.toLowerCase() === 'admin@cardschool.tg' && (
               <button
@@ -573,29 +707,115 @@ export default function App({ session, onLogout }: AppProps) {
         </aside>
 
         {/* Content area - Independently scrollable */}
-        <div className="flex-1 min-w-0 md:h-full overflow-y-auto">
+        <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-24 md:pb-8">
           {/* Top Sticky Bar */}
-          <div className="sticky top-0 z-40 h-16 bg-white shadow-md flex items-center justify-between px-6 no-print border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-800 font-extrabold flex items-center gap-2">
-                Aperçu d'impression
-              </span>
-              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-emerald-900 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                <span>{studentsToPrint.length} élève{studentsToPrint.length > 1 ? 's' : ''}</span>
-                <span className="text-emerald-300">•</span>
-                <span>{Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1)} page(s) A4</span>
+          <div className="sticky top-0 z-40 bg-white shadow-md px-4 sm:px-6 py-3 no-print border-b border-slate-100 space-y-3 md:space-y-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <span className="text-xs sm:text-sm text-slate-800 font-extrabold flex items-center gap-1.5 truncate">
+                  Aperçu d'impression
+                </span>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-emerald-900 bg-emerald-50 px-2 sm:px-3 py-1 rounded-xl border border-emerald-200 shrink-0">
+                  <span>{studentsToPrint.length} élève{studentsToPrint.length > 1 ? 's' : ''}</span>
+                  <span className="text-emerald-300">•</span>
+                  <span>{Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1)} page(s) A4</span>
+                </div>
               </div>
+
+              {/* Desktop Interactive Print Options */}
+              <div className="hidden lg:flex items-center gap-4">
+                {/* Class Filter Dropdown */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase">Classe:</span>
+                  <select
+                    value={printClassFilter}
+                    onChange={(e) => setPrintClassFilter(e.target.value)}
+                    className="bg-gray-100 hover:bg-gray-200 text-xs font-bold text-slate-800 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer border border-transparent focus:border-emerald-500 transition-colors"
+                  >
+                    <option value="all">Toutes ({students.length})</option>
+                    {allClasses.map(cls => (
+                      <option key={cls} value={cls}>
+                        {cls} ({students.filter(s => s.className === cls).length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Print Mode Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
+                  <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                    <button
+                      onClick={() => setPrintMode('recto')}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                        printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      Recto Seul
+                    </button>
+                    <button
+                      onClick={() => setPrintMode('recto-verso')}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                        printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      Recto/Verso
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cards Density Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase">Densité:</span>
+                  <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                    <button
+                      onClick={() => setCardsPerPage(8)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                        cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      8
+                    </button>
+                    <button
+                      onClick={() => setCardsPerPage(10)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                        cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      10
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={generatePDF}
+                title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3 sm:px-4 py-2 sm:py-2.5 shrink-0"
+                disabled={isGeneratingPDF}
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="hidden sm:inline">Ouverture...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4" />
+                    <span>Télécharger PDF</span>
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* Interactive Print Options */}
-            <div className="hidden md:flex items-center gap-4">
-              {/* Class Filter Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase">Classe:</span>
+            {/* Mobile Print Options Sub-bar */}
+            <div className="flex lg:hidden flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Classe:</span>
                 <select
                   value={printClassFilter}
                   onChange={(e) => setPrintClassFilter(e.target.value)}
-                  className="bg-gray-100 hover:bg-gray-200 text-xs font-bold text-slate-800 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer border border-transparent focus:border-emerald-500 transition-colors"
+                  className="w-full bg-gray-100 text-xs font-bold text-slate-800 rounded-lg px-2 py-1.5 outline-none cursor-pointer border border-transparent focus:border-emerald-500"
                 >
                   <option value="all">Toutes ({students.length})</option>
                   {allClasses.map(cls => (
@@ -606,45 +826,39 @@ export default function App({ session, onLogout }: AppProps) {
                 </select>
               </div>
 
-              {/* Print Mode Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
+              <div className="flex items-center gap-2 shrink-0">
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setPrintMode('recto')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                      printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                      printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
-                    Recto Seul
+                    Recto
                   </button>
                   <button
                     onClick={() => setPrintMode('recto-verso')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                      printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                      printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
-                    Recto/Verso
+                    R/V
                   </button>
                 </div>
-              </div>
 
-              {/* Cards Density Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase">Densité:</span>
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setCardsPerPage(8)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                      cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                      cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
                     8
                   </button>
                   <button
                     onClick={() => setCardsPerPage(10)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                      cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                      cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
                     10
@@ -652,29 +866,10 @@ export default function App({ session, onLogout }: AppProps) {
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={generatePDF}
-              title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isGeneratingPDF}
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Ouverture...
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-5 h-5" />
-                  Télécharger le PDF
-                </>
-              )}
-            </button>
           </div>
 
-          {/* Printable layout container */}
-          <div className="py-8 print:py-0 px-6 print:px-0 flex justify-center">
+          {/* Printable layout container with responsive horizontal overflow scroll */}
+          <div className="py-6 sm:py-8 print:py-0 px-2 sm:px-6 print:px-0 flex justify-center overflow-x-auto max-w-full">
             <PrintLayout 
               students={studentsToPrint} 
               schoolInfo={schoolInfo} 
@@ -683,6 +878,33 @@ export default function App({ session, onLogout }: AppProps) {
             />
           </div>
         </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
+          {[
+            { id: 'students', label: 'Élèves', icon: Users },
+            { id: 'design', label: 'Design', icon: Palette },
+            { id: 'print', label: 'Imprimer', icon: FileDown },
+            { id: 'settings', label: 'Réglages', icon: Settings },
+          ].map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id || (item.id === 'settings' && activeTab === 'billing');
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer active:scale-95 ${
+                  isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+                }`}
+              >
+                <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] mt-0.5">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         {/* Floating Chat Drawer for Support & Payment */}
         <SchoolChatDrawer
@@ -706,8 +928,139 @@ export default function App({ session, onLogout }: AppProps) {
 
   return (
     <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
-      {/* Global Navigation Sidebar */}
-      <aside className="w-full md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm">
+      {/* Mobile Top Header */}
+      <header className="md:hidden bg-[#f8faf6] border-b border-slate-200/90 px-4 py-3 flex items-center justify-between sticky top-0 z-40 no-print shadow-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
+            <Palette className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xs font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
+              {schoolInfo.name.split(' (')[0] || "Mon École"}
+            </h2>
+            <p className="text-[8px] text-emerald-700 font-bold uppercase tracking-wider">Togo • UEMOA</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsVerificationOpen(true)}
+            title="Vérifier une carte"
+            className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer active:scale-95"
+          >
+            <ShieldCheck className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95 shadow-xs"
+            aria-label="Menu"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex no-print animate-fadeIn">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          <div className="relative w-4/5 max-w-xs bg-[#f8faf6] h-full flex flex-col justify-between p-6 shadow-2xl z-10 overflow-y-auto">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm">
+                    <Palette className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-xs font-black text-slate-900 truncate uppercase">
+                      {schoolInfo.name.split(' (')[0] || "Mon École"}
+                    </h2>
+                    <span className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider">CardSchool Togo</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+                <button
+                  onClick={() => { setIsAdminView(true); setIsMobileMenuOpen(false); }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]"
+                >
+                  <Shield className="w-4 h-4" />
+                  Console d'administration
+                </button>
+              )}
+
+              <nav className="space-y-1">
+                {[
+                  { id: 'students', label: 'Gestion des élèves', icon: Users },
+                  { id: 'design', label: 'Design de la carte', icon: Palette },
+                  { id: 'print', label: 'Impression des cartes', icon: FileDown },
+                  { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+                  { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setActiveTab(item.id as any); setIsMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <button
+                onClick={() => { setIsVerificationOpen(true); setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>Vérifier une carte</span>
+              </button>
+            </div>
+
+            {/* Profile & Logout */}
+            <div className="pt-4 border-t border-slate-200 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                  {session.fullName.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                  <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-600" />
+                Déconnexion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Navigation Sidebar - Fixed on desktop */}
+      <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
         <div className="space-y-8">
             {session.email.toLowerCase() === 'admin@cardschool.tg' && (
               <button
@@ -791,7 +1144,7 @@ export default function App({ session, onLogout }: AppProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      <main className="flex-1 min-w-0 md:h-full overflow-y-auto pb-24 md:pb-8">
         {/* Bandeau d'avertissement inactivité */}
         {showInactivityWarning && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 text-white px-6 py-3.5 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-950/10 no-print border border-amber-400/20 max-w-md w-full animate-bounce-once">
@@ -1032,6 +1385,33 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 md:hidden flex items-center justify-around px-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] no-print">
+        {[
+          { id: 'students', label: 'Élèves', icon: Users },
+          { id: 'design', label: 'Design', icon: Palette },
+          { id: 'print', label: 'Imprimer', icon: FileDown },
+          { id: 'settings', label: 'Réglages', icon: Settings },
+        ].map(item => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id || (item.id === 'settings' && activeTab === 'billing');
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id as any)}
+              className={`flex flex-col items-center justify-center flex-1 py-1.5 transition-all cursor-pointer active:scale-95 ${
+                isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+              }`}
+            >
+              <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Modals */}
       {isFormOpen && (
