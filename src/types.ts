@@ -121,7 +121,7 @@ export const SCHOOL_YEARS = [
 ];
 
 export interface PlatformSettings {
-  // Coordonnées de paiement Mobile Money
+  // Coordonnées de paiement Mobile Money manuel
   tmoneyNumber: string;
   tmoneyHolder: string;
   floozNumber: string;
@@ -133,6 +133,11 @@ export interface PlatformSettings {
   supportPhone: string;
   whatsappNumber: string;
   officeAddress?: string;
+
+  // Passerelle de paiement automatique FedaPay (T-Money, Flooz, Cartes)
+  fedapayEnabled?: boolean;
+  fedapayPublicKey?: string;
+  fedapayEnvironment?: 'sandbox' | 'live';
 
   // Consignes et messages d'aide
   paymentInstructions?: string;
@@ -150,6 +155,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   supportPhone: '+228 90 00 00 00',
   whatsappNumber: '+228 90 00 00 00',
   officeAddress: 'Lomé, Togo',
+  fedapayEnabled: true,
+  fedapayPublicKey: 'pk_sandbox_M77UqfN9m23w36vPqC46E2Yp',
+  fedapayEnvironment: 'sandbox',
   paymentInstructions: "Effectuez votre transfert T-Money ou Flooz en précisant le nom de votre établissement. Téléversez ensuite votre capture d'écran dans le chat pour validation sous 15 minutes.",
   supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte."
 };

@@ -49,7 +49,9 @@ import {
   Volume2,
   AlertCircle,
   Menu,
-  X
+  X,
+  Zap,
+  Lock
 } from 'lucide-react';
 import { 
   fetchAllSchools, 
@@ -1603,6 +1605,136 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   {/* Left Column: Payment Numbers & Contacts Inputs */}
                   <div className="lg:col-span-7 space-y-6">
                     
+                    {/* Section 0: Passerelle de Paiement FedaPay */}
+                    <div className="double-bezel-outer">
+                      <div className="double-bezel-inner p-6 space-y-4 bg-gradient-to-br from-white via-white to-amber-50/20">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
+                              <Zap className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                Passerelle de Paiement Direct FedaPay
+                              </h3>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                Prélèvement USSD direct T-Money & Flooz avec activation automatique
+                              </p>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                            platformSettings.fedapayEnabled 
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            {platformSettings.fedapayEnabled ? 'Actif' : 'Désactivé'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-4 pt-1">
+                          {/* Enable Toggle */}
+                          <label className="flex items-start gap-3 p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-xl border border-slate-200/80 cursor-pointer transition-all">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(platformSettings.fedapayEnabled)}
+                              onChange={e => setPlatformSettings(prev => ({ ...prev, fedapayEnabled: e.target.checked }))}
+                              className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                            />
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-black text-slate-800 block">
+                                Activer le bouton de paiement instantané FedaPay pour les écoles
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-normal block leading-relaxed">
+                                Les établissements pourront payer directement par T-Money ou Flooz avec pop-up FedaPay et voir leur compte PRO débloqué automatiquement en quelques secondes.
+                              </span>
+                            </div>
+                          </label>
+
+                          {/* Environment Mode: Sandbox vs Live */}
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Environnement FedaPay
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              <button
+                                type="button"
+                                onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnvironment: 'sandbox' }))}
+                                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                  platformSettings.fedapayEnvironment === 'sandbox'
+                                    ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-500/20 text-amber-950'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-black flex items-center gap-1.5">
+                                    🧪 Mode Test (Sandbox)
+                                  </span>
+                                  {platformSettings.fedapayEnvironment === 'sandbox' && (
+                                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                                  Simulez des paiements avec de faux numéros pour tester sans frais.
+                                </p>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnvironment: 'live' }))}
+                                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                  platformSettings.fedapayEnvironment === 'live'
+                                    ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500/20 text-emerald-950'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-black flex items-center gap-1.5">
+                                    🚀 Mode Production (Live)
+                                  </span>
+                                  {platformSettings.fedapayEnvironment === 'live' && (
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                                  Encaissez de vrais paiements sur votre compte marchand FedaPay.
+                                </p>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Public API Key */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Clé Publique FedaPay (Public Key)
+                              </label>
+                              <a
+                                href="https://fedapay.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
+                              >
+                                Tableau de bord FedaPay <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            </div>
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input
+                                type="text"
+                                value={platformSettings.fedapayPublicKey || ''}
+                                onChange={e => setPlatformSettings(prev => ({ ...prev, fedapayPublicKey: e.target.value.trim() }))}
+                                placeholder="pk_live_... ou pk_sandbox_..."
+                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50/50"
+                              />
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              Cette clé publique est utilisée de manière sécurisée côté client pour afficher le guichet de paiement.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Section 1: Mobile Money Numbers */}
                     <div className="double-bezel-outer">
                       <div className="double-bezel-inner p-6 space-y-4 bg-white">
@@ -1857,6 +1989,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           <p className="text-[11px] text-slate-600 font-semibold leading-relaxed">
                             Tarif annuel PRO : <strong className="text-emerald-800 font-black">{(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA / an</strong>.
                           </p>
+
+                          {/* FedaPay Button Preview */}
+                          {platformSettings.fedapayEnabled ? (
+                            <div className="p-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-xs flex items-center justify-between text-xs font-black">
+                              <div className="flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                                <span>Payer en ligne (T-Money / Flooz)</span>
+                              </div>
+                              <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded text-white font-mono font-bold">
+                                {(platformSettings.annualPriceCFA || 30000).toLocaleString()} F
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-slate-100 border border-dashed border-slate-300 rounded-xl text-center text-[10px] text-slate-500 font-semibold">
+                              Bouton FedaPay désactivé (Paiement manuel uniquement)
+                            </div>
+                          )}
 
                           <div className="space-y-2">
                             <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">

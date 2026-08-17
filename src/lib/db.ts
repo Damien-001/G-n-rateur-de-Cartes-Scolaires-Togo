@@ -1747,6 +1747,45 @@ export async function validatePaymentFromChat(schoolId: string, schoolName: stri
   return true;
 }
 
+/** Process automated instant payment via FedaPay (T-Money, Flooz, Card) and activate 1-Year PRO plan */
+export async function processFedaPaySuccessfulPayment(
+  schoolUserId: string,
+  schoolName: string,
+  transactionId: string | number,
+  amount: number
+): Promise<{ success: boolean; expiresAt: string }> {
+  const nextYear = new Date();
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
+  const expiresAtStr = nextYear.toISOString().split('T')[0];
+
+  const upgraded = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, schoolName);
+  if (!upgraded) {
+    return { success: false, expiresAt: '' };
+  }
+
+  // Save audit log specifically for FedaPay instant transaction
+  await saveAdminLog(
+    schoolUserId,
+    'PAIEMENT_AUTOMATIQUE_FEDAPAY',
+    `Paiement instantané de ${amount.toLocaleString()} FCFA validé via FedaPay (#${transactionId}). Abonnement PRO activé pour 365 jours jusqu'au ${expiresAtStr}.`,
+    schoolName
+  );
+
+  // Send automatic confirmation message in chat
+  try {
+    await sendChatMessage(
+      schoolUserId,
+      schoolName,
+      'admin',
+      `⚡ Paiement FedaPay Validé (#${transactionId}) ! Votre paiement de ${amount.toLocaleString()} FCFA a été reçu et validé automatiquement par Mobile Money. Votre abonnement PRO (cartes illimitées) est actif jusqu'au ${expiresAtStr}.`
+    );
+  } catch (err) {
+    console.warn('FedaPay chat notification error:', err);
+  }
+
+  return { success: true, expiresAt: expiresAtStr };
+}
+
 export function exportSchoolsToCSV(schools: AdminSchoolDetail[]) {
   const headers = ['Nom Établissement', 'Type', 'Région', 'Localisation', 'Téléphone', 'Cartes Édités', 'Plan', 'Quota Custom', 'Date Inscription'];
   const rows = schools.map(s => [
@@ -1798,6 +1837,9 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         supportPhone: data.support_phone || DEFAULT_PLATFORM_SETTINGS.supportPhone,
         whatsappNumber: data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
         officeAddress: data.office_address || DEFAULT_PLATFORM_SETTINGS.officeAddress,
+        fedapayEnabled: data.fedapay_enabled !== undefined ? Boolean(data.fedapay_enabled) : DEFAULT_PLATFORM_SETTINGS.fedapayEnabled,
+        fedapayPublicKey: data.fedapay_public_key || DEFAULT_PLATFORM_SETTINGS.fedapayPublicKey,
+        fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
         updatedAt: data.updated_at
@@ -1820,7 +1862,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 
     if (!sysError && systemRow && systemRow.card_colors) {
       const parsed = typeof systemRow.card_colors === 'string' ? JSON.parse(systemRow.card_colors) : systemRow.card_colors;
-      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.fedapayPublicKey)) {
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
           ...parsed,
@@ -1847,7 +1889,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     if (!logError && logs && logs.length > 0 && logs[0].details) {
       try {
         const parsed = JSON.parse(logs[0].details);
-        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.fedapayPublicKey)) {
           const merged: PlatformSettings = {
             ...DEFAULT_PLATFORM_SETTINGS,
             ...parsed,
@@ -1907,6 +1949,9 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
       support_phone: settingsToSave.supportPhone,
       whatsapp_number: settingsToSave.whatsappNumber,
       office_address: settingsToSave.officeAddress,
+      fedapay_enabled: settingsToSave.fedapayEnabled,
+      fedapay_public_key: settingsToSave.fedapayPublicKey,
+      fedapay_environment: settingsToSave.fedapayEnvironment,
       payment_instructions: settingsToSave.paymentInstructions,
       support_notice: settingsToSave.supportNotice,
       updated_at: timestamp
