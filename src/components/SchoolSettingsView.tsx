@@ -153,6 +153,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
     }
 
     try {
+      console.log('[FedaPay] Initializing checkout with key:', pubKey.substring(0, 12) + '...', 'env:', environment, 'amount:', amount);
       const widget = (window as any).FedaPay.init({
         public_key: pubKey,
         environment: environment,
@@ -161,7 +162,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
           description: `Abonnement PRO 1 An — ${schoolInfo.name || 'Établissement'}`
         },
         customer: {
-          email: schoolInfo.phone ? `ecole_${schoolInfo.phone.replace(/[^0-9]/g, '')}@cardschool.tg` : 'direction@cardschool.tg',
+          email: schoolInfo.phone ? `ecole_${schoolInfo.phone.replace(/[^0-9]/g, '')}@cardschool.tg` : 'contact@cardschool.tg',
           lastname: schoolInfo.name || 'Établissement',
           firstname: 'Directeur',
           phone_number: {
@@ -171,6 +172,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
         },
         onComplete: async (response: any) => {
           setIsLaunchingFedaPay(false);
+          console.log('[FedaPay] onComplete callback:', response);
           if (
             response?.reason === 'CHECKOUT_COMPLETE' || 
             (response?.transaction && (response.transaction.status === 'approved' || response.transaction.status === 'transferred' || response.transaction.status === 'pending'))
@@ -195,14 +197,23 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
               });
             }
           }
+        },
+        onDismiss: () => {
+          setIsLaunchingFedaPay(false);
+          console.log('[FedaPay] Modal closed by user');
         }
       });
 
-      widget.open();
-    } catch (err: any) {
-      console.error('FedaPay checkout error:', err);
+      if (widget && typeof widget.open === 'function') {
+        widget.open();
+      } else if (widget && typeof widget.show === 'function') {
+        widget.show();
+      }
       setIsLaunchingFedaPay(false);
-      setFedaPayError("Une erreur est survenue lors de l'ouverture du guichet FedaPay. Veuillez réessayer.");
+    } catch (err: any) {
+      console.error('[FedaPay] checkout error:', err);
+      setIsLaunchingFedaPay(false);
+      setFedaPayError(`Erreur FedaPay : ${err?.message || "Impossible d'ouvrir le guichet de paiement. Vérifiez votre clé sur FedaPay."}`);
     }
   };
 
