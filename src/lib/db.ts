@@ -721,6 +721,21 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   const schoolsMap = new Map<string, AdminSchoolDetail>();
   const deletedBlacklist = getDeletedSchoolsBlacklist();
 
+  // Pre-fetch all student counts in ONE query instead of N+1 queries
+  const studentCountMap = new Map<string, number>();
+  try {
+    const { data: studentRows } = await supabase
+      .from('students')
+      .select('user_id');
+    if (studentRows) {
+      for (const row of studentRows) {
+        if (row.user_id) {
+          studentCountMap.set(row.user_id, (studentCountMap.get(row.user_id) || 0) + 1);
+        }
+      }
+    }
+  } catch {}
+
   // 1. Charger depuis Supabase school_info
   try {
     const { data: schoolsData, error: schoolsError } = await supabase
@@ -734,22 +749,9 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
         if (deletedBlacklist.has(row.user_id)) continue;
 
         const baseInfo = dbToSchoolInfo(row);
-        let studentCount = 0;
-        try {
-          const { count, error } = await supabase
-            .from('students')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', row.user_id);
-          
-          if (!error && count !== null) {
-            studentCount = count;
-          }
-        } catch (err) {}
-
+        const dbCount = studentCountMap.get(row.user_id) || 0;
         const localStudents = getStoredStudents(row.user_id);
-        if (localStudents.length > studentCount) {
-          studentCount = localStudents.length;
-        }
+        const studentCount = Math.max(dbCount, localStudents.length);
 
         schoolsMap.set(row.user_id, {
           ...baseInfo,

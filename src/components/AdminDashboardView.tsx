@@ -166,15 +166,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsToast, setSettingsToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Load SaaS statistics & configuration
+  // Load SaaS statistics & configuration — all fetches run in parallel
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const allSchools = await fetchAllSchools();
-      const studentCount = await fetchAllStudentsCount();
-      const logs = await fetchAdminLogs();
-      const allMsgs = await fetchChatMessages();
-      const pSettings = await fetchPlatformSettings();
+      const [allSchools, studentCount, logs, allMsgs, pSettings] = await Promise.all([
+        fetchAllSchools(),
+        fetchAllStudentsCount(),
+        fetchAdminLogs(),
+        fetchChatMessages(),
+        fetchPlatformSettings(),
+      ]);
       setSchools(allSchools);
       setTotalStudents(studentCount);
       setActivityLogs(logs);
