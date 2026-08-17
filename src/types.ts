@@ -30,7 +30,7 @@ export interface SchoolInfo {
   schoolType?: string;
   location?: string;
   phone?: string;
-  subscriptionPlan?: 'free' | 'pro';
+  subscriptionPlan?: 'free' | 'pro' | 'suspended';
   subscriptionExpiresAt?: string;
   region?: string;
   customQuota?: number;
@@ -41,12 +41,25 @@ export interface LicenseKey {
   code: string;
   plan: 'pro';
   durationMonths: number;
+  targetSchoolName?: string; // Nom de l'école ciblée
   isUsed: boolean;
+  isSuspended?: boolean;     // Clé désactivée / suspendue par l'admin
   usedBySchoolId?: string;
   usedBySchoolName?: string;
   usedAt?: string;
   createdAt: string;
   note?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  senderRole: 'school' | 'admin';
+  message: string;
+  attachmentUrl?: string; // Preuve de paiement / Capture Flooz / T-Money
+  createdAt: string;
+  status: 'sent' | 'read' | 'validated';
 }
 
 export const TOGO_REGIONS = [
@@ -107,4 +120,36 @@ export const SCHOOL_YEARS = [
   "2023-2024", "2024-2025", "2025-2026", "2026-2027", "2027-2028"
 ];
 
+export interface PlatformSettings {
+  // Coordonnées de paiement Mobile Money
+  tmoneyNumber: string;
+  tmoneyHolder: string;
+  floozNumber: string;
+  floozHolder: string;
+  annualPriceCFA: number;
 
+  // Contacts Administrateur & Support
+  supportEmail: string;
+  supportPhone: string;
+  whatsappNumber: string;
+  officeAddress?: string;
+
+  // Consignes et messages d'aide
+  paymentInstructions?: string;
+  supportNotice?: string;
+  updatedAt?: string;
+}
+
+export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  tmoneyNumber: '+228 90 00 00 00',
+  tmoneyHolder: 'CardSchool SAS (Togo)',
+  floozNumber: '+228 95 00 00 00',
+  floozHolder: 'CardSchool SAS (Togo)',
+  annualPriceCFA: 30000,
+  supportEmail: 'contact@cardschool.tg',
+  supportPhone: '+228 90 00 00 00',
+  whatsappNumber: '+228 90 00 00 00',
+  officeAddress: 'Lomé, Togo',
+  paymentInstructions: "Effectuez votre transfert T-Money ou Flooz en précisant le nom de votre établissement. Téléversez ensuite votre capture d'écran dans le chat pour validation sous 15 minutes.",
+  supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte."
+};

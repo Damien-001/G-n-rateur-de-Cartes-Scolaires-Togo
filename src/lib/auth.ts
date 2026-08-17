@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
 import type { User, Session as SupabaseSession } from '@supabase/supabase-js';
+import { getCachedSession, setCachedSession, setStoredSchoolInfo } from './offlineStorage';
+import { saveAdminLog, registerSchoolRecord, AdminSchoolDetail } from './db';
+import { DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, SchoolInfo } from '../types';
 
 // On réexporte Session avec la même interface qu'avant
 // pour ne pas casser les composants existants
@@ -11,6 +14,7 @@ export interface Session {
   schoolType?: string;
   location?: string;
   phone?: string;
+  isOfflineGuest?: boolean;
 }
 
 function toSession(user: User): Session {
@@ -25,11 +29,23 @@ function toSession(user: User): Session {
   };
 }
 
-/** Vérifie la session Supabase active (appelé au démarrage) */
+/** Vérifie la session active avec support hors-ligne immédiat */
 export async function getSession(): Promise<Session | null> {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.user) return null;
-  return toSession(data.session.user);
+  const cached = getCachedSession();
+  
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      const activeSession = toSession(data.session.user);
+      setCachedSession(activeSession);
+      return activeSession;
+    }
+  } catch (err) {
+    console.log('⚠️ Récupération Supabase getSession échouée, utilisation du cache local');
+  }
+
+  // Fallback sur la session en cache si réseau indisponible
+  return cached;
 }
 
 /** Inscription */
@@ -78,15 +94,49 @@ export async function register(
       return { success: false, error: 'Erreur lors de la création du compte.' };
     }
 
+    const initialInfo: SchoolInfo = {
+      ...DEFAULT_SCHOOL_INFO,
+      name: schoolName.trim().toUpperCase(),
+      schoolType: schoolType.trim() || 'Lycée',
+      location: location.trim(),
+      phone: phone.trim(),
+      subscriptionPlan: 'free',
+      region: 'Grand Lomé',
+      customQuota: 15
+    };
+
+    const schoolDetail: AdminSchoolDetail = {
+      ...initialInfo,
+      userId: data.user.id,
+      managerName: fullName.trim(),
+      managerEmail: email.trim().toLowerCase(),
+      updatedAt: new Date().toISOString(),
+      studentCount: 0
+    };
+
+    // 1. Enregistrer dans tous les canaux de persistance
+    await registerSchoolRecord(schoolDetail);
+
+    // 2. Journaliser l'inscription dans le registre d'audit
+    await saveAdminLog(
+      data.user.id,
+      'Nouvelle Inscription',
+      `Établissement enregistré (${schoolType}) à ${location}`,
+      schoolName
+    ).catch(() => {});
+
     // Supabase renvoie session === null quand la confirmation par email est activée
     if (!data.session) {
       return { success: true, session: null, needsConfirmation: true, email: data.user.email ?? email };
     }
 
-    return { success: true, session: toSession(data.user), needsConfirmation: false };
+    const newSession = toSession(data.user);
+    setCachedSession(newSession);
+
+    return { success: true, session: newSession, needsConfirmation: false };
   } catch (e: any) {
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
-      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et les variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez le serveur de développement.' };
+      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.' };
     }
     return { success: false, error: e?.message ?? 'Erreur inconnue.' };
   }
@@ -137,10 +187,12 @@ export async function login(
       return { success: false, error: 'Erreur lors de la connexion.' };
     }
 
-    return { success: true, session: toSession(data.user) };
+    const session = toSession(data.user);
+    setCachedSession(session);
+    return { success: true, session };
   } catch (e: any) {
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
-      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et les variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez le serveur de développement.' };
+      return { success: false, error: 'Impossible de contacter le serveur. Vérifiez votre connexion internet.' };
     }
     return { success: false, error: e?.message ?? 'Erreur inconnue.' };
   }
@@ -148,16 +200,35 @@ export async function login(
 
 /** Déconnexion */
 export async function logout(): Promise<void> {
-  await supabase.auth.signOut();
+  setCachedSession(null);
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.warn('Erreur déconnexion supabase:', e);
+  }
 }
 
-/** Écoute les changements de session (utile pour le refresh automatique) */
+/** Écoute les changements de session */
 export function onAuthStateChange(callback: (session: Session | null) => void) {
-  return supabase.auth.onAuthStateChange((_event, supabaseSession) => {
+  return supabase.auth.onAuthStateChange((event, supabaseSession) => {
     if (supabaseSession?.user) {
-      callback(toSession(supabaseSession.user));
+      const s = toSession(supabaseSession.user);
+      setCachedSession(s);
+      callback(s);
+    } else if (event === 'SIGNED_OUT') {
+      const cached = getCachedSession();
+      if (!cached?.isOfflineGuest && cached?.userId !== 'admin-super-user-id') {
+        setCachedSession(null);
+        callback(null);
+      }
     } else {
-      callback(null);
+      // Événements d'initialisation / rafraîchissement de page
+      const cached = getCachedSession();
+      if (cached) {
+        callback(cached);
+      } else {
+        callback(null);
+      }
     }
   });
 }

@@ -13,11 +13,18 @@ import {
   Settings,
   LogOut,
   CreditCard,
-  Shield
+  Shield,
+  ShieldCheck,
+  MessageSquare,
+  AlertTriangle,
+  Lock,
+  Ban,
+  Filter,
+  CheckCircle2
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents } from './lib/db';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord } from './lib/db';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { StudentForm } from './components/StudentForm';
 import { ImportExport } from './components/ImportExport';
@@ -29,6 +36,9 @@ import { StudentCardItem } from './components/StudentCardItem';
 import { SchoolSettingsView } from './components/SchoolSettingsView';
 import { CardDesignView } from './components/CardDesignView';
 import { AdminDashboardView } from './components/AdminDashboardView';
+import { OfflineStatusBanner } from './components/OfflineStatusBanner';
+import { SchoolChatDrawer } from './components/SchoolChatDrawer';
+import { CardVerificationModal } from './components/CardVerificationModal';
 
 
 interface AppProps {
@@ -38,7 +48,15 @@ interface AppProps {
 
 export default function App({ session, onLogout }: AppProps) {
   const [students, setStudents] = useState<Student[]>([]);
-  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(DEFAULT_SCHOOL_INFO);
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(() => ({
+    ...DEFAULT_SCHOOL_INFO,
+    name: session.schoolName 
+      ? session.schoolName.toUpperCase() 
+      : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : ''),
+    schoolType: session.schoolType || 'Lycée',
+    location: session.location || '',
+    phone: session.phone || '',
+  }));
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSchoolSettingsOpen, setIsSchoolSettingsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
@@ -52,9 +70,18 @@ export default function App({ session, onLogout }: AppProps) {
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+  const [printClassFilter, setPrintClassFilter] = useState<string>('all');
+  const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Subscription & Restrictions state
+  const isAccountSuspended = schoolInfo.subscriptionPlan === 'suspended';
+  const effectiveQuota = schoolInfo.customQuota || 15;
+  const isQuotaExceeded = schoolInfo.subscriptionPlan !== 'pro' && students.length >= effectiveQuota;
 
   // ── Timer d'inactivité — déconnexion après 10 min ───────────────────────────
   useEffect(() => {
@@ -80,6 +107,12 @@ export default function App({ session, onLogout }: AppProps) {
 
 
   const generatePDF = async () => {
+    if (isAccountSuspended) {
+      alert("⚠️ Votre compte est actuellement suspendu. Le téléchargement et l'impression de cartes scolaires sont bloqués. Veuillez contacter le support pour réactiver votre accès.");
+      setIsChatOpen(true);
+      return;
+    }
+
     setIsGeneratingPDF(true);
     // Courte pause pour laisser React mettre à jour le bouton
     await new Promise(resolve => setTimeout(resolve, 150));
@@ -114,6 +147,13 @@ export default function App({ session, onLogout }: AppProps) {
 
       const date = new Date().toISOString().split('T')[0];
       pdf.save(`cartes_scolaires_${date}.pdf`);
+      
+      saveAdminLog(
+        session.userId,
+        'Impression Cartes PDF',
+        `Génération d'un PDF de ${studentsToPrint.length} cartes (${printMode}, ${cardsPerPage} par page)`,
+        schoolInfo.name
+      );
     } catch (error) {
       console.error('Erreur génération PDF:', error);
       alert('Erreur lors de la génération du PDF.');
@@ -125,6 +165,12 @@ export default function App({ session, onLogout }: AppProps) {
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
   useEffect(() => {
     const loadData = async () => {
+      // Si c'est le super-admin, ne pas charger ni créer d'école élève
+      if (session.email?.toLowerCase().trim() === 'admin@cardschool.tg' || session.userId === 'admin-super-user-id') {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setLoadingTimeout(false);
       const startTime = performance.now();
@@ -138,14 +184,52 @@ export default function App({ session, onLogout }: AppProps) {
         // Charger school_info d'abord (plus rapide)
         const fetchedSchool = await fetchSchoolInfo(session.userId);
         if (fetchedSchool) {
+          if (!fetchedSchool.name && (session.schoolName || session.fullName)) {
+            fetchedSchool.name = (session.schoolName || session.fullName).toUpperCase();
+            saveSchoolInfo(fetchedSchool, session.userId).catch(() => {});
+          }
           setSchoolInfo(fetchedSchool);
+          registerSchoolRecord({
+            ...fetchedSchool,
+            userId: session.userId,
+            managerName: session.fullName,
+            managerEmail: session.email,
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+          saveAdminLog(
+            session.userId,
+            'Activité Compte Établissement',
+            `Connexion active : ${session.fullName || session.email} (${session.email})`,
+            fetchedSchool.name || session.fullName || 'Établissement'
+          ).catch(() => {});
         } else {
-          setSchoolInfo({
+          const fallbackName = session.schoolName 
+            ? session.schoolName.toUpperCase()
+            : (session.fullName ? `COMPLEXE SCOLAIRE ${session.fullName.toUpperCase()}` : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : 'ÉTABLISSEMENT DU TOGO'));
+
+          const initialInfo: SchoolInfo = {
             ...DEFAULT_SCHOOL_INFO,
-            name: session.schoolName 
-              ? `${session.schoolName.toUpperCase()} (${session.location ? session.location.toUpperCase() : ''})` 
-              : DEFAULT_SCHOOL_INFO.name,
-          });
+            name: fallbackName,
+            schoolType: session.schoolType || 'Lycée',
+            location: session.location || '',
+            phone: session.phone || '',
+            subscriptionPlan: 'free',
+          };
+          setSchoolInfo(initialInfo);
+          saveSchoolInfo(initialInfo, session.userId).catch(() => {});
+          registerSchoolRecord({
+            ...initialInfo,
+            userId: session.userId,
+            managerName: session.fullName,
+            managerEmail: session.email,
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+          saveAdminLog(
+            session.userId,
+            'Activité Compte Établissement',
+            `Compte initialisé : ${session.fullName || session.email} (${session.email})`,
+            initialInfo.name
+          ).catch(() => {});
         }
         
         // Puis charger les étudiants
@@ -199,14 +283,21 @@ export default function App({ session, onLogout }: AppProps) {
       const saved = await upsertStudent(student, session.userId);
       console.log('✅ Étudiant sauvegardé:', saved);
       
+      const isEdit = students.some(s => s.id === saved.id);
       setStudents(prev => {
-        const isEdit = prev.some(s => s.id === saved.id);
         if (isEdit) {
           return prev.map(s => s.id === saved.id ? saved : s);
         } else {
           return [...prev, saved];
         }
       });
+      
+      saveAdminLog(
+        session.userId,
+        isEdit ? 'Modification Élève' : 'Ajout Élève',
+        `${saved.firstName} ${saved.lastName} (${saved.className})`,
+        schoolInfo.name
+      );
       
       // Fermer le formulaire seulement en cas de succès
       setIsFormOpen(false);
@@ -224,33 +315,49 @@ export default function App({ session, onLogout }: AppProps) {
   const handleDeleteStudent = useCallback(async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) return;
     try {
-      await deleteStudent(id);
+      await deleteStudent(id, session.userId);
       setStudents(prev => prev.filter(s => s.id !== id));
       setSelectedStudents(prev => prev.filter(sid => sid !== id));
+      saveAdminLog(
+        session.userId,
+        'Suppression Élève',
+        'Un élève a été retiré de la liste',
+        schoolInfo.name
+      );
     } catch (err) {
       console.error('Erreur suppression:', err);
       alert('Erreur lors de la suppression.');
     }
-  }, []);
+  }, [session.userId]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedStudents.length === 0) return;
     const n = selectedStudents.length;
     if (!confirm(`Êtes-vous sûr de vouloir supprimer ${n} élève${n > 1 ? 's' : ''} ? Cette action est irréversible.`)) return;
     try {
-      await deleteStudents(selectedStudents);
+      await deleteStudents(selectedStudents, session.userId);
       setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
       setSelectedStudents([]);
     } catch (err) {
       console.error('Erreur suppression massive:', err);
       alert('Erreur lors de la suppression en masse.');
     }
-  }, [selectedStudents]);
+  }, [selectedStudents, session.userId]);
+
+  const allClasses = React.useMemo(() => {
+    const set = new Set<string>();
+    students.forEach(s => {
+      if (s.className && s.className.trim()) set.add(s.className.trim());
+    });
+    return Array.from(set).sort();
+  }, [students]);
 
   const filteredStudents = React.useMemo(() =>
-    students.filter(s =>
-      `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [students, searchTerm]
+    students.filter(s => {
+      const matchesSearch = `${s.firstName} ${s.lastName} ${s.matricule}`.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClass = studentClassFilter === 'all' || s.className === studentClassFilter;
+      return matchesSearch && matchesClass;
+    }), [students, searchTerm, studentClassFilter]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -261,15 +368,45 @@ export default function App({ session, onLogout }: AppProps) {
     }
   }, [selectedStudents, filteredStudents]);
 
+  const handleOpenAddStudent = () => {
+    if (isAccountSuspended) {
+      alert("⚠️ Votre compte est actuellement suspendu. L'ajout d'élèves est bloqué. Veuillez contacter le support dans le chat pour réactiver votre compte.");
+      setIsChatOpen(true);
+      return;
+    }
+    if (isQuotaExceeded) {
+      alert(`⚠️ Quota gratuit atteint (${students.length}/${effectiveQuota} cartes). Passez au Plan PRO pour ajouter des élèves en illimité.`);
+      setIsChatOpen(true);
+      return;
+    }
+    setIsFormOpen(true);
+  };
+
   const handleImport = useCallback(async (newStudents: Student[]) => {
+    if (isAccountSuspended) {
+      alert("⚠️ Votre compte est actuellement suspendu. L'importation d'élèves est bloquée. Veuillez contacter le support pour réactiver votre compte.");
+      setIsChatOpen(true);
+      return;
+    }
+    if (schoolInfo.subscriptionPlan !== 'pro' && (students.length + newStudents.length) > effectiveQuota) {
+      alert(`⚠️ Impossible d'importer ${newStudents.length} élèves : cela dépasserait votre quota gratuit de ${effectiveQuota} élèves (${students.length} déjà enregistrés). Passez au Plan PRO illimité pour importer toute votre base scolaire.`);
+      setIsChatOpen(true);
+      return;
+    }
     try {
       const saved = await insertStudents(newStudents, session.userId);
       setStudents(prev => [...prev, ...saved]);
+      saveAdminLog(
+        session.userId,
+        'Importation CSV',
+        `${saved.length} élèves importés avec succès`,
+        schoolInfo.name
+      );
     } catch (err) {
       console.error('Erreur import:', err);
       alert('Erreur lors de l\'import : ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     }
-  }, [session.userId]);
+  }, [session.userId, isAccountSuspended, schoolInfo.subscriptionPlan, students.length, effectiveQuota, schoolInfo.name]);
 
   const handleEditStudent = useCallback((student: Student) => {
     setEditingStudent(student);
@@ -287,14 +424,16 @@ export default function App({ session, onLogout }: AppProps) {
     );
   }, []);
 
-
-
-  const studentsToPrint = React.useMemo(() => 
-    selectedStudents.length > 0 
-      ? students.filter(s => selectedStudents.includes(s.id))
-      : students,
-    [students, selectedStudents]
-  );
+  const studentsToPrint = React.useMemo(() => {
+    let base = students;
+    if (printClassFilter !== 'all') {
+      base = base.filter(s => s.className === printClassFilter);
+    }
+    if (selectedStudents.length > 0) {
+      base = base.filter(s => selectedStudents.includes(s.id));
+    }
+    return base;
+  }, [students, printClassFilter, selectedStudents]);
 
   // Écran de chargement initial
   if (loading) {
@@ -348,9 +487,9 @@ export default function App({ session, onLogout }: AppProps) {
 
   if (activeTab === 'print') {
     return (
-      <div className="min-h-screen bg-[#faf9f6] flex flex-col md:flex-row">
-        {/* Global Sidebar */}
-        <aside className="w-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm">
+      <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
+        {/* Global Sidebar - Fixed on desktop */}
+        <aside className="w-full md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
           <div className="space-y-8">
             {session.email.toLowerCase() === 'admin@cardschool.tg' && (
               <button
@@ -401,6 +540,15 @@ export default function App({ session, onLogout }: AppProps) {
                 );
               })}
             </nav>
+
+            {/* Quick Verification Button */}
+            <button
+              onClick={() => setIsVerificationOpen(true)}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>Vérifier une carte</span>
+            </button>
           </div>
 
           {/* Profile & Logout */}
@@ -418,23 +566,46 @@ export default function App({ session, onLogout }: AppProps) {
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
             >
-              <Loader2 className="w-4 h-4 text-red-600" />
+              <LogOut className="w-4 h-4 text-red-600" />
               Déconnexion
             </button>
           </div>
         </aside>
 
-        {/* Content area */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className="fixed top-0 left-0 md:left-64 right-0 h-16 bg-white shadow-md z-50 flex items-center justify-between px-6 no-print">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-800 font-bold">
-                Aperçu d'impression ({studentsToPrint.length} élèves)
+        {/* Content area - Independently scrollable */}
+        <div className="flex-1 min-w-0 md:h-full overflow-y-auto">
+          {/* Top Sticky Bar */}
+          <div className="sticky top-0 z-40 h-16 bg-white shadow-md flex items-center justify-between px-6 no-print border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-800 font-extrabold flex items-center gap-2">
+                Aperçu d'impression
               </span>
+              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-emerald-900 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                <span>{studentsToPrint.length} élève{studentsToPrint.length > 1 ? 's' : ''}</span>
+                <span className="text-emerald-300">•</span>
+                <span>{Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1)} page(s) A4</span>
+              </div>
             </div>
 
             {/* Interactive Print Options */}
-            <div className="hidden md:flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-4">
+              {/* Class Filter Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-400 uppercase">Classe:</span>
+                <select
+                  value={printClassFilter}
+                  onChange={(e) => setPrintClassFilter(e.target.value)}
+                  className="bg-gray-100 hover:bg-gray-200 text-xs font-bold text-slate-800 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer border border-transparent focus:border-emerald-500 transition-colors"
+                >
+                  <option value="all">Toutes ({students.length})</option>
+                  {allClasses.map(cls => (
+                    <option key={cls} value={cls}>
+                      {cls} ({students.filter(s => s.className === cls).length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Print Mode Selector */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-gray-400 uppercase">Mode:</span>
@@ -460,7 +631,7 @@ export default function App({ session, onLogout }: AppProps) {
 
               {/* Cards Density Selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-400 uppercase">Cartes / Page:</span>
+                <span className="text-xs font-bold text-gray-400 uppercase">Densité:</span>
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setCardsPerPage(8)}
@@ -468,7 +639,7 @@ export default function App({ session, onLogout }: AppProps) {
                       cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    8 (Espacé)
+                    8
                   </button>
                   <button
                     onClick={() => setCardsPerPage(10)}
@@ -476,7 +647,7 @@ export default function App({ session, onLogout }: AppProps) {
                       cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    10 (Compact)
+                    10
                   </button>
                 </div>
               </div>
@@ -501,7 +672,9 @@ export default function App({ session, onLogout }: AppProps) {
               )}
             </button>
           </div>
-          <div className="pt-20 pb-12 print:pt-0 print:pb-0 px-6 print:px-0 flex justify-center">
+
+          {/* Printable layout container */}
+          <div className="py-8 print:py-0 px-6 print:px-0 flex justify-center">
             <PrintLayout 
               students={studentsToPrint} 
               schoolInfo={schoolInfo} 
@@ -510,6 +683,23 @@ export default function App({ session, onLogout }: AppProps) {
             />
           </div>
         </div>
+
+        {/* Floating Chat Drawer for Support & Payment */}
+        <SchoolChatDrawer
+          session={session}
+          schoolInfo={schoolInfo}
+          isOpen={isChatOpen}
+          onOpen={() => setIsChatOpen(true)}
+          onClose={() => setIsChatOpen(false)}
+        />
+
+        {/* Official Card Verification Modal */}
+        <CardVerificationModal
+          isOpen={isVerificationOpen}
+          onClose={() => setIsVerificationOpen(false)}
+          students={students}
+          schoolInfo={schoolInfo}
+        />
       </div>
     );
   }
@@ -568,6 +758,15 @@ export default function App({ session, onLogout }: AppProps) {
               );
             })}
           </nav>
+
+          {/* Quick Verification Button */}
+          <button
+            onClick={() => setIsVerificationOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>Vérifier une carte</span>
+          </button>
         </div>
 
         {/* Profile & Logout */}
@@ -632,6 +831,7 @@ export default function App({ session, onLogout }: AppProps) {
               await saveSchoolInfo(newInfo, session.userId);
             }}
             onBack={() => setActiveTab('students')}
+            onOpenChat={() => setIsChatOpen(true)}
           />
         ) : activeTab === 'billing' ? (
           <SchoolSettingsView 
@@ -644,16 +844,56 @@ export default function App({ session, onLogout }: AppProps) {
               await saveSchoolInfo(newInfo, session.userId);
             }}
             onBack={() => setActiveTab('students')}
+            onOpenChat={() => setIsChatOpen(true)}
           />
         ) : (
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+            
+            {/* Suspended Alert Banner */}
+            {isAccountSuspended && (
+              <div className="mb-6 p-4 bg-red-600 text-white rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <Ban className="w-6 h-6 text-red-200 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider">Accès Suspendu par l'Administration</h3>
+                    <p className="text-xs text-red-100 font-medium">L'ajout, l'import et l'impression de cartes sont actuellement bloqués. Réglez votre abonnement et envoyez la capture dans le chat pour débloquer immédiatement votre compte.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsChatOpen(true)}
+                  className="px-4 py-2 bg-white text-red-700 hover:bg-red-50 text-xs font-black rounded-xl shadow transition-all shrink-0 cursor-pointer"
+                >
+                  💬 Ouvrir le Chat & Débloquer
+                </button>
+              </div>
+            )}
+
+            {/* Quota Exceeded Alert Banner */}
+            {!isAccountSuspended && isQuotaExceeded && (
+              <div className="mb-6 p-4 bg-amber-500 text-white rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-100 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider">Quota Gratuit Atteint ({students.length}/{effectiveQuota} cartes)</h3>
+                    <p className="text-xs text-amber-100 font-medium">Vous avez atteint la limite du plan découverte. Activez le plan PRO 1 An (30 000 F CFA) pour ajouter et imprimer des élèves sans aucune limite.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsChatOpen(true)}
+                  className="px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 text-xs font-black rounded-xl shadow transition-all shrink-0 cursor-pointer"
+                >
+                  ⭐ Activer Plan PRO
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
               <div>
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">Gestion des élèves</h1>
                 <p className="text-xs text-gray-500 font-medium mt-1">Configurez le visuel des cartes et gérez la liste de vos élèves.</p>
               </div>
               <button 
-                onClick={() => setIsFormOpen(true)}
+                onClick={handleOpenAddStudent}
                 className="flex items-center gap-2 px-5 py-2.5 btn-primary active:scale-95 text-sm cursor-pointer shadow-md"
               >
                 <Plus className="w-5 h-5" />
@@ -675,30 +915,48 @@ export default function App({ session, onLogout }: AppProps) {
 
               {/* Main Content / List */}
               <div className="lg:col-span-8 space-y-6">
-                {/* Barre de recherche */}
+                {/* Barre de recherche et filtres */}
                 <div className="double-bezel-outer">
-                  <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white">
+                  <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-3 justify-between items-center bg-white">
                     <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input 
                         type="text" 
-                        placeholder="Rechercher un élève..."
+                        placeholder="Rechercher un élève par nom ou matricule..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-sm font-semibold"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-xs font-semibold"
                       />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-gray-400 uppercase">
-                        {students.length} élève{students.length > 1 ? 's' : ''}
+
+                    {/* Filter by class selector */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Filter className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
+                      <select
+                        value={studentClassFilter}
+                        onChange={(e) => setStudentClassFilter(e.target.value)}
+                        className="w-full sm:w-auto bg-gray-55 hover:bg-gray-100 text-xs font-bold text-slate-800 rounded-xl px-3 py-2.5 border border-gray-200 outline-none cursor-pointer focus:border-emerald-500 transition-colors"
+                      >
+                        <option value="all">Toutes les classes ({students.length})</option>
+                        {allClasses.map(cls => (
+                          <option key={cls} value={cls}>
+                            {cls} ({students.filter(s => s.className === cls).length})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                      <span className="text-xs font-bold text-gray-400 uppercase shrink-0">
+                        {filteredStudents.length} affiché{filteredStudents.length > 1 ? 's' : ''}
                       </span>
                       <button
                         onClick={handleSelectAll}
                         disabled={filteredStudents.length === 0}
-                        className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-sm cursor-pointer"
+                        className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-sm cursor-pointer whitespace-nowrap"
                       >
                         {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
-                          ? 'Tout désélectionner'
+                          ? 'Désélectionner'
                           : 'Tout sélectionner'}
                       </button>
                     </div>
@@ -756,13 +1014,15 @@ export default function App({ session, onLogout }: AppProps) {
                       </div>
                       <p className="font-bold text-gray-800">Aucun élève trouvé</p>
                       <p className="text-xs text-gray-400 mt-1 max-w-xs text-center leading-relaxed font-semibold">
-                        Commencez par ajouter un élève manuellement ou importez une liste au format CSV.
+                        {searchTerm || studentClassFilter !== 'all' 
+                          ? 'Aucun résultat ne correspond aux filtres de recherche sélectionnés.' 
+                          : 'Commencez par ajouter un élève manuellement ou importez une liste au format CSV.'}
                       </p>
                       <button 
-                        onClick={() => setIsFormOpen(true)}
+                        onClick={handleOpenAddStudent}
                         className="mt-6 btn-primary cursor-pointer active:scale-95"
                       >
-                        <Plus className="w-4 h-4" /> Ajouter votre premier élève
+                        <Plus className="w-4 h-4" /> Ajouter un élève
                       </button>
                     </div>
                   )}
@@ -793,6 +1053,33 @@ export default function App({ session, onLogout }: AppProps) {
           onClose={() => setIsSchoolSettingsOpen(false)}
         />
       )}
+
+      {/* Floating Chat Drawer for Support & Payment */}
+      <SchoolChatDrawer
+        session={session}
+        schoolInfo={schoolInfo}
+        isOpen={isChatOpen}
+        onOpen={() => setIsChatOpen(true)}
+        onClose={() => setIsChatOpen(false)}
+      />
+
+      {/* Official Card Verification Modal */}
+      <CardVerificationModal
+        isOpen={isVerificationOpen}
+        onClose={() => setIsVerificationOpen(false)}
+        students={students}
+        schoolInfo={schoolInfo}
+      />
+
+      {/* Offline Status & Sync Banner */}
+      <OfflineStatusBanner 
+        userId={session.userId} 
+        onSyncComplete={() => {
+          fetchStudents(session.userId).then(setStudents);
+          fetchSchoolInfo(session.userId).then(s => s && setSchoolInfo(s));
+        }}
+      />
     </div>
   );
 }
+

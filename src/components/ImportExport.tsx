@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Papa from 'papaparse';
 import { Student } from '../types';
-import { Upload, Download, FileSpreadsheet } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, FileDown } from 'lucide-react';
 
 interface ImportExportProps {
   onImport: (students: Student[]) => void;
@@ -62,14 +62,48 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'modele_import_eleves.csv');
+    link.setAttribute('download', 'modele_import_eleves_togo.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportCSV = () => {
+    if (students.length === 0) {
+      alert('Aucun élève à exporter.');
+      return;
+    }
+
+    const dataToExport = students.map(s => ({
+      nom: s.lastName,
+      prenom: s.firstName,
+      matricule: s.matricule,
+      classe: s.className,
+      annee_scolaire: s.schoolYear || '2025-2026',
+      date_naissance: s.birthDate || '',
+      lieu_naissance: s.birthPlace || '',
+      centre_examen: s.examCenter || '',
+      photo_url: s.photoUrl || '',
+      date_expiration: s.expirationDate || '',
+    }));
+
+    const csv = Papa.unparse(dataToExport, {
+      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      delimiter: ';',
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `eleves_cardschool_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap items-center gap-2.5">
       <input
         type="file"
         ref={fileInputRef}
@@ -79,18 +113,32 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
       />
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 brand-text rounded-lg hover-bg-brand transition-colors font-medium shadow-sm"
+        className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
+        title="Importer des élèves depuis un fichier CSV"
       >
-        <Upload className="w-4 h-4" />
+        <Upload className="w-3.5 h-3.5 text-emerald-700" />
         Importer CSV
       </button>
+
+      <button
+        onClick={handleExportCSV}
+        disabled={students.length === 0}
+        className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 disabled:opacity-50 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
+        title="Exporter la liste des élèves au format Excel / CSV"
+      >
+        <FileDown className="w-3.5 h-3.5 text-slate-600" />
+        Exporter CSV ({students.length})
+      </button>
+
       <button
         onClick={downloadTemplate}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+        className="flex items-center gap-2 px-3.5 py-2 bg-slate-100/80 hover:bg-slate-200/80 text-slate-600 rounded-xl transition-all font-bold text-xs cursor-pointer active:scale-95"
+        title="Télécharger le modèle CSV officiel"
       >
-        <FileSpreadsheet className="w-4 h-4" />
+        <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
         Modèle CSV
       </button>
     </div>
   );
 };
+

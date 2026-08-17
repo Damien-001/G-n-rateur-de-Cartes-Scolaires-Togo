@@ -149,8 +149,8 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
               {/* Logo Upload */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Logo de l'école</label>
-                <div className="flex items-center gap-3 mt-1.5 bg-gray-50 p-2.5 rounded-xl border border-gray-150">
-                  <div className="relative w-12 h-12 bg-white border border-gray-250 rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                <div className="flex items-center gap-3 mt-1.5 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                  <div className="relative w-12 h-12 bg-white border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                     {logoUrl ? (
                       <>
                         <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
@@ -181,8 +181,8 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
                 {/* Signature */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Signature</label>
-                  <div className="flex flex-col gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-150">
-                    <div className="relative w-full h-9 bg-white border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden shadow-sm">
+                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                    <div className="relative w-full h-9 bg-white border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shadow-sm">
                       {signatureUrl ? (
                         <>
                           <img src={signatureUrl} alt="Signature" className="w-full h-full object-contain" />
@@ -211,8 +211,8 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
                 {/* Stamp */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cachet</label>
-                  <div className="flex flex-col gap-2 bg-gray-55 p-2.5 rounded-xl border border-gray-150">
-                    <div className="relative w-9 h-9 mx-auto bg-white border border-gray-200 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
+                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                    <div className="relative w-9 h-9 mx-auto bg-white border border-slate-200 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
                       {stampUrl ? (
                         <>
                           <img src={stampUrl} alt="Cachet" className="w-full h-full object-contain" />

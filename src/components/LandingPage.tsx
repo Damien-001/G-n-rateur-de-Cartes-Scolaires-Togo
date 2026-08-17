@@ -11,8 +11,7 @@ import {
   Activity,
   Layers,
   FileDown,
-  ArrowUp,
-  RotateCw
+  ArrowUp
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
@@ -20,7 +19,7 @@ import { IDCardBack } from './IDCardBack';
 
 interface LandingPageProps {
   onStartAuth: (mode: 'signup' | 'signin') => void;
-  onAdminLogin?: () => void;
+  onStartOfflineMode?: () => void;
 }
 
 const dummyStudent = {
@@ -47,8 +46,7 @@ const dummySchool = {
   }
 };
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLogin }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOfflineMode }) => {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -150,21 +148,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
             : 'bg-white/70 backdrop-blur-md border-b border-gray-100/80'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div 
+          onClick={scrollToTop}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
-            className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10 cursor-pointer"
+            className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10"
           >
             <span className="font-extrabold text-lg">C</span>
           </motion.div>
           <div>
-            <h1 className="text-base font-bold text-gray-900 leading-tight">CardSchool SaaS</h1>
+            <h1 className="text-base font-bold text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors">CardSchool SaaS</h1>
             <p className="text-[9px] text-emerald-800 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
           </div>
         </div>
 
         <div className="hidden md:flex items-center gap-8">
+          <button 
+            onClick={scrollToTop} 
+            className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 cursor-pointer bg-transparent border-0"
+          >
+            Accueil
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </button>
           <a href="#features" className="text-sm font-semibold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1">
             Fonctionnalités
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
@@ -202,7 +210,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-24 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative overflow-hidden">
+      <section id="hero" className="pt-32 pb-24 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative overflow-hidden">
         {/* Subtle Background Parallax Glow Blobs */}
         <motion.div 
           animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.45, 0.3] }}
@@ -244,14 +252,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
               Essai Gratuit 14 Jours
               <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
             </motion.button>
-            <motion.a 
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              href="#how-it-works"
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
-            >
-              Voir la Démo
-            </motion.a>
+            {onStartOfflineMode ? (
+              <motion.button 
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onStartOfflineMode}
+                className="bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                Accès Immédiat
+              </motion.button>
+            ) : (
+              <motion.a 
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                href="#how-it-works"
+                className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
+              >
+                Voir la Démo
+              </motion.a>
+            )}
           </motion.div>
 
           {/* Mobile Money Visuals */}
@@ -268,77 +288,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
           </motion.div>
         </motion.div>
 
-        {/* Card Visual Previews with 3D Tilt & Flip */}
+        {/* Card Visual Previews */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.92, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="lg:col-span-5 flex flex-col items-center justify-center gap-6"
         >
-          {/* Card Toggle Control */}
-          <div className="flex items-center gap-2 bg-gray-200/70 p-1.5 rounded-2xl backdrop-blur-md">
-            <button
-              onClick={() => setIsFlipped(false)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                !isFlipped ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Vue Globale
-            </button>
-            <button
-              onClick={() => setIsFlipped(!isFlipped)}
-              className="px-4 py-1.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <RotateCw className="w-3.5 h-3.5 animate-spin-slow" />
-              Basculer Recto/Verso
-            </button>
-          </div>
-
           {/* Cards Showcase Container */}
           <motion.div 
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             className="flex flex-col gap-5 items-center"
           >
-            <AnimatePresence mode="wait">
-              {!isFlipped ? (
-                <motion.div
-                  key="side-by-side"
-                  initial={{ opacity: 0, rotateY: -15 }}
-                  animate={{ opacity: 1, rotateY: 0 }}
-                  exit={{ opacity: 0, rotateY: 15 }}
-                  transition={{ duration: 0.4 }}
-                  className="flex flex-col gap-5 items-center"
-                >
-                  {/* Front Card */}
-                  <motion.div 
-                    whileHover={{ scale: 1.03, y: -4 }}
-                    className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
-                  >
-                    <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
-                  </motion.div>
+            {/* Front Card */}
+            <motion.div 
+              whileHover={{ scale: 1.03, y: -4 }}
+              className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+            >
+              <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
+            </motion.div>
 
-                  {/* Back Card */}
-                  <motion.div 
-                    whileHover={{ scale: 1.03, y: -4 }}
-                    className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
-                  >
-                    <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
-                  </motion.div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="single-flipped"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4 }}
-                  className="shadow-2xl shadow-emerald-950/15 rounded-2xl overflow-hidden bg-white border border-gray-100 p-2"
-                >
-                  <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Back Card */}
+            <motion.div 
+              whileHover={{ scale: 1.03, y: -4 }}
+              className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+            >
+              <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
+            </motion.div>
           </motion.div>
         </motion.div>
       </section>
@@ -676,17 +653,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onAdminLo
             <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
-          <div className="text-xs text-gray-500 text-center md:text-right font-medium flex flex-col items-end gap-2">
+          <div className="text-xs text-gray-500 text-center md:text-right font-medium">
             <span>&copy; 2026 CardSchool. Tous droits réservés.</span>
-            {onAdminLogin && (
-              <button
-                onClick={onAdminLogin}
-                className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors font-mono tracking-widest cursor-pointer uppercase"
-                title="Accès administration système"
-              >
-                ⬡ Portail Admin
-              </button>
-            )}
           </div>
         </div>
       </footer>

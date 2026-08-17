@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { login, Session } from '../lib/auth';
+import { setCachedSession } from '../lib/offlineStorage';
 
 interface AdminLoginPageProps {
   onAuth: (session: Session) => void;
@@ -30,6 +31,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
     try {
       const res = await login(formattedEmail, password);
       if (res.success) {
+        setCachedSession(res.session);
         onAuth(res.session);
       } else {
         // Fallback for admin access when testing or initial setup
@@ -41,6 +43,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             schoolName: 'Administration Centrale SaaS',
             location: 'Lomé, Togo'
           };
+          setCachedSession(adminSession);
           onAuth(adminSession);
         } else {
           setError('Le mot de passe administrateur doit contenir au moins 4 caractères.');
@@ -56,6 +59,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
           schoolName: 'Administration Centrale SaaS',
           location: 'Lomé, Togo'
         };
+        setCachedSession(adminSession);
         onAuth(adminSession);
       } else {
         setError(err?.message || 'Identifiants invalides. Veuillez réessayer.');
