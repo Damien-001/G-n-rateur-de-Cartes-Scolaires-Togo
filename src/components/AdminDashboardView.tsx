@@ -1054,13 +1054,35 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                                  school.subscriptionPlan === 'pro' 
-                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
-                                    : (school.subscriptionPlan === 'suspended' ? 'bg-red-50 text-red-700 border border-red-100 font-black' : 'bg-amber-50 text-amber-800 border border-amber-100')
-                                }`}>
-                                  {school.subscriptionPlan === 'pro' ? 'PRO (Actif)' : (school.subscriptionPlan === 'suspended' ? 'Suspendu' : 'Gratuit')}
-                                </span>
+                                {(() => {
+                                  const isExpired = school.subscriptionPlan === 'pro' && !!school.subscriptionExpiresAt && new Date(school.subscriptionExpiresAt).getTime() < Date.now();
+                                  if (school.subscriptionPlan === 'pro') {
+                                    if (isExpired) {
+                                      return (
+                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-200">
+                                          PRO Expiré
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-100">
+                                        PRO (Actif)
+                                      </span>
+                                    );
+                                  }
+                                  if (school.subscriptionPlan === 'suspended') {
+                                    return (
+                                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-100">
+                                        Suspendu
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                                      Gratuit
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                                 {school.subscriptionPlan === 'pro' ? (

@@ -77,6 +77,8 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   }, []);
 
   // Simulation parameters for SaaS
+  const isPlanExpired = schoolInfo.subscriptionPlan === 'pro' && !!schoolInfo.subscriptionExpiresAt && new Date(schoolInfo.subscriptionExpiresAt).getTime() < Date.now();
+  const isEffectivePro = schoolInfo.subscriptionPlan === 'pro' && !isPlanExpired;
   const currentPlan = schoolInfo.subscriptionPlan || 'free';
   const maxFreeStudents = schoolInfo.customQuota || 15;
   const usagePercentage = Math.min(100, Math.round((studentsCount / maxFreeStudents) * 100));
@@ -183,15 +185,22 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                   <div>
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Formule Actuelle</span>
                     <h2 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-2">
-                      {schoolInfo.subscriptionPlan === 'pro' 
+                      {isEffectivePro 
                         ? 'Plan PRO Illimité' 
+                        : isPlanExpired
+                        ? 'Plan PRO Expiré'
                         : (schoolInfo.subscriptionPlan === 'suspended' ? 'Compte Suspendu' : 'Plan Découverte')}
-                      {schoolInfo.subscriptionPlan === 'pro' && (
+                      {isEffectivePro && (
                         <span className="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">Actif</span>
+                      )}
+                      {isPlanExpired && (
+                        <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-bold">À renouveler</span>
                       )}
                     </h2>
                   </div>
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                    isEffectivePro ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                  }`}>
                     <Sparkles className="w-6 h-6" />
                   </div>
                 </div>
@@ -199,10 +208,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                 <div className="space-y-4 pt-4 border-t border-gray-100">
                   <div className="flex justify-between text-xs font-bold text-gray-600">
                     <span>Cartes Générées :</span>
-                    <span className="text-gray-900">{studentsCount} / {schoolInfo.subscriptionPlan === 'pro' ? 'Illimité' : `${maxFreeStudents} max`}</span>
+                    <span className="text-gray-900">{studentsCount} / {isEffectivePro ? 'Illimité' : `${maxFreeStudents} max`}</span>
                   </div>
 
-                  {schoolInfo.subscriptionPlan !== 'pro' && (
+                  {!isEffectivePro && (
                     <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
@@ -213,7 +222,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                     </div>
                   )}
 
-                  {schoolInfo.subscriptionPlan === 'pro' ? (
+                  {isEffectivePro ? (
                     <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-2">
                       <p className="text-xs text-emerald-900 font-bold flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -224,6 +233,16 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         {schoolInfo.subscriptionExpiresAt && (
                           <span className="block mt-1 font-bold">Expire le : {new Date(schoolInfo.subscriptionExpiresAt).toLocaleDateString()}</span>
                         )}
+                      </p>
+                    </div>
+                  ) : isPlanExpired ? (
+                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
+                      <p className="text-xs text-amber-900 font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-700" />
+                        Abonnement annuel arrivé à échéance
+                      </p>
+                      <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
+                        Votre abonnement PRO pour la session précédente est arrivé à terme le {new Date(schoolInfo.subscriptionExpiresAt!).toLocaleDateString()}. Veuillez renouveler votre licence pour la nouvelle rentrée scolaire afin de réactiver l'impression illimitée.
                       </p>
                     </div>
                   ) : (

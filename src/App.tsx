@@ -81,9 +81,11 @@ export default function App({ session, onLogout }: AppProps) {
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subscription & Restrictions state
+  const isPlanExpired = schoolInfo.subscriptionPlan === 'pro' && !!schoolInfo.subscriptionExpiresAt && new Date(schoolInfo.subscriptionExpiresAt).getTime() < Date.now();
+  const isEffectivePro = schoolInfo.subscriptionPlan === 'pro' && !isPlanExpired;
   const isAccountSuspended = schoolInfo.subscriptionPlan === 'suspended';
   const effectiveQuota = schoolInfo.customQuota || 15;
-  const isQuotaExceeded = schoolInfo.subscriptionPlan !== 'pro' && students.length >= effectiveQuota;
+  const isQuotaExceeded = !isEffectivePro && students.length >= effectiveQuota;
 
   // ── Timer d'inactivité — déconnexion après 10 min ───────────────────────────
   useEffect(() => {
@@ -376,6 +378,11 @@ export default function App({ session, onLogout }: AppProps) {
       setIsChatOpen(true);
       return;
     }
+    if (isPlanExpired) {
+      alert("⚠️ Votre abonnement PRO annuel est arrivé à expiration. Veuillez renouveler votre abonnement dans l'onglet 'Abonnement' pour continuer à générer des cartes en illimité.");
+      setIsChatOpen(true);
+      return;
+    }
     if (isQuotaExceeded) {
       alert(`⚠️ Quota gratuit atteint (${students.length}/${effectiveQuota} cartes). Passez au Plan PRO pour ajouter des élèves en illimité.`);
       setIsChatOpen(true);
@@ -390,7 +397,12 @@ export default function App({ session, onLogout }: AppProps) {
       setIsChatOpen(true);
       return;
     }
-    if (schoolInfo.subscriptionPlan !== 'pro' && (students.length + newStudents.length) > effectiveQuota) {
+    if (isPlanExpired) {
+      alert("⚠️ Votre abonnement PRO annuel est arrivé à expiration. Veuillez renouveler votre abonnement pour importer vos listes d'élèves.");
+      setIsChatOpen(true);
+      return;
+    }
+    if (!isEffectivePro && (students.length + newStudents.length) > effectiveQuota) {
       alert(`⚠️ Impossible d'importer ${newStudents.length} élèves : cela dépasserait votre quota gratuit de ${effectiveQuota} élèves (${students.length} déjà enregistrés). Passez au Plan PRO illimité pour importer toute votre base scolaire.`);
       setIsChatOpen(true);
       return;
@@ -408,7 +420,7 @@ export default function App({ session, onLogout }: AppProps) {
       console.error('Erreur import:', err);
       alert('Erreur lors de l\'import : ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     }
-  }, [session.userId, isAccountSuspended, schoolInfo.subscriptionPlan, students.length, effectiveQuota, schoolInfo.name]);
+  }, [session.userId, isAccountSuspended, isPlanExpired, isEffectivePro, students.length, effectiveQuota, schoolInfo.name]);
 
   const handleEditStudent = useCallback((student: Student) => {
     setEditingStudent(student);
