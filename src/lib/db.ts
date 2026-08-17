@@ -1929,7 +1929,6 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 
   return DEFAULT_PLATFORM_SETTINGS;
 }
-}
 
 /** Save platform settings updated by super-admin (Writes to LocalStorage & all Supabase tiers) */
 export async function savePlatformSettings(newSettings: PlatformSettings): Promise<boolean> {
