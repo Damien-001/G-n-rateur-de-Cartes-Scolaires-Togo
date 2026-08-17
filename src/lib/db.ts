@@ -1820,6 +1820,18 @@ function sanitizeKey(k?: string): string {
   return k.trim();
 }
 
+/** Helper to read fedapayPublicKey from localStorage without discarding it */
+function getLocalFedaKey(): string {
+  try {
+    const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
+    if (raw) {
+      const p = JSON.parse(raw);
+      return sanitizeKey(p.fedapayPublicKey);
+    }
+  } catch {}
+  return '';
+}
+
 /** Fetch platform settings configured by super-admin (Aggregating Supabase & LocalStorage) */
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   // 1. Try Supabase custom table platform_settings
@@ -1831,6 +1843,8 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       .single();
 
     if (!error && data) {
+      // Prefer DB key if valid, otherwise fallback to localStorage key
+      const dbKey = sanitizeKey(data.fedapay_public_key);
       const merged: PlatformSettings = {
         ...DEFAULT_PLATFORM_SETTINGS,
         tmoneyNumber: data.tmoney_number || DEFAULT_PLATFORM_SETTINGS.tmoneyNumber,
@@ -1843,7 +1857,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         whatsappNumber: data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
         officeAddress: data.office_address || DEFAULT_PLATFORM_SETTINGS.officeAddress,
         fedapayEnabled: data.fedapay_enabled !== undefined ? Boolean(data.fedapay_enabled) : DEFAULT_PLATFORM_SETTINGS.fedapayEnabled,
-        fedapayPublicKey: sanitizeKey(data.fedapay_public_key),
+        fedapayPublicKey: dbKey || getLocalFedaKey(),
         fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
@@ -1867,11 +1881,13 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 
     if (!sysError && systemRow && systemRow.card_colors) {
       const parsed = typeof systemRow.card_colors === 'string' ? JSON.parse(systemRow.card_colors) : systemRow.card_colors;
-      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.fedapayPublicKey)) {
+      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+        const dbKey = sanitizeKey(parsed.fedapayPublicKey);
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
           ...parsed,
-          fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey),
+          // Always prefer a real key: use DB key if valid, else fallback to localStorage key
+          fedapayPublicKey: dbKey || getLocalFedaKey(),
           updatedAt: systemRow.updated_at
         };
         localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -1895,11 +1911,12 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     if (!logError && logs && logs.length > 0 && logs[0].details) {
       try {
         const parsed = JSON.parse(logs[0].details);
-        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.fedapayPublicKey)) {
+        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+          const dbKey = sanitizeKey(parsed.fedapayPublicKey);
           const merged: PlatformSettings = {
             ...DEFAULT_PLATFORM_SETTINGS,
             ...parsed,
-            fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey),
+            fedapayPublicKey: dbKey || getLocalFedaKey(),
             updatedAt: logs[0].created_at
           };
           localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
