@@ -39,7 +39,7 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     last_name: student.lastName || '',
     matricule: student.matricule || '',
     class_name: student.className || '',
-    schoolYear: student.schoolYear || '',
+    school_year: student.schoolYear || '',
     birth_date: student.birthDate || null,
     birth_place: student.birthPlace || null,
     exam_center: student.examCenter || null,
@@ -721,6 +721,14 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   const schoolsMap = new Map<string, AdminSchoolDetail>();
   const deletedBlacklist = getDeletedSchoolsBlacklist();
 
+  const isSystemId = (id?: string) => 
+    !id || 
+    id === PLATFORM_SETTINGS_SYSTEM_USER_ID || 
+    id === LICENSE_KEYS_SYSTEM_USER_ID || 
+    id.startsWith('00000000-0000-0000-0000-') || 
+    id.toLowerCase().includes('system') || 
+    id.toLowerCase().includes('admin_sys');
+
   // Pre-fetch all student counts in ONE query instead of N+1 queries
   const studentCountMap = new Map<string, number>();
   try {
@@ -729,14 +737,14 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
       .select('user_id');
     if (studentRows) {
       for (const row of studentRows) {
-        if (row.user_id) {
+        if (row.user_id && !isSystemId(row.user_id)) {
           studentCountMap.set(row.user_id, (studentCountMap.get(row.user_id) || 0) + 1);
         }
       }
     }
   } catch {}
 
-  // 1. Charger depuis Supabase school_info
+  // 1. Charger depuis Supabase school_info (Vrais comptes réels)
   try {
     const { data: schoolsData, error: schoolsError } = await supabase
       .from('school_info')
@@ -745,8 +753,8 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
 
     if (!schoolsError && schoolsData) {
       for (const row of (schoolsData as DbSchoolInfo[])) {
-        if (row.user_id === PLATFORM_SETTINGS_SYSTEM_USER_ID) continue;
-        if (deletedBlacklist.has(row.user_id)) continue;
+        if (isSystemId(row.user_id) || deletedBlacklist.has(row.user_id)) continue;
+        if (row.name && (row.name.startsWith('SYSTEM_') || row.name === 'SYSTEM_PLATFORM_SETTINGS' || row.name === 'SYSTEM_LICENSE_KEYS_REGISTRY')) continue;
 
         const baseInfo = dbToSchoolInfo(row);
         const dbCount = studentCountMap.get(row.user_id) || 0;
@@ -765,46 +773,12 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     console.warn('fetchAllSchools Supabase school_info error:', e.message);
   }
 
-  // 2. Récupérer depuis Supabase admin_logs & audit_logs pour les comptes inscrits
-  try {
-    const { data: logsData } = await supabase
-      .from('admin_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (logsData) {
-      for (const log of logsData) {
-        if (log.school_id && log.school_id !== PLATFORM_SETTINGS_SYSTEM_USER_ID && !deletedBlacklist.has(log.school_id)) {
-          if (!schoolsMap.has(log.school_id)) {
-            let schoolType = 'Lycée';
-            let location = '';
-            const match = log.details?.match(/enregistré \((.*?)\) à (.*)/);
-            if (match) {
-              schoolType = match[1] || 'Lycée';
-              location = match[2] || '';
-            }
-            const localStudents = getStoredStudents(log.school_id);
-            schoolsMap.set(log.school_id, {
-              ...DEFAULT_SCHOOL_INFO,
-              name: log.school_name || 'Établissement Enregistré',
-              schoolType,
-              location,
-              subscriptionPlan: 'free',
-              userId: log.school_id,
-              updatedAt: log.created_at,
-              studentCount: localStudents.length
-            });
-          }
-        }
-      }
-    }
-  } catch {}
-
-  // 3. Scanner le Registre persistant de l'application
+  // 2. Scanner le Registre persistant de l'application
   const registeredList = getRegisteredSchoolsRegistry();
   for (const reg of registeredList) {
-    if (reg.userId && !deletedBlacklist.has(reg.userId)) {
+    if (reg.userId && !isSystemId(reg.userId) && !deletedBlacklist.has(reg.userId)) {
+      if (reg.name && reg.name.startsWith('SYSTEM_')) continue;
+
       if (!schoolsMap.has(reg.userId)) {
         schoolsMap.set(reg.userId, reg);
       } else {
@@ -818,20 +792,22 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     }
   }
 
-  // 4. Scanner LocalStorage pour retrouver toutes les écoles et jetons enregistrés
+  // 3. Scanner LocalStorage pour retrouver toutes les écoles enregistrées
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key) continue;
 
-      // 4.1 Clés cartes_togo_school_*
+      // Clés cartes_togo_school_*
       if (key.startsWith('cartes_togo_school_')) {
         const userId = key.replace('cartes_togo_school_', '');
-        if (userId && userId !== PLATFORM_SETTINGS_SYSTEM_USER_ID && !deletedBlacklist.has(userId)) {
+        if (userId && !isSystemId(userId) && !deletedBlacklist.has(userId)) {
           const raw = localStorage.getItem(key);
           if (raw) {
             try {
               const localSchoolInfo = JSON.parse(raw);
+              if (localSchoolInfo.name && localSchoolInfo.name.startsWith('SYSTEM_')) continue;
+
               const localStudents = getStoredStudents(userId);
               if (!schoolsMap.has(userId)) {
                 schoolsMap.set(userId, {
@@ -855,14 +831,14 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
         }
       }
 
-      // 4.2 Clés Supabase Auth Tokens (sb-*-auth-token)
+      // Clés Supabase Auth Tokens (sb-*-auth-token)
       if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
         try {
           const raw = localStorage.getItem(key);
           if (raw) {
             const parsed = JSON.parse(raw);
             const user = parsed?.user || parsed?.currentSession?.user;
-            if (user && user.id && user.id !== PLATFORM_SETTINGS_SYSTEM_USER_ID && !deletedBlacklist.has(user.id)) {
+            if (user && user.id && !isSystemId(user.id) && !deletedBlacklist.has(user.id)) {
               const userId = user.id;
               const userEmail = user.email || '';
               const userFullName = user.user_metadata?.full_name || '';
@@ -905,6 +881,27 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   } catch (err) {
     console.warn('fetchAllSchools localStorage scan error:', err);
   }
+
+  // 4. Synchroniser le statut d'abonnement avec l'état réel des clés de licence
+  try {
+    const localKeys = getLocalLicenseKeys();
+    for (const school of schoolsMap.values()) {
+      const matchKey = localKeys.find(k => 
+        (k.targetSchoolId && k.targetSchoolId === school.userId) ||
+        (k.usedBySchoolId && k.usedBySchoolId === school.userId) ||
+        (k.targetSchoolName && k.targetSchoolName.toUpperCase() === (school.name || '').toUpperCase())
+      );
+      if (matchKey) {
+        if (matchKey.isSuspended) {
+          school.subscriptionPlan = 'suspended';
+        } else if (matchKey.isUsed && school.subscriptionPlan !== 'suspended') {
+          school.subscriptionPlan = 'pro';
+        } else if (!matchKey.isUsed && school.subscriptionPlan !== 'pro' && school.subscriptionPlan !== 'suspended') {
+          school.subscriptionPlan = 'free';
+        }
+      }
+    }
+  } catch {}
 
   const validSchools = Array.from(schoolsMap.values()).filter(school => {
     if (!school || !school.userId) return false;
@@ -955,8 +952,8 @@ export async function fetchAllStudentsCount(): Promise<number> {
   return Math.max(totalDb, localTotal);
 }
 
-/** Delete an entire school, its students, chats and logs by super-admin */
-export async function deleteSchoolByAdmin(userId: string): Promise<boolean> {
+/** Delete an entire school, its students, chats, logs and license keys by super-admin */
+export async function deleteSchoolByAdmin(userId: string, schoolName?: string): Promise<boolean> {
   // 1. Ajouter à la liste noire pour interdire toute réapparition
   addDeletedSchoolBlacklist(userId);
 
@@ -966,27 +963,41 @@ export async function deleteSchoolByAdmin(userId: string): Promise<boolean> {
     localStorage.setItem(REGISTERED_SCHOOLS_KEY, JSON.stringify(remaining));
   } catch {}
 
-  // 3. Supprimer de Supabase
+  // 3. Supprimer de Supabase (school_info, students, admin_logs, chat_messages, license_keys)
   try {
     await supabase.from('school_info').delete().eq('user_id', userId);
     await supabase.from('students').delete().eq('user_id', userId);
     await supabase.from('admin_logs').delete().eq('school_id', userId);
     await supabase.from('chat_messages').delete().eq('school_id', userId);
+    await supabase.from('license_keys').delete().or(`target_school_id.eq.${userId},used_by_school_id.eq.${userId}`);
   } catch (err) {
     console.warn('deleteSchoolByAdmin Supabase error:', err);
   }
 
-  // 4. Nettoyer le stockage local
+  // 4. Supprimer les clés de licence associées dans le registre persistant
+  try {
+    const allKeys = await fetchAllLicenseKeys();
+    const filteredKeys = allKeys.filter(k => 
+      k.targetSchoolId !== userId && 
+      k.usedBySchoolId !== userId &&
+      (!schoolName || (k.targetSchoolName && k.targetSchoolName.toUpperCase() !== schoolName.toUpperCase()))
+    );
+    await saveAllLicenseKeys(filteredKeys);
+  } catch (err) {
+    console.warn('deleteSchoolByAdmin license cleanup error:', err);
+  }
+
+  // 5. Nettoyer le stockage local
   try {
     localStorage.removeItem('cartes_togo_school_' + userId);
     localStorage.removeItem('cartes_togo_students_' + userId);
   } catch {}
 
-  // 5. Journaliser la suppression
+  // 6. Journaliser la suppression
   await saveAdminLog(
     PLATFORM_SETTINGS_SYSTEM_USER_ID,
     'SUPPRESSION_ETABLISSEMENT',
-    `Établissement supprimé (ID: ${userId}) par le super-administrateur`,
+    `Établissement "${schoolName || userId}" supprimé (ID: ${userId}) par le super-administrateur`,
     'Administration Système'
   ).catch(() => {});
 
@@ -1028,6 +1039,16 @@ export async function createSchoolByAdmin(data: {
   // Enregistrer via le pipeline universel
   await registerSchoolRecord(newSchoolDetail);
 
+  // Générer automatiquement la clé pré-assignée si plan gratuit
+  if (newSchoolDetail.subscriptionPlan !== 'pro') {
+    await createPreassignedLicenseForSchool(
+      pseudoUserId,
+      newSchoolDetail.name,
+      undefined,
+      data.phone
+    ).catch(() => {});
+  }
+
   // Journaliser dans le registre d'audit
   await saveAdminLog(
     pseudoUserId,
@@ -1049,51 +1070,125 @@ export async function updateSchoolSubscription(
   expiresAt: string = '',
   schoolName?: string
 ): Promise<boolean> {
+  const timestamp = new Date().toISOString();
+  const cleanName = (schoolName || 'Établissement').trim();
+
+  // 1. Mettre à jour Supabase school_info (Upsert garanti)
   try {
-    const { data: currentData, error: fetchError } = await supabase
+    const { data: currentData } = await supabase
       .from('school_info')
       .select('*')
       .eq('user_id', schoolUserId)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !currentData) return false;
-
-    const currentColors = currentData.card_colors ?? DEFAULT_CARD_COLORS;
+    const currentColors = currentData?.card_colors ? currentData.card_colors : DEFAULT_CARD_COLORS;
     const updatedRow = {
-      ...currentData,
+      user_id: schoolUserId,
+      name: currentData?.name || cleanName.toUpperCase(),
+      logo_url: currentData?.logo_url || null,
+      signature_url: currentData?.signature_url || null,
+      stamp_url: currentData?.stamp_url || null,
       card_colors: {
-        ...currentColors,
+        ...(typeof currentColors === 'object' ? currentColors : {}),
         subscriptionPlan: plan,
         subscriptionExpiresAt: expiresAt
       },
-      updated_at: new Date().toISOString()
+      updated_at: timestamp
     };
 
-    const { error: updateError } = await supabase
-      .from('school_info')
-      .upsert(updatedRow, { onConflict: 'user_id' });
-
-    if (updateError) throw updateError;
-    
-    const actionLabel = plan === 'pro' 
-      ? 'Abonnement PRO Activé' 
-      : (plan === 'suspended' ? 'Compte Suspendu' : 'Abonnement Réinitialisé');
-    const details = plan === 'pro'
-      ? `Plan PRO 1 An validé (Expire le: ${expiresAt})`
-      : (plan === 'suspended' ? 'Accès suspendu pour impayé ou litige' : 'Retour au Plan Découverte Gratuit');
-
-    await saveAdminLog(
-      schoolUserId,
-      actionLabel,
-      details,
-      schoolName || currentData.name
-    );
-
-    return true;
-  } catch (e: any) {
-    console.error('updateSchoolSubscription error:', e.message);
-    return false;
+    await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+  } catch (err) {
+    console.warn('updateSchoolSubscription Supabase error:', err);
   }
+
+  // 2. Mettre à jour le registre persistant local
+  try {
+    const registered = getRegisteredSchoolsRegistry();
+    const existing = registered.find(s => s.userId === schoolUserId);
+    if (existing) {
+      existing.subscriptionPlan = plan;
+      existing.subscriptionExpiresAt = expiresAt;
+      existing.updatedAt = timestamp;
+      saveRegisteredSchoolRegistry(existing);
+    }
+  } catch {}
+
+  // 3. Mettre à jour la clé cartes_togo_school_*
+  try {
+    const localKey = 'cartes_togo_school_' + schoolUserId;
+    const localRaw = localStorage.getItem(localKey);
+    if (localRaw) {
+      const parsed = JSON.parse(localRaw);
+      parsed.subscriptionPlan = plan;
+      parsed.subscriptionExpiresAt = expiresAt;
+      parsed.updatedAt = timestamp;
+      localStorage.setItem(localKey, JSON.stringify(parsed));
+    }
+  } catch {}
+
+  // 4. Synchroniser avec les clés de licence (si le compte est suspendu ou réactivé)
+  try {
+    const keys = await fetchAllLicenseKeys();
+    let hasKeyChanges = false;
+    for (const k of keys) {
+      if (
+        (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
+        (k.usedBySchoolId && k.usedBySchoolId === schoolUserId) ||
+        (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName.toUpperCase())
+      ) {
+        if (plan === 'suspended') {
+          if (!k.isSuspended) {
+            k.isSuspended = true;
+            hasKeyChanges = true;
+          }
+        } else if (plan === 'pro') {
+          if (k.isSuspended) {
+            k.isSuspended = false;
+            hasKeyChanges = true;
+          }
+          if (!k.isUsed) {
+            k.isUsed = true;
+            k.usedAt = timestamp;
+            k.usedBySchoolId = schoolUserId;
+            k.usedBySchoolName = cleanName;
+            hasKeyChanges = true;
+          }
+        } else if (plan === 'free') {
+          if (k.isUsed) {
+            k.isUsed = false;
+            hasKeyChanges = true;
+          }
+        }
+      }
+    }
+    if (hasKeyChanges) {
+      await saveAllLicenseKeys(keys);
+    }
+  } catch {}
+
+  // 5. Journaliser l'action
+  const actionLabel = plan === 'pro' 
+    ? 'Abonnement PRO Activé' 
+    : (plan === 'suspended' ? 'Compte Suspendu' : 'Abonnement Réinitialisé Gratuit');
+  const details = plan === 'pro'
+    ? `Plan PRO 1 An validé (Expire le: ${expiresAt || 'Non défini'})`
+    : (plan === 'suspended' ? 'Accès et impression suspendus par l\'administrateur' : 'Retour au Plan Découverte Gratuit');
+
+  await saveAdminLog(
+    schoolUserId,
+    actionLabel,
+    details,
+    cleanName
+  ).catch(() => {});
+
+  // 6. Émettre les événements globaux
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt } }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan, expiresAt } }));
+    window.dispatchEvent(new Event('storage'));
+  }
+
+  return true;
 }
 
 export interface AdminLogItem {
@@ -1239,28 +1334,305 @@ export async function updateSchoolCustomQuota(
 
 // ─── License Keys & CSV Export Helpers ─────────────────────────────────────────
 
-const LICENSE_KEYS_STORAGE_KEY = 'cardschool_admin_license_keys';
+export const LICENSE_KEYS_STORAGE_KEY = 'cardschool_admin_license_keys';
+export const LICENSE_KEYS_STORAGE_KEY_ALT = 'cartes_togo_license_keys';
+export const LICENSE_KEYS_SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000002';
 
-export function fetchAllLicenseKeys(): LicenseKey[] {
-  try {
-    const stored = localStorage.getItem(LICENSE_KEYS_STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
-    return JSON.parse(stored);
-  } catch {
-    return [];
-  }
+/** Normalize a license key for reliable comparisons across uppercase, dashes and whitespace */
+export function normalizeLicenseCode(raw: string): string {
+  if (!raw) return '';
+  return raw.trim().replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 }
 
-export function generateLicenseKey(
+/** Helper to read cached license keys from localStorage immediately */
+export function getLocalLicenseKeys(): LicenseKey[] {
+  try {
+    const stored = localStorage.getItem(LICENSE_KEYS_STORAGE_KEY) || localStorage.getItem(LICENSE_KEYS_STORAGE_KEY_ALT);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+/** Save license keys across Supabase (dedicated license_keys table + system row) and LocalStorage */
+export async function saveAllLicenseKeys(keys: LicenseKey[]): Promise<boolean> {
+  const timestamp = new Date().toISOString();
+
+  // 1. LocalStorage (both keys for absolute persistence)
+  try {
+    const jsonStr = JSON.stringify(keys);
+    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, jsonStr);
+    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY_ALT, jsonStr);
+  } catch (err) {
+    console.warn('saveAllLicenseKeys localStorage error:', err);
+  }
+
+  // 2. Primary: Dedicated Supabase `license_keys` table
+  try {
+    const rows = keys.map(k => ({
+      code: k.code,
+      duration_days: (k.durationMonths || 12) * 30,
+      is_used: Boolean(k.isUsed),
+      used_by_school_id: k.usedBySchoolId || null,
+      used_by_school_name: k.usedBySchoolName || null,
+      used_at: k.usedAt || null,
+      created_at: k.createdAt || timestamp,
+      note: k.note || null,
+      target_school_name: k.targetSchoolName || null,
+      is_suspended: Boolean(k.isSuspended)
+    }));
+
+    await supabase.from('license_keys').upsert(rows, { onConflict: 'code' });
+  } catch (err) {
+    console.warn('saveAllLicenseKeys Supabase license_keys table error:', err);
+  }
+
+  // 3. Fallback: Supabase school_info system entry (Guaranteed to exist in DB)
+  try {
+    await supabase.from('school_info').upsert({
+      user_id: LICENSE_KEYS_SYSTEM_USER_ID,
+      name: 'SYSTEM_LICENSE_KEYS_REGISTRY',
+      logo_url: null,
+      signature_url: null,
+      stamp_url: null,
+      card_colors: { licenseKeys: keys } as any,
+      updated_at: timestamp
+    }, { onConflict: 'user_id' });
+  } catch (err) {
+    console.warn('saveAllLicenseKeys Supabase school_info system row error:', err);
+  }
+
+  // 4. Fallback: Supabase admin_logs with raw JSON payload
+  try {
+    await saveAdminLog(
+      LICENSE_KEYS_SYSTEM_USER_ID,
+      'SYNC_LICENSE_KEYS',
+      JSON.stringify(keys),
+      'Registre de Licences'
+    );
+  } catch (err) {
+    console.warn('saveAllLicenseKeys Supabase admin_logs error:', err);
+  }
+
+  // 5. Dispatch global window event for live refresh across open components & tabs
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_licenses_updated', {
+      detail: keys
+    }));
+  }
+
+  return true;
+}
+
+/** Fetch all license keys from Supabase with LocalStorage fallback and intelligent deduplication */
+export async function fetchAllLicenseKeys(): Promise<LicenseKey[]> {
+  const keysMap = new Map<string, LicenseKey>();
+
+  // 1. Primary: Dedicated Supabase `license_keys` table
+  try {
+    const { data: dbKeys, error: dbError } = await supabase
+      .from('license_keys')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!dbError && dbKeys && dbKeys.length > 0) {
+      for (const row of dbKeys) {
+        if (row && row.code) {
+          const norm = normalizeLicenseCode(row.code);
+          keysMap.set(norm, {
+            id: row.id?.toString() || `key-${norm}`,
+            code: row.code,
+            plan: 'pro',
+            durationMonths: row.duration_days ? Math.round(row.duration_days / 30) : 12,
+            targetSchoolName: row.target_school_name || undefined,
+            targetSchoolId: row.target_school_id || undefined,
+            targetSchoolEmail: row.target_school_email || undefined,
+            targetSchoolPhone: row.target_school_phone || undefined,
+            autoAssigned: row.auto_assigned !== undefined ? Boolean(row.auto_assigned) : undefined,
+            isUsed: Boolean(row.is_used),
+            isSuspended: Boolean(row.is_suspended),
+            createdAt: row.created_at || new Date().toISOString(),
+            usedAt: row.used_at || undefined,
+            usedBySchoolId: row.used_by_school_id || undefined,
+            usedBySchoolName: row.used_by_school_name || undefined,
+            note: row.note || undefined
+          });
+        }
+      }
+    }
+  } catch (err) {
+    // Continue to next tier
+  }
+
+  // 2. Secondary: Supabase school_info system entry
+  try {
+    const { data: systemRow, error: sysError } = await supabase
+      .from('school_info')
+      .select('*')
+      .eq('user_id', LICENSE_KEYS_SYSTEM_USER_ID)
+      .maybeSingle();
+
+    if (!sysError && systemRow && systemRow.card_colors) {
+      let rawList: any[] = [];
+      if (Array.isArray(systemRow.card_colors)) {
+        rawList = systemRow.card_colors;
+      } else if (typeof systemRow.card_colors === 'object' && Array.isArray((systemRow.card_colors as any).licenseKeys)) {
+        rawList = (systemRow.card_colors as any).licenseKeys;
+      } else if (typeof systemRow.card_colors === 'string') {
+        try {
+          const parsed = JSON.parse(systemRow.card_colors);
+          if (Array.isArray(parsed)) rawList = parsed;
+          else if (Array.isArray(parsed?.licenseKeys)) rawList = parsed.licenseKeys;
+        } catch {}
+      }
+
+      for (const k of rawList) {
+        if (k && k.code) {
+          const norm = normalizeLicenseCode(k.code);
+          const existing = keysMap.get(norm);
+          if (!existing) {
+            keysMap.set(norm, {
+              id: k.id || `key-${norm}`,
+              code: k.code,
+              plan: k.plan || 'pro',
+              durationMonths: k.durationMonths || 12,
+              targetSchoolName: k.targetSchoolName,
+              targetSchoolId: k.targetSchoolId,
+              targetSchoolEmail: k.targetSchoolEmail,
+              targetSchoolPhone: k.targetSchoolPhone,
+              autoAssigned: k.autoAssigned,
+              isUsed: Boolean(k.isUsed),
+              isSuspended: Boolean(k.isSuspended),
+              createdAt: k.createdAt || new Date().toISOString(),
+              usedAt: k.usedAt,
+              usedBySchoolId: k.usedBySchoolId,
+              usedBySchoolName: k.usedBySchoolName,
+              note: k.note
+            });
+          } else {
+            if (k.isUsed && !existing.isUsed) {
+              existing.isUsed = true;
+              existing.usedAt = k.usedAt;
+              existing.usedBySchoolId = k.usedBySchoolId;
+              existing.usedBySchoolName = k.usedBySchoolName;
+            }
+            if (k.isSuspended && !existing.isSuspended) {
+              existing.isSuspended = true;
+            }
+            if (k.targetSchoolId && !existing.targetSchoolId) {
+              existing.targetSchoolId = k.targetSchoolId;
+            }
+            if (k.targetSchoolName && !existing.targetSchoolName) {
+              existing.targetSchoolName = k.targetSchoolName;
+            }
+            if (k.autoAssigned !== undefined && existing.autoAssigned === undefined) {
+              existing.autoAssigned = k.autoAssigned;
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Continue to next tier
+  }
+
+  // 3. Tertiary: Supabase admin_logs SYNC_LICENSE_KEYS entry
+  try {
+    const { data: logs, error: logError } = await supabase
+      .from('admin_logs')
+      .select('*')
+      .eq('action', 'SYNC_LICENSE_KEYS')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!logError && logs && logs.length > 0 && logs[0].details) {
+      try {
+        const parsed = JSON.parse(logs[0].details);
+        if (Array.isArray(parsed)) {
+          for (const k of parsed) {
+            if (k && k.code) {
+              const norm = normalizeLicenseCode(k.code);
+              const existing = keysMap.get(norm);
+              if (!existing) {
+                keysMap.set(norm, {
+                  id: k.id || `key-${norm}`,
+                  code: k.code,
+                  plan: k.plan || 'pro',
+                  durationMonths: k.durationMonths || 12,
+                  targetSchoolName: k.targetSchoolName,
+                  isUsed: Boolean(k.isUsed),
+                  isSuspended: Boolean(k.isSuspended),
+                  createdAt: k.createdAt || new Date().toISOString(),
+                  usedAt: k.usedAt,
+                  usedBySchoolId: k.usedBySchoolId,
+                  usedBySchoolName: k.usedBySchoolName,
+                  note: k.note
+                });
+              } else {
+                if (k.isUsed && !existing.isUsed) {
+                  existing.isUsed = true;
+                  existing.usedAt = k.usedAt;
+                  existing.usedBySchoolId = k.usedBySchoolId;
+                  existing.usedBySchoolName = k.usedBySchoolName;
+                }
+                if (k.isSuspended && !existing.isSuspended) {
+                  existing.isSuspended = true;
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+  } catch (err) {
+    // Continue to local storage
+  }
+
+  // 4. Fallback / Merge with LocalStorage
+  const localKeys = getLocalLicenseKeys();
+  for (const k of localKeys) {
+    if (k && k.code) {
+      const norm = normalizeLicenseCode(k.code);
+      const existing = keysMap.get(norm);
+      if (!existing) {
+        keysMap.set(norm, k);
+      } else {
+        if (k.isUsed && !existing.isUsed) {
+          existing.isUsed = true;
+          existing.usedAt = k.usedAt;
+          existing.usedBySchoolId = k.usedBySchoolId;
+          existing.usedBySchoolName = k.usedBySchoolName;
+        }
+        if (k.isSuspended && !existing.isSuspended) {
+          existing.isSuspended = true;
+        }
+      }
+    }
+  }
+
+  const resultList = Array.from(keysMap.values())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Cache back to LocalStorage
+  try {
+    const jsonStr = JSON.stringify(resultList);
+    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, jsonStr);
+    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY_ALT, jsonStr);
+  } catch {}
+
+  return resultList;
+}
+
+export async function generateLicenseKey(
   durationMonths: number = 12, 
   note?: string, 
   targetSchoolName?: string
-): LicenseKey {
+): Promise<LicenseKey> {
   const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
   const randomSegment2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const code = `TOGO-PRO-2026-${randomSegment}${randomSegment2}`;
+  const code = `TOGO-PRO-2026-${randomSegment}-${randomSegment2}`;
 
   const newKey: LicenseKey = {
     id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 5),
@@ -1274,24 +1646,276 @@ export function generateLicenseKey(
     note: note || 'Généré depuis la Console Admin'
   };
 
-  const currentKeys = fetchAllLicenseKeys();
-  const updatedKeys = [newKey, ...currentKeys];
-  localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(updatedKeys));
+  // Direct insert to dedicated license_keys table
+  try {
+    await supabase.from('license_keys').insert({
+      code: newKey.code,
+      duration_days: durationMonths * 30,
+      is_used: false,
+      note: newKey.note || null,
+      target_school_name: newKey.targetSchoolName || null,
+      is_suspended: false,
+      created_at: newKey.createdAt
+    });
+  } catch (err) {
+    console.warn('generateLicenseKey Supabase license_keys insert error:', err);
+  }
+
+  const currentKeys = await fetchAllLicenseKeys();
+  const updatedKeys = [newKey, ...currentKeys.filter(k => normalizeLicenseCode(k.code) !== normalizeLicenseCode(code))];
+  await saveAllLicenseKeys(updatedKeys);
   
   const destInfo = targetSchoolName ? ` pour "${targetSchoolName}"` : '';
-  saveAdminLog(null, 'Clé Licence Créée', `Clé de licence PRO 1 An générée : ${code}${destInfo}`);
+  await saveAdminLog(null, 'Clé Licence Créée', `Clé de licence PRO 1 An générée : ${code}${destInfo}`);
   return newKey;
+}
+
+/** Crée automatiquement une clé de licence PRO 1 An pré-assignée à un établissement à la création de son compte */
+export async function createPreassignedLicenseForSchool(
+  schoolUserId: string,
+  schoolName: string,
+  managerEmail?: string,
+  managerPhone?: string
+): Promise<LicenseKey> {
+  const cleanName = (schoolName || 'Établissement').trim().toUpperCase();
+  const keys = await fetchAllLicenseKeys();
+
+  // Vérifier si une clé pré-assignée ou utilisée existe déjà pour cet établissement
+  const existingKey = keys.find(k => 
+    (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
+    (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName) ||
+    (k.usedBySchoolId && k.usedBySchoolId === schoolUserId)
+  );
+
+  if (existingKey) {
+    return existingKey;
+  }
+
+  // Générer un code lisible et unique avec préfixe TOGO-PRO
+  const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const randomSegment2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const code = `TOGO-PRO-2026-${randomSegment}-${randomSegment2}`;
+
+  const contactStr = [managerEmail, managerPhone].filter(Boolean).join(' • ');
+  const note = `Licence pré-assignée à l'inscription (${cleanName}${contactStr ? ` - ${contactStr}` : ''})`;
+
+  const newKey: LicenseKey = {
+    id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+    code,
+    plan: 'pro',
+    durationMonths: 12,
+    targetSchoolName: cleanName,
+    targetSchoolId: schoolUserId,
+    targetSchoolEmail: managerEmail,
+    targetSchoolPhone: managerPhone,
+    autoAssigned: true,
+    isUsed: false,
+    isSuspended: false,
+    createdAt: new Date().toISOString(),
+    note
+  };
+
+  // Sauvegarde Supabase directe
+  try {
+    await supabase.from('license_keys').insert({
+      code: newKey.code,
+      duration_days: 12 * 30,
+      is_used: false,
+      note: newKey.note,
+      target_school_name: cleanName,
+      is_suspended: false,
+      created_at: newKey.createdAt
+    });
+  } catch (err) {
+    console.warn('createPreassignedLicenseForSchool insert error:', err);
+  }
+
+  const updatedKeys = [newKey, ...keys.filter(k => normalizeLicenseCode(k.code) !== normalizeLicenseCode(code))];
+  await saveAllLicenseKeys(updatedKeys);
+
+  await saveAdminLog(
+    schoolUserId,
+    'Licence Pré-Assignée Créée',
+    `Clé ${code} pré-attribuée automatiquement à "${cleanName}" en attente de validation/règlement.`,
+    cleanName
+  );
+
+  return newKey;
+}
+
+/** Active directement un établissement en PRO (1 clic administrateur après réception du paiement) */
+export async function activateSchoolDirectly(
+  schoolUserId: string,
+  schoolName: string,
+  durationMonths: number = 12
+): Promise<{ success: boolean; expiresAt: string; licenseCode?: string; message: string }> {
+  try {
+    const cleanName = (schoolName || 'Établissement').trim();
+    const nextDate = new Date();
+    nextDate.setMonth(nextDate.getMonth() + durationMonths);
+    const expiresAtStr = nextDate.toISOString().split('T')[0];
+
+    // 1. Mettre à jour l'abonnement de l'établissement en PRO
+    const subSuccess = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, cleanName);
+    if (!subSuccess) {
+      // Si la ligne school_info n'existe pas encore pour cet ID, s'assurer de la créer
+      const defaultSchoolData: AdminSchoolDetail = {
+        ...DEFAULT_SCHOOL_INFO,
+        name: cleanName.toUpperCase(),
+        userId: schoolUserId,
+        subscriptionPlan: 'pro',
+        subscriptionExpiresAt: expiresAtStr,
+        updatedAt: new Date().toISOString()
+      };
+      await registerSchoolRecord(defaultSchoolData);
+    }
+
+    // 2. Mettre à jour la licence pré-assignée pour marquer son utilisation
+    const keys = await fetchAllLicenseKeys();
+    let targetKey = keys.find(k => 
+      !k.isUsed && (
+        (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
+        (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName.toUpperCase())
+      )
+    );
+
+    const nowIso = new Date().toISOString();
+
+    if (!targetKey) {
+      // Générer une clé pour l'archive et la traçabilité
+      const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randomSegment2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const code = `TOGO-PRO-2026-${randomSegment}-${randomSegment2}`;
+      targetKey = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
+        code,
+        plan: 'pro',
+        durationMonths,
+        targetSchoolName: cleanName,
+        targetSchoolId: schoolUserId,
+        autoAssigned: true,
+        isUsed: true,
+        isSuspended: false,
+        usedBySchoolId: schoolUserId,
+        usedBySchoolName: cleanName,
+        usedAt: nowIso,
+        createdAt: nowIso,
+        note: `Activation directe par l'administrateur (${durationMonths} mois)`
+      };
+      keys.unshift(targetKey);
+    } else {
+      targetKey.isUsed = true;
+      targetKey.durationMonths = durationMonths;
+      targetKey.usedBySchoolId = schoolUserId;
+      targetKey.usedBySchoolName = cleanName;
+      targetKey.usedAt = nowIso;
+      targetKey.note = (targetKey.note ? targetKey.note + ' • ' : '') + `Activée directement par Admin le ${new Date().toLocaleDateString('fr-FR')}`;
+    }
+
+    // Sauvegarder dans la table license_keys
+    try {
+      await supabase.from('license_keys').upsert({
+        code: targetKey.code,
+        duration_days: durationMonths * 30,
+        is_used: true,
+        used_by_school_id: schoolUserId,
+        used_by_school_name: cleanName,
+        used_at: nowIso,
+        note: targetKey.note,
+        target_school_name: cleanName,
+        is_suspended: false,
+        created_at: targetKey.createdAt || nowIso
+      }, { onConflict: 'code' });
+    } catch {}
+
+    await saveAllLicenseKeys(keys);
+
+    // 3. Mettre à jour le registre local des écoles
+    const registered = getRegisteredSchoolsRegistry();
+    const existing = registered.find(s => s.userId === schoolUserId);
+    if (existing) {
+      existing.subscriptionPlan = 'pro';
+      existing.subscriptionExpiresAt = expiresAtStr;
+      existing.updatedAt = nowIso;
+      saveRegisteredSchoolRegistry(existing);
+    }
+
+    // 4. Journaliser dans les logs d'administration
+    await saveAdminLog(
+      schoolUserId,
+      'Paiement Validé & PRO Activé',
+      `Activation directe par l'administrateur (${durationMonths} mois, valide jusqu'au ${expiresAtStr}). Clé associée : ${targetKey.code}`,
+      cleanName
+    );
+
+    // 5. Envoyer un message de félicitations automatique dans le chat
+    try {
+      await sendChatMessage(
+        schoolUserId,
+        cleanName,
+        'admin',
+        `🎉 Félicitations ! Votre règlement a été validé par l'administrateur. Votre compte est désormais activé en formule PRO Illimitée jusqu'au ${expiresAtStr}. Vous pouvez créer et exporter vos cartes sans aucune restriction.`
+      );
+    } catch {}
+
+    // 6. Émettre les événements globaux pour rafraîchissement temps réel
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: 'pro', subscriptionExpiresAt: expiresAtStr } }));
+      window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
+      window.dispatchEvent(new CustomEvent('cardschool_licenses_updated', { detail: keys }));
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    return {
+      success: true,
+      expiresAt: expiresAtStr,
+      licenseCode: targetKey.code,
+      message: `Compte PRO activé avec succès pour "${cleanName}" jusqu'au ${expiresAtStr} (Clé : ${targetKey.code}) !`
+    };
+  } catch (err: any) {
+    console.error('activateSchoolDirectly error:', err);
+    return {
+      success: false,
+      expiresAt: '',
+      message: err?.message || "Une erreur est survenue lors de l'activation directe."
+    };
+  }
 }
 
 /** Toggle suspension status of a license key (Activer / Désactiver) */
 export async function toggleLicenseKeyStatus(keyId: string): Promise<boolean> {
   try {
-    const keys = fetchAllLicenseKeys();
-    const key = keys.find(k => k.id === keyId);
+    const keys = await fetchAllLicenseKeys();
+    const key = keys.find(k => k.id === keyId || k.code === keyId);
     if (!key) return false;
 
     key.isSuspended = !key.isSuspended;
-    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(keys));
+
+    // Direct update to dedicated table
+    try {
+      await supabase
+        .from('license_keys')
+        .update({ is_suspended: key.isSuspended })
+        .eq('code', key.code);
+    } catch {}
+
+    await saveAllLicenseKeys(keys);
+
+    // Synchroniser le statut d'abonnement de l'école associée
+    const targetUserId = key.usedBySchoolId || key.targetSchoolId;
+    const allSchools = await fetchAllSchools();
+    const matchedSchool = allSchools.find(s => 
+      (targetUserId && s.userId === targetUserId) ||
+      (key.targetSchoolName && s.name.toUpperCase() === key.targetSchoolName.toUpperCase())
+    );
+
+    if (matchedSchool) {
+      const newPlan = key.isSuspended ? 'suspended' : 'pro';
+      const nextDate = new Date();
+      nextDate.setMonth(nextDate.getMonth() + (key.durationMonths || 12));
+      const expiresAtStr = nextDate.toISOString().split('T')[0];
+      await updateSchoolSubscription(matchedSchool.userId, newPlan, expiresAtStr, matchedSchool.name);
+    }
 
     const statusStr = key.isSuspended ? 'Désactivée / Suspendue' : 'Réactivée / Active';
     await saveAdminLog(
@@ -1309,12 +1933,20 @@ export async function toggleLicenseKeyStatus(keyId: string): Promise<boolean> {
 /** Delete a license key permanently */
 export async function deleteLicenseKey(keyId: string): Promise<boolean> {
   try {
-    const keys = fetchAllLicenseKeys();
-    const keyToDelete = keys.find(k => k.id === keyId);
+    const keys = await fetchAllLicenseKeys();
+    const keyToDelete = keys.find(k => k.id === keyId || k.code === keyId);
     if (!keyToDelete) return false;
 
-    const remainingKeys = keys.filter(k => k.id !== keyId);
-    localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(remainingKeys));
+    // Direct delete from dedicated table
+    try {
+      await supabase
+        .from('license_keys')
+        .delete()
+        .eq('code', keyToDelete.code);
+    } catch {}
+
+    const remainingKeys = keys.filter(k => k.id !== keyId && k.code !== keyId);
+    await saveAllLicenseKeys(remainingKeys);
 
     await saveAdminLog(
       null, 
@@ -1328,27 +1960,76 @@ export async function deleteLicenseKey(keyId: string): Promise<boolean> {
   }
 }
 
+/** Purge all orphan or unattached license keys from previous test sessions */
+export async function purgeOrphanLicenseKeys(): Promise<{ removedCount: number }> {
+  try {
+    const [allSchools, allKeys] = await Promise.all([
+      fetchAllSchools(),
+      fetchAllLicenseKeys()
+    ]);
+
+    const activeSchoolIds = new Set(allSchools.map(s => s.userId));
+    const activeSchoolNames = new Set(allSchools.map(s => (s.name || '').toUpperCase().trim()));
+
+    // Keep keys that are assigned to an active school or have been used by an active school, or were manually created
+    const keysToKeep = allKeys.filter(k => {
+      // If it has a target school ID, that school must exist
+      if (k.targetSchoolId) {
+        return activeSchoolIds.has(k.targetSchoolId);
+      }
+      // If it has a target school name, that school must exist
+      if (k.targetSchoolName) {
+        return activeSchoolNames.has(k.targetSchoolName.toUpperCase().trim());
+      }
+      // Unassigned manual keys: keep if created intentionally
+      return true;
+    });
+
+    const removedCount = allKeys.length - keysToKeep.length;
+    if (removedCount > 0) {
+      await saveAllLicenseKeys(keysToKeep);
+      await saveAdminLog(
+        null,
+        'Nettoyage Licences Orphelines',
+        `Suppression de ${removedCount} clé(s) de licence orphelines sans école associée`
+      ).catch(() => {});
+    }
+    return { removedCount };
+  } catch (err) {
+    console.error('purgeOrphanLicenseKeys error:', err);
+    return { removedCount: 0 };
+  }
+}
+
+/** Redeem a license key with cloud verification and subscription update */
 export async function redeemLicenseKey(code: string, schoolUserId: string, schoolName: string): Promise<{ success: boolean; message: string }> {
-  const keys = fetchAllLicenseKeys();
-  const foundKey = keys.find(k => k.code.trim().toUpperCase() === code.trim().toUpperCase());
+  if (!code || !code.trim()) {
+    return { success: false, message: 'Veuillez saisir un code de clé de licence valide.' };
+  }
+
+  const normalizedInput = normalizeLicenseCode(code);
+  const keys = await fetchAllLicenseKeys();
+  const foundKey = keys.find(k => normalizeLicenseCode(k.code) === normalizedInput);
 
   if (!foundKey) {
-    return { success: false, message: 'Clé de licence invalide ou inexistante.' };
+    return { success: false, message: 'Clé de licence invalide ou inexistante. Veuillez vérifier les caractères saisis.' };
   }
   if (foundKey.isSuspended) {
-    return { success: false, message: 'Cette clé de licence est temporairement suspendue / désactivée. Veuillez contacter le support technique.' };
+    return { success: false, message: 'Cette clé de licence a été suspendue ou désactivée par l\'administration. Veuillez contacter le support technique.' };
   }
   if (foundKey.isUsed) {
-    return { success: false, message: `Cette clé a déjà été activée le ${foundKey.usedAt ? new Date(foundKey.usedAt).toLocaleDateString() : ''} par ${foundKey.usedBySchoolName || 'un autre établissement'}.` };
+    const usedDate = foundKey.usedAt ? new Date(foundKey.usedAt).toLocaleDateString('fr-FR') : '';
+    return { success: false, message: `Cette clé a déjà été activée${usedDate ? ` le ${usedDate}` : ''} par ${foundKey.usedBySchoolName || 'un autre établissement'}.` };
   }
 
-  const nextYear = new Date();
-  nextYear.setFullYear(nextYear.getFullYear() + 1);
-  const expiresAtStr = nextYear.toISOString().split('T')[0];
+  const duration = foundKey.durationMonths || 12;
+  const nextDate = new Date();
+  nextDate.setMonth(nextDate.getMonth() + duration);
+  const expiresAtStr = nextDate.toISOString().split('T')[0];
 
   const updated = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, schoolName);
   if (!updated) {
-    return { success: false, message: "Erreur lors de l'activation de la licence sur votre compte." };
+    return { success: false, message: "Erreur lors de l'activation de la licence sur votre compte dans la base de données. Veuillez réessayer." };
   }
 
   foundKey.isUsed = true;
@@ -1356,8 +2037,37 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
   foundKey.usedBySchoolName = schoolName;
   foundKey.usedAt = new Date().toISOString();
 
-  localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, JSON.stringify(keys));
-  return { success: true, message: `Félicitations ! Votre abonnement PRO est actif jusqu'au ${expiresAtStr}.` };
+  // Direct update to dedicated table
+  try {
+    await supabase
+      .from('license_keys')
+      .update({
+        is_used: true,
+        used_by_school_id: schoolUserId,
+        used_by_school_name: schoolName,
+        used_at: foundKey.usedAt
+      })
+      .eq('code', foundKey.code);
+  } catch {}
+
+  await saveAllLicenseKeys(keys);
+
+  await saveAdminLog(
+    schoolUserId, 
+    'Licence PRO Activée', 
+    `Clé ${foundKey.code} activée avec succès pour l'établissement "${schoolName}" (Expire le ${expiresAtStr})`, 
+    schoolName
+  );
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId } }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
+  }
+
+  return { 
+    success: true, 
+    message: `Félicitations ! Votre abonnement PRO (${duration} mois) a été activé avec succès jusqu'au ${expiresAtStr}.` 
+  };
 }
 
 // ─── Chat & Payment Proofs Helpers ───────────────────────────────────────────

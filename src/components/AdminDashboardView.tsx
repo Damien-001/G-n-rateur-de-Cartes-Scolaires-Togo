@@ -73,7 +73,10 @@ import {
   fetchPlatformSettings,
   savePlatformSettings,
   createSchoolByAdmin,
-  deleteSchoolByAdmin
+  deleteSchoolByAdmin,
+  activateSchoolDirectly,
+  createPreassignedLicenseForSchool,
+  purgeOrphanLicenseKeys
 } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { Session } from '../lib/auth';
@@ -166,21 +169,33 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsToast, setSettingsToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Direct 1-Click Activation Modal State
+  const [activatingSchool, setActivatingSchool] = useState<{
+    userId: string;
+    name: string;
+    licenseCode?: string;
+    currentPlan?: string;
+    managerPhone?: string;
+  } | null>(null);
+  const [activationDuration, setActivationDuration] = useState<number>(12);
+  const [isProcessingDirectActivation, setIsProcessingDirectActivation] = useState(false);
+
   // Load SaaS statistics & configuration — all fetches run in parallel
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [allSchools, studentCount, logs, allMsgs, pSettings] = await Promise.all([
+      const [allSchools, studentCount, logs, allMsgs, pSettings, keys] = await Promise.all([
         fetchAllSchools(),
         fetchAllStudentsCount(),
         fetchAdminLogs(),
         fetchChatMessages(),
         fetchPlatformSettings(),
+        fetchAllLicenseKeys(),
       ]);
       setSchools(allSchools);
       setTotalStudents(studentCount);
       setActivityLogs(logs);
-      setLicenseKeys(fetchAllLicenseKeys());
+      setLicenseKeys(keys);
       setChatMessages(allMsgs);
       setPlatformSettings(pSettings);
 
@@ -200,6 +215,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
     const handleDataChanged = () => {
       loadData();
+    };
+
+    const handleLicensesChanged = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setLicenseKeys(e.detail);
+      } else {
+        fetchAllLicenseKeys().then(setLicenseKeys).catch(() => {});
+      }
     };
 
     // Live chat message received event handler
@@ -233,6 +256,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     window.addEventListener('cardschool_school_deleted', handleDataChanged);
     window.addEventListener('cardschool_audit_log_added', handleDataChanged);
     window.addEventListener('cardschool_platform_settings_updated', handleDataChanged);
+    window.addEventListener('cardschool_licenses_updated', handleLicensesChanged);
     window.addEventListener('cardschool_chat_message_received', handleNewChatMessage);
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
@@ -291,6 +315,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       window.removeEventListener('cardschool_school_deleted', handleDataChanged);
       window.removeEventListener('cardschool_audit_log_added', handleDataChanged);
       window.removeEventListener('cardschool_platform_settings_updated', handleDataChanged);
+      window.removeEventListener('cardschool_licenses_updated', handleLicensesChanged);
       window.removeEventListener('cardschool_chat_message_received', handleNewChatMessage);
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
@@ -327,27 +352,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   });
 
   // Generate a new license key with optional target school
-  const handleCreateLicenseKey = (e: React.FormEvent) => {
+  const handleCreateLicenseKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    const createdKey = generateLicenseKey(
-      12, 
-      newKeyNote.trim() || undefined,
-      newKeyTargetSchool.trim() || undefined
-    );
-    setLicenseKeys(fetchAllLicenseKeys());
-    setNewKeyNote('');
-    setNewKeyTargetSchool('');
-    fetchAdminLogs().then(logs => setActivityLogs(logs));
-    alert(`Nouvelle Clé PRO générée avec succès :\n${createdKey.code}${createdKey.targetSchoolName ? ` (Pour : ${createdKey.targetSchoolName})` : ''}`);
+    try {
+      const createdKey = await generateLicenseKey(
+        12, 
+        newKeyNote.trim() || undefined,
+        newKeyTargetSchool.trim() || undefined
+      );
+      const updated = await fetchAllLicenseKeys();
+      setLicenseKeys(updated);
+      setNewKeyNote('');
+      setNewKeyTargetSchool('');
+      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => {});
+      alert(`Nouvelle Clé PRO générée avec succès :\n${createdKey.code}${createdKey.targetSchoolName ? ` (Pour : ${createdKey.targetSchoolName})` : ''}`);
+    } catch (err) {
+      console.error('handleCreateLicenseKey error:', err);
+      alert('Erreur lors de la génération de la clé de licence.');
+    }
   };
 
   // Toggle key status (Activer / Désactiver)
   const handleToggleKeyStatus = async (keyId: string, currentCode: string, isSuspended?: boolean) => {
     const actionName = isSuspended ? 'réactiver' : 'désactiver / suspendre';
-    if (window.confirm(`Voulez-vous vraiment ${actionName} la clé ${currentCode} ?`)) {
-      await toggleLicenseKeyStatus(keyId);
-      setLicenseKeys(fetchAllLicenseKeys());
-      fetchAdminLogs().then(logs => setActivityLogs(logs));
+    if (window.confirm(`Voulez-vous vraiment ${actionName} la clé ${currentCode} ?\n\nCela mettra également à jour le statut de l'école associée en temps réel.`)) {
+      setIsLoading(true);
+      try {
+        await toggleLicenseKeyStatus(keyId);
+        await loadData();
+      } catch (err) {
+        console.error('handleToggleKeyStatus error:', err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -355,8 +392,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const handleDeleteKey = async (keyId: string, currentCode: string) => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT la clé de licence ${currentCode} ?`)) {
       await deleteLicenseKey(keyId);
-      setLicenseKeys(fetchAllLicenseKeys());
-      fetchAdminLogs().then(logs => setActivityLogs(logs));
+      const updated = await fetchAllLicenseKeys();
+      setLicenseKeys(updated);
+      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => {});
     }
   };
 
@@ -380,21 +418,52 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     }
   };
 
+  // Open direct activation modal
+  const handleOpenDirectActivation = (schoolUserId: string, schoolName: string, currentPlan?: string, phone?: string) => {
+    // Look for a preassigned license key for this school
+    const matchedKey = licenseKeys.find(k => 
+      !k.isUsed && (
+        (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
+        (k.targetSchoolName && k.targetSchoolName.toUpperCase() === (schoolName || '').toUpperCase())
+      )
+    );
+    setActivatingSchool({
+      userId: schoolUserId,
+      name: schoolName,
+      licenseCode: matchedKey?.code,
+      currentPlan: currentPlan || 'free',
+      managerPhone: phone
+    });
+    setActivationDuration(12);
+  };
+
+  // Process 1-click direct activation
+  const handleConfirmDirectActivation = async () => {
+    if (!activatingSchool) return;
+    setIsProcessingDirectActivation(true);
+    try {
+      const res = await activateSchoolDirectly(activatingSchool.userId, activatingSchool.name, activationDuration);
+      if (res.success) {
+        setSettingsToast({
+          type: 'success',
+          message: res.message
+        });
+        setActivatingSchool(null);
+        await loadData();
+      } else {
+        alert(res.message || "Erreur lors de l'activation directe.");
+      }
+    } catch (err: any) {
+      console.error('handleConfirmDirectActivation error:', err);
+      alert("Erreur inattendue lors de l'activation.");
+    } finally {
+      setIsProcessingDirectActivation(false);
+    }
+  };
+
   // Upgrade trial schools to Pro subscription plan
   const handleUpgradeToPro = async (schoolUserId: string, schoolName: string) => {
-    const nextYear = new Date();
-    nextYear.setFullYear(nextYear.getFullYear() + 1);
-    const expiresAtStr = nextYear.toISOString().split('T')[0];
-
-    if (window.confirm(`Confirmez-vous l'activation du Plan PRO (Licence 1 An) pour l'établissement "${schoolName}" ?`)) {
-      const success = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, schoolName);
-      if (success) {
-        alert(`Félicitations ! L'abonnement PRO a été activé avec succès pour "${schoolName}".`);
-        loadData();
-      } else {
-        alert("Erreur lors de la mise à jour de l'abonnement.");
-      }
-    }
+    handleOpenDirectActivation(schoolUserId, schoolName, 'free');
   };
 
   // Suspend a school account
@@ -425,14 +494,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Delete School Handler
   const handleDeleteSchool = async (schoolUserId: string, schoolName: string) => {
-    if (window.confirm(`⚠️ ATTENTION SUPPRESSION DÉFINITIVE :\n\nVoulez-vous supprimer définitivement l'établissement "${schoolName}" ?\n\nToutes ses cartes d'élèves, ses messages et ses journaux associés seront effacés.`)) {
+    if (window.confirm(`⚠️ ATTENTION SUPPRESSION DÉFINITIVE :\n\nVoulez-vous supprimer définitivement l'établissement "${schoolName}" ?\n\nToutes ses cartes d'élèves, ses clés de licence, ses messages et ses journaux associés seront effacés.`)) {
       setIsLoading(true);
       try {
-        await deleteSchoolByAdmin(schoolUserId);
+        await deleteSchoolByAdmin(schoolUserId, schoolName);
         setSchools(prev => prev.filter(s => s.userId !== schoolUserId));
-        loadData();
+        await loadData();
       } catch (err) {
         console.error('handleDeleteSchool error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Purge orphan license keys
+  const handlePurgeOrphanKeys = async () => {
+    if (window.confirm("Voulez-vous nettoyer le registre et supprimer les clés de licence orphelines (écoles supprimées ou tests passés) ?")) {
+      setIsLoading(true);
+      try {
+        const res = await purgeOrphanLicenseKeys();
+        await loadData();
+        alert(`Nettoyage terminé avec succès : ${res.removedCount} clé(s) orpheline(s) supprimée(s).`);
+      } catch (err) {
+        console.error('handlePurgeOrphanKeys error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -1013,7 +1098,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-xs">
-                          {filteredSchools.map((school) => (
+                          {filteredSchools.map((school) => {
+                            const preassignedKey = licenseKeys.find(k => 
+                              (k.targetSchoolId && k.targetSchoolId === school.userId) ||
+                              (k.targetSchoolName && k.targetSchoolName.toUpperCase() === school.name.toUpperCase()) ||
+                              (k.usedBySchoolId && k.usedBySchoolId === school.userId)
+                            );
+
+                            return (
                             <tr key={school.userId} className="hover:bg-gray-50/50 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
@@ -1030,6 +1122,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                     <span>{school.managerName || 'Responsable'}</span>
                                     {school.managerEmail && <span className="text-slate-400 font-normal">({school.managerEmail})</span>}
                                   </p>
+                                )}
+                                {preassignedKey && (
+                                  <div className="mt-1 flex items-center gap-1.5">
+                                    <span className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                                      preassignedKey.isUsed 
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                                        : 'bg-blue-50 text-blue-800 border-blue-200'
+                                    }`}>
+                                      <Key className="w-2.5 h-2.5 text-emerald-600" />
+                                      {preassignedKey.code}
+                                      {preassignedKey.isUsed ? ' (Active)' : ' (En attente)'}
+                                    </span>
+                                    <button
+                                      onClick={() => handleCopyCode(preassignedKey.code)}
+                                      className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
+                                      title="Copier la clé"
+                                    >
+                                      {copiedCode === preassignedKey.code ? <CheckCheck className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                    </button>
+                                  </div>
                                 )}
                               </td>
                               <td className="px-6 py-4 font-semibold text-gray-600">
@@ -1108,9 +1220,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 ) : school.subscriptionPlan === 'suspended' ? (
                                   <>
                                     <button 
-                                      onClick={() => handleUpgradeToPro(school.userId, school.name)} 
-                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                      onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)} 
+                                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1"
                                     >
+                                      <Zap className="w-3 h-3 text-amber-300" />
                                       Réactiver en PRO
                                     </button>
                                     <button 
@@ -1123,10 +1236,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 ) : (
                                   <>
                                     <button 
-                                      onClick={() => handleUpgradeToPro(school.userId, school.name)} 
-                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-[10px] transition-colors cursor-pointer shadow-sm"
+                                      onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)} 
+                                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1.5"
+                                      title="Valider le paiement et activer en PRO directement"
                                     >
-                                      Activer PRO
+                                      <Zap className="w-3 h-3 text-amber-300" />
+                                      <span>Valider Paiement & Activer PRO</span>
                                     </button>
                                     <button 
                                       onClick={() => handleSuspendSchool(school.userId, school.name)} 
@@ -1146,7 +1261,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                  </button>
                                </td>
                             </tr>
-                          ))}
+                          );
+                        })}
                         </tbody>
                       </table>
                     </div>
@@ -1256,11 +1372,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <div className="flex items-center gap-2">
                                 {schoolPlan !== 'pro' ? (
                                   <button
-                                    onClick={() => handleValidateChatPayment(currentSchool?.userId || selectedSchoolChatId, schoolDisplayName)}
-                                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                                    title="Valider la preuve et passer en PRO"
+                                    onClick={() => handleOpenDirectActivation(currentSchool?.userId || selectedSchoolChatId, schoolDisplayName, schoolPlan, schoolPhone)}
+                                    className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                                    title="Valider le paiement et activer directement le compte PRO"
                                   >
-                                    <CheckCircle2 className="w-4 h-4" />
+                                    <Zap className="w-4 h-4 text-amber-300" />
                                     Valider Paiement & Activer PRO
                                   </button>
                                 ) : (
@@ -1324,10 +1440,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
                                       {isSchool && m.attachmentUrl && currentSchool?.subscriptionPlan !== 'pro' && (
                                         <button
-                                          onClick={() => handleValidateChatPayment(selectedSchoolChatId, currentSchool?.name || 'Établissement')}
-                                          className="mt-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                                          onClick={() => handleOpenDirectActivation(selectedSchoolChatId, currentSchool?.name || 'Établissement', currentSchool?.subscriptionPlan || 'free', currentSchool?.phone)}
+                                          className="mt-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all cursor-pointer flex items-center gap-1"
                                         >
-                                          <CheckCircle2 className="w-3 h-3" /> Valider cette preuve de paiement
+                                          <Zap className="w-3 h-3 text-amber-300" /> Valider cette preuve & Activer PRO
                                         </button>
                                       )}
                                     </div>
@@ -1428,7 +1544,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handlePurgeOrphanKeys}
+                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                        title="Supprimer les clés orphelines sans école associée"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Nettoyer Orphelines</span>
+                      </button>
+
                       {[
                         { id: 'all', label: 'Toutes' },
                         { id: 'available', label: 'Disponibles' },
@@ -1507,7 +1633,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Direct Activate for Preassigned School */}
+                            {k.targetSchoolName && !k.isUsed && !k.isSuspended && (
+                              <button 
+                                onClick={() => {
+                                  const sch = schools.find(s => 
+                                    (k.targetSchoolId && s.userId === k.targetSchoolId) || 
+                                    s.name.toUpperCase() === k.targetSchoolName?.toUpperCase()
+                                  );
+                                  handleOpenDirectActivation(
+                                    sch?.userId || k.targetSchoolId || '',
+                                    k.targetSchoolName || 'Établissement',
+                                    sch?.subscriptionPlan || 'free',
+                                    sch?.phone
+                                  );
+                                }}
+                                className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                                title="Valider le paiement et activer directement pour cette école"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                                <span>Valider & Activer pour l'école</span>
+                              </button>
+                            )}
+
                             {/* Copy button */}
                             <button 
                               onClick={() => handleCopyCode(k.code)} 
@@ -1602,214 +1751,34 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               {/* Main Settings Form */}
               <form onSubmit={handleSavePlatformSettings} className="space-y-6">
+                
+                {/* Section 0: Information Paiement Direct Mobile Money */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-5 space-y-3 bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                          Système de Règlement Direct Mobile Money (Togo)
+                        </h3>
+                        <p className="text-[11px] text-emerald-800 font-medium">
+                          Validation par notification SMS / Mobile Money sans intermédiaire
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                      Les établissements effectuent leur transfert directement sur vos comptes <strong>T-Money</strong> et <strong>Moov Flooz</strong> ci-dessous. Dès confirmation de la réception des fonds sur votre téléphone, vous validez et activez leur compte PRO en 1 clic depuis la liste des <strong>Écoles</strong> ou le <strong>Chat de support</strong>.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   
                   {/* Left Column: Payment Numbers & Contacts Inputs */}
                   <div className="lg:col-span-7 space-y-6">
                     
-                    {/* Section 0: Passerelle de Paiement FedaPay */}
-                    <div className="double-bezel-outer">
-                      <div className="double-bezel-inner p-6 space-y-4 bg-gradient-to-br from-white via-white to-amber-50/20">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
-                              <Zap className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                                Passerelle de Paiement Direct FedaPay
-                              </h3>
-                              <p className="text-[10px] text-slate-500 font-medium">
-                                Prélèvement USSD direct T-Money & Flooz avec activation automatique
-                              </p>
-                            </div>
-                          </div>
-                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                            platformSettings.fedapayEnabled 
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}>
-                            {platformSettings.fedapayEnabled ? 'ON — ACTIF' : 'OFF — DÉSACTIVÉ'}
-                          </span>
-                        </div>
-
-                        <div className="space-y-4 pt-1">
-                          {/* Real iOS-Style Visual ON / OFF Toggle Switch */}
-                          <div className="flex items-center justify-between p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 gap-4">
-                            <div className="space-y-0.5 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-slate-900">
-                                  Interrupteur Paiement FedaPay
-                                </span>
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                  platformSettings.fedapayEnabled 
-                                    ? 'bg-emerald-600 text-white' 
-                                    : 'bg-slate-300 text-slate-700'
-                                }`}>
-                                  {platformSettings.fedapayEnabled ? 'ON' : 'OFF'}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 font-normal leading-relaxed">
-                                {platformSettings.fedapayEnabled
-                                  ? "Le bouton de paiement direct T-Money / Flooz est activé pour toutes les écoles."
-                                  : "Le bouton FedaPay est désactivé. Seul le paiement manuel avec envoi de reçu sera proposé."}
-                              </p>
-                            </div>
-
-                            {/* Clickable Switch */}
-                            <button
-                              type="button"
-                              onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnabled: !prev.fedapayEnabled }))}
-                              className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-inner ${
-                                platformSettings.fedapayEnabled ? 'bg-emerald-600' : 'bg-slate-300'
-                              }`}
-                              aria-label="Activer / Désactiver FedaPay"
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                  platformSettings.fedapayEnabled ? 'translate-x-6' : 'translate-x-0'
-                                }`}
-                              />
-                            </button>
-                          </div>
-
-                          {/* Environment Mode: Sandbox vs Live */}
-                          <div className="space-y-2">
-                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                              Environnement FedaPay
-                            </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              <button
-                                type="button"
-                                onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnvironment: 'sandbox' }))}
-                                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                                  platformSettings.fedapayEnvironment === 'sandbox'
-                                    ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-500/20 text-amber-950'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-black flex items-center gap-1.5">
-                                    🧪 Mode Test (Sandbox)
-                                  </span>
-                                  {platformSettings.fedapayEnvironment === 'sandbox' && (
-                                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                                  )}
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                  Clé obtenue sur <strong>sandbox.fedapay.com</strong> pour tester sans frais réels.
-                                </p>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setPlatformSettings(prev => ({ ...prev, fedapayEnvironment: 'live' }))}
-                                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                                  platformSettings.fedapayEnvironment === 'live'
-                                    ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500/20 text-emerald-950'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-black flex items-center gap-1.5">
-                                    🚀 Mode Production (Live)
-                                  </span>
-                                  {platformSettings.fedapayEnvironment === 'live' && (
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                  )}
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                  Clé obtenue sur <strong>fedapay.com</strong> pour encaisser les vrais paiements.
-                                </p>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* How to get API Key Step-by-step box */}
-                          <div className="p-3 bg-amber-50/80 border border-amber-200/70 rounded-xl space-y-1.5 text-[11px]">
-                            <p className="font-extrabold text-amber-950 flex items-center gap-1.5">
-                              <Info className="w-4 h-4 text-amber-700 shrink-0" />
-                              Comment obtenir votre propre Clé Publique FedaPay :
-                            </p>
-                            <ol className="list-decimal list-inside space-y-1 text-amber-900 font-medium text-[10px] leading-relaxed">
-                              <li>
-                                Connectez-vous sur votre compte FedaPay :{' '}
-                                <a 
-                                  href={platformSettings.fedapayEnvironment === 'sandbox' ? "https://sandbox.fedapay.com" : "https://fedapay.com"} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="underline font-bold text-amber-950 hover:text-amber-700"
-                                >
-                                  {platformSettings.fedapayEnvironment === 'sandbox' ? "sandbox.fedapay.com (Test)" : "fedapay.com (Production)"} ↗
-                                </a>
-                              </li>
-                              <li>Allez dans le menu <strong>Paramètres &gt; Clés d'API</strong></li>
-                              <li>
-                                Copiez la <strong>Clé Publique (Public Key)</strong> qui commence par{' '}
-                                <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-950">
-                                  {platformSettings.fedapayEnvironment === 'sandbox' ? 'pk_sandbox_...' : 'pk_live_...'}
-                                </code>
-                              </li>
-                              <li>Collez-la dans le champ ci-dessous et cliquez sur <strong>Enregistrer</strong>.</li>
-                            </ol>
-                          </div>
-
-                          {/* Public API Key Input */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                                Votre Clé Publique FedaPay ({platformSettings.fedapayEnvironment === 'sandbox' ? 'Sandbox' : 'Live'})
-                              </label>
-                              <a
-                                href={platformSettings.fedapayEnvironment === 'sandbox' ? "https://sandbox.fedapay.com" : "https://fedapay.com"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 hover:underline"
-                              >
-                                Ouvrir FedaPay <ExternalLink className="w-2.5 h-2.5" />
-                              </a>
-                            </div>
-                            <div className="relative">
-                              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                              <input
-                                type="text"
-                                value={platformSettings.fedapayPublicKey || ''}
-                                onChange={e => setPlatformSettings(prev => ({ ...prev, fedapayPublicKey: e.target.value.trim() }))}
-                                placeholder={platformSettings.fedapayEnvironment === 'sandbox' ? "pk_sandbox_votre_cle_personnelle" : "pk_live_votre_cle_personnelle"}
-                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-mono font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50/50"
-                              />
-                            </div>
-                            <p className="text-[10px] text-slate-400 font-medium">
-                              Cette clé publique est transmise au guichet sécurisé FedaPay côté client.
-                            </p>
-                          </div>
-
-                          {/* Quick Save FedaPay Settings Button */}
-                          <div className="pt-2">
-                            <button
-                              type="button"
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setIsSavingSettings(true);
-                                const ok = await savePlatformSettings(platformSettings);
-                                setIsSavingSettings(false);
-                                if (ok) {
-                                  setSettingsToast({ type: 'success', message: 'Configuration FedaPay enregistrée avec succès !' });
-                                  setTimeout(() => setSettingsToast(null), 3000);
-                                  alert("✅ Configuration FedaPay et clé enregistrées avec succès !");
-                                }
-                              }}
-                              disabled={isSavingSettings}
-                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
-                            >
-                              <Save className="w-4 h-4" />
-                              <span>{isSavingSettings ? 'Enregistrement en cours...' : 'Enregistrer la configuration FedaPay'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Section 1: Mobile Money Numbers */}
                     <div className="double-bezel-outer">
@@ -2066,22 +2035,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             Tarif annuel PRO : <strong className="text-emerald-800 font-black">{(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA / an</strong>.
                           </p>
 
-                          {/* FedaPay Button Preview */}
-                          {platformSettings.fedapayEnabled ? (
-                            <div className="p-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-xs flex items-center justify-between text-xs font-black">
-                              <div className="flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                                <span>Payer en ligne (T-Money / Flooz)</span>
-                              </div>
-                              <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded text-white font-mono font-bold">
-                                {(platformSettings.annualPriceCFA || 30000).toLocaleString()} F
-                              </span>
+                          {/* Direct Mobile Money Info Preview */}
+                          <div className="p-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-xs flex items-center justify-between text-xs font-black">
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-4 h-4 text-amber-300" />
+                              <span>Paiement Direct T-Money / Flooz</span>
                             </div>
-                          ) : (
-                            <div className="p-2.5 bg-slate-100 border border-dashed border-slate-300 rounded-xl text-center text-[10px] text-slate-500 font-semibold">
-                              Bouton FedaPay désactivé (Paiement manuel uniquement)
-                            </div>
-                          )}
+                            <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded text-white font-mono font-bold">
+                              {(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA
+                            </span>
+                          </div>
 
                           <div className="space-y-2">
                             <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
@@ -2378,6 +2341,131 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DIRECT 1-CLICK ACTIVATION MODAL */}
+      {activatingSchool && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-xs">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Validation de Paiement & Activation Directe</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Activation immédiate sans saisie de code pour l'école</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActivatingSchool(null)}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* School Details Card */}
+            <div className="p-4 bg-emerald-50/50 border border-emerald-200/70 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-850">Établissement Bénéficiaire</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  {activatingSchool.currentPlan === 'suspended' ? 'Suspendu' : 'Plan Découverte'}
+                </span>
+              </div>
+              <p className="text-sm font-black text-slate-900">{activatingSchool.name}</p>
+              {activatingSchool.managerPhone && (
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Contact : {activatingSchool.managerPhone}</span>
+                </p>
+              )}
+
+              {/* Preassigned key info */}
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-bold text-slate-600">Licence pré-assignée :</span>
+                {activatingSchool.licenseCode ? (
+                  <span className="font-mono font-black text-emerald-800 bg-white px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
+                    {activatingSchool.licenseCode}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400 italic">Nouvelle clé générée automatiquement</span>
+                )}
+              </div>
+            </div>
+
+            {/* Duration Selector */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
+                Durée de l'Abonnement PRO
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { months: 6, label: '6 Mois', price: '18 000 CFA' },
+                  { months: 12, label: '1 An (Recommandé)', price: '30 000 CFA' },
+                  { months: 24, label: '2 Ans', price: '55 000 CFA' },
+                  { months: 120, label: 'Permanent', price: 'Illimité' }
+                ].map((opt) => (
+                  <button
+                    key={opt.months}
+                    type="button"
+                    onClick={() => setActivationDuration(opt.months)}
+                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${
+                      activationDuration === opt.months
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                    }`}
+                  >
+                    <span className="text-xs font-black">{opt.label}</span>
+                    <span className={`text-[10px] font-bold mt-1 ${activationDuration === opt.months ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      {opt.price}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Information Notice */}
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70 text-[11px] text-slate-600 leading-relaxed space-y-1">
+              <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Activation automatique Zéro-Saisie
+              </p>
+              <p>
+                Le compte de l'établissement basculera immédiatement en <strong>PRO Illimité</strong>. La licence sera automatiquement marquée comme validée et un message de confirmation sera envoyé dans le chat de l'école.
+              </p>
+            </div>
+
+            {/* Actions Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActivatingSchool(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDirectActivation}
+                disabled={isProcessingDirectActivation}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              >
+                {isProcessingDirectActivation ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Activation en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    <span>Valider le Paiement & Activer PRO</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

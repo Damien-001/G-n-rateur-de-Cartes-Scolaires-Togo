@@ -14,6 +14,8 @@ import {
   Mail,
   Phone,
   MessageCircle,
+  MessageSquare,
+  Copy,
   Info,
   Zap,
   Lock,
@@ -24,28 +26,7 @@ import {
 } from 'lucide-react';
 import { SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import { Session } from '../lib/auth';
-import { redeemLicenseKey, fetchPlatformSettings, processFedaPaySuccessfulPayment, getLocalFedaKey } from '../lib/db';
-
-async function ensureFedaPayScript(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  if ((window as any).FedaPay) return true;
-  return new Promise((resolve) => {
-    const existing = document.querySelector('script[src*="fedapay.com/checkout.js"]');
-    if (existing) {
-      existing.addEventListener('load', () => resolve(!!(window as any).FedaPay));
-      existing.addEventListener('error', () => resolve(false));
-      setTimeout(() => resolve(!!(window as any).FedaPay), 2500);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdn.fedapay.com/checkout.js?v=1.1.7';
-    script.async = true;
-    script.onload = () => resolve(!!(window as any).FedaPay);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-    setTimeout(() => resolve(!!(window as any).FedaPay), 3500);
-  });
-}
+import { redeemLicenseKey, fetchPlatformSettings } from '../lib/db';
 
 interface SchoolSettingsViewProps {
   session: Session;
@@ -94,16 +75,30 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
       }
     };
 
+    const handleSubscriptionUpdate = (e: any) => {
+      if (e?.detail?.plan) {
+        onSaveSchoolInfo({
+          ...schoolInfo,
+          subscriptionPlan: e.detail.plan,
+          subscriptionExpiresAt: e.detail.expiresAt || schoolInfo.subscriptionExpiresAt
+        });
+      }
+    };
+
     window.addEventListener('cardschool_platform_settings_updated', handleSettingsUpdate);
+    window.addEventListener('cardschool_subscription_updated', handleSubscriptionUpdate);
+    window.addEventListener('cardschool_school_registered', handleSubscriptionUpdate);
     window.addEventListener('storage', refreshSettings);
     window.addEventListener('focus', refreshSettings);
 
     return () => {
       window.removeEventListener('cardschool_platform_settings_updated', handleSettingsUpdate);
+      window.removeEventListener('cardschool_subscription_updated', handleSubscriptionUpdate);
+      window.removeEventListener('cardschool_school_registered', handleSubscriptionUpdate);
       window.removeEventListener('storage', refreshSettings);
       window.removeEventListener('focus', refreshSettings);
     };
-  }, []);
+  }, [schoolInfo, onSaveSchoolInfo]);
 
   // Simulation parameters for SaaS
   const isPlanExpired = schoolInfo.subscriptionPlan === 'pro' && !!schoolInfo.subscriptionExpiresAt && new Date(schoolInfo.subscriptionExpiresAt).getTime() < Date.now();
@@ -112,139 +107,54 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   const maxFreeStudents = schoolInfo.customQuota || 15;
   const usagePercentage = Math.min(100, Math.round((studentsCount / maxFreeStudents) * 100));
 
-  // FedaPay Instant Payment States & Handler
-  const [isLaunchingFedaPay, setIsLaunchingFedaPay] = useState(false);
-  const [fedaPayError, setFedaPayError] = useState<string | null>(null);
-  const [paymentSuccessData, setPaymentSuccessData] = useState<{
-    transactionId: string | number;
-    expiresAt: string;
-    amount: number;
-  } | null>(null);
+  // Copy Feedback State
+  const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
 
-  const handleOpenFedaPay = async () => {
-    setFedaPayError(null);
-    setIsLaunchingFedaPay(true);
-
-    const isLoaded = await ensureFedaPayScript();
-    if (!isLoaded || !(window as any).FedaPay) {
-      setIsLaunchingFedaPay(false);
-      setFedaPayError("Le service FedaPay n'a pas pu être chargé. Vérifiez votre connexion internet ou utilisez les numéros T-Money / Flooz ci-dessous.");
-      return;
-    }
-
-    // Refresh freshest platform settings directly
-    let activeSettings = platformSettings;
-    try {
-      const fresh = await fetchPlatformSettings();
-      if (fresh) {
-        setPlatformSettings(fresh);
-        activeSettings = fresh;
-      }
-    } catch {}
-
-    const pubKey = (activeSettings.fedapayPublicKey || '').trim() || getLocalFedaKey();
-    const environment = activeSettings.fedapayEnvironment || 'sandbox';
-    const amount = activeSettings.annualPriceCFA || 30000;
-
-    if (!pubKey) {
-      setIsLaunchingFedaPay(false);
-      setFedaPayError("Le guichet de paiement direct est momentanément indisponible (clé FedaPay non configurée). Veuillez effectuer votre transfert via les numéros T-Money / Flooz ci-dessous.");
-      return;
-    }
-
-    try {
-      console.log('[FedaPay] Initializing checkout with key:', pubKey.substring(0, 12) + '...', 'env:', environment, 'amount:', amount);
-      const widget = (window as any).FedaPay.init({
-        public_key: pubKey,
-        environment: environment,
-        transaction: {
-          amount: amount,
-          description: `Abonnement PRO 1 An — ${schoolInfo.name || 'Établissement'}`
-        },
-        customer: {
-          email: schoolInfo.phone ? `ecole_${schoolInfo.phone.replace(/[^0-9]/g, '')}@cardschool.tg` : 'contact@cardschool.tg',
-          lastname: schoolInfo.name || 'Établissement',
-          firstname: 'Directeur',
-          phone_number: {
-            number: schoolInfo.phone?.replace(/[^0-9]/g, '') || '90000000',
-            country: 'tg'
-          }
-        },
-        onComplete: async (response: any) => {
-          setIsLaunchingFedaPay(false);
-          console.log('[FedaPay] onComplete callback:', response);
-          if (
-            response?.reason === 'CHECKOUT_COMPLETE' || 
-            (response?.transaction && (response.transaction.status === 'approved' || response.transaction.status === 'transferred' || response.transaction.status === 'pending'))
-          ) {
-            const txId = response.transaction?.id || Date.now();
-            const res = await processFedaPaySuccessfulPayment(
-              session.userId,
-              schoolInfo.name || 'Établissement',
-              txId,
-              amount
-            );
-            if (res.success) {
-              await onSaveSchoolInfo({
-                ...schoolInfo,
-                subscriptionPlan: 'pro',
-                subscriptionExpiresAt: res.expiresAt
-              });
-              setPaymentSuccessData({
-                transactionId: txId,
-                expiresAt: res.expiresAt,
-                amount: amount
-              });
-            }
-          }
-        },
-        onDismiss: () => {
-          setIsLaunchingFedaPay(false);
-          console.log('[FedaPay] Modal closed by user');
-        }
-      });
-
-      if (widget && typeof widget.open === 'function') {
-        widget.open();
-      } else if (widget && typeof widget.show === 'function') {
-        widget.show();
-      }
-      setIsLaunchingFedaPay(false);
-    } catch (err: any) {
-      console.error('[FedaPay] checkout error:', err);
-      setIsLaunchingFedaPay(false);
-      setFedaPayError(`Erreur FedaPay : ${err?.message || "Impossible d'ouvrir le guichet de paiement. Vérifiez votre clé sur FedaPay."}`);
-    }
+  const handleCopyNumber = (num: string) => {
+    if (!num) return;
+    navigator.clipboard.writeText(num.replace(/\s+/g, ''));
+    setCopiedNumber(num);
+    setTimeout(() => setCopiedNumber(null), 2500);
   };
 
-  const handleSimulateTestPayment = async () => {
-    setIsLaunchingFedaPay(true);
-    setFedaPayError(null);
+  // License Key Redemption State (Optionnel / Secours)
+  const [licenseInputCode, setLicenseInputCode] = useState('');
+  const [isRedeemingLicense, setIsRedeemingLicense] = useState(false);
+  const [licenseFeedback, setLicenseFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleRedeemLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!licenseInputCode.trim()) return;
+
+    setIsRedeemingLicense(true);
+    setLicenseFeedback(null);
+
     try {
-      const amount = platformSettings.annualPriceCFA || 30000;
-      const txId = 'SIMU_FEDAPAY_' + Math.floor(100000 + Math.random() * 900000);
-      const res = await processFedaPaySuccessfulPayment(
-        session.userId,
-        schoolInfo.name || 'Établissement',
-        txId,
-        amount
-      );
+      const res = await redeemLicenseKey(licenseInputCode.trim(), session.userId, schoolInfo.name || name);
       if (res.success) {
+        setLicenseFeedback({ type: 'success', message: res.message });
+        setLicenseInputCode('');
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        const expStr = nextYear.toISOString().split('T')[0];
         await onSaveSchoolInfo({
           ...schoolInfo,
           subscriptionPlan: 'pro',
-          subscriptionExpiresAt: res.expiresAt
+          subscriptionExpiresAt: expStr
         });
-        setPaymentSuccessData({
-          transactionId: txId,
-          expiresAt: res.expiresAt,
-          amount: amount
-        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setLicenseFeedback({ type: 'error', message: res.message });
       }
     } catch (err: any) {
-      setFedaPayError("Erreur simulation: " + err?.message);
+      setLicenseFeedback({ 
+        type: 'error', 
+        message: err?.message || "Une erreur inattendue est survenue lors de l'activation." 
+      });
     } finally {
-      setIsLaunchingFedaPay(false);
+      setIsRedeemingLicense(false);
     }
   };
 
@@ -429,160 +339,167 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
             <div className="lg:col-span-6 space-y-6">
               <div className="double-bezel-outer">
                 <div className="double-bezel-inner p-6 space-y-5 bg-white">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-emerald-600" />
-                      Paiement Mobile Money & Activation Immédiate
-                    </h2>
-                    {platformSettings.fedapayEnabled && (
-                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-                        Paiement Instantané
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                          Paiement Direct Mobile Money (Togo)
+                        </h2>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Activation PRO après vérification du reçu
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      T-Money & Flooz
+                    </span>
                   </div>
 
                   <div className="space-y-4">
-                    <p className="text-xs text-gray-500 leading-relaxed font-semibold">
-                      Tarif annuel PRO : <strong className="text-emerald-800 font-extrabold">{(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA / an</strong> (cartes illimitées pendant 365 jours).
-                    </p>
+                    {/* Price banner */}
+                    <div className="p-4 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl text-white flex items-center justify-between shadow-md">
+                      <div>
+                        <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider block">Tarif Annuel PRO</span>
+                        <h3 className="text-base font-black text-white mt-0.5">Licence Cartes Illimitées (365 Jours)</h3>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-black text-emerald-200">
+                          {(platformSettings.annualPriceCFA || 30000).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-emerald-300/80 font-bold block">FCFA / an</span>
+                      </div>
+                    </div>
 
-                    {/* FedaPay Primary Instant CTA */}
-                    {platformSettings.fedapayEnabled && (
-                      <div className="p-4 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl text-white space-y-3.5 shadow-lg shadow-emerald-900/10 border border-emerald-700/50">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                                <Zap className="w-3.5 h-3.5 fill-amber-300" /> Recommandé
-                              </span>
-                              {platformSettings.fedapayEnvironment === 'sandbox' && (
-                                <span className="text-[9px] font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30 px-1.5 py-0.5 rounded">
-                                  🧪 Mode Test (Sandbox)
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-sm font-black text-white mt-0.5">
-                              Payer directement par T-Money ou Moov Flooz
-                            </h3>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-base font-black text-emerald-200">
-                              {(platformSettings.annualPriceCFA || 30000).toLocaleString()}
-                            </span>
-                            <span className="text-[10px] text-emerald-300/80 font-bold block">FCFA / an</span>
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-emerald-100/90 leading-relaxed font-medium">
-                          Saisissez votre numéro de téléphone. Vous recevrez une invitation USSD sécurisée sur votre mobile pour valider avec votre code secret. Votre compte PRO sera débloqué immédiatement.
-                        </p>
-
-                        {fedaPayError && (
-                          <div className="p-3 bg-red-500/20 border border-red-400/40 rounded-xl text-[11px] text-red-200 font-semibold space-y-2">
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="w-4 h-4 text-red-300 shrink-0" />
-                              <span>{fedaPayError}</span>
-                            </div>
-                            {platformSettings.fedapayEnvironment === 'sandbox' && (
-                              <button
-                                type="button"
-                                onClick={handleSimulateTestPayment}
-                                className="w-full py-2 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow transition-all active:scale-95"
-                              >
-                                🧪 Simuler un paiement de test immédiat (Sandbox)
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={handleOpenFedaPay}
-                          disabled={isLaunchingFedaPay}
-                          className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          {isLaunchingFedaPay ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                              <span>Ouverture du guichet sécurisé...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-4 h-4 fill-slate-950" />
-                              <span>Payer {(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA avec FedaPay</span>
-                              <Lock className="w-3.5 h-3.5 ml-1 opacity-70" />
-                            </>
-                          )}
-                        </button>
-                        
-                        <div className="flex items-center justify-center gap-3 text-[10px] text-emerald-200/70 font-semibold pt-0.5">
-                          <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-300" /> Prélèvement officiel T-Money & Flooz</span>
-                          <span>•</span>
-                          <span>Sans attente (24h/24)</span>
-                        </div>
+                    {/* Instructions banner if any */}
+                    {platformSettings.paymentInstructions && (
+                      <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs text-emerald-950 font-medium leading-relaxed flex items-start gap-2">
+                        <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>{platformSettings.paymentInstructions}</span>
                       </div>
                     )}
 
-                    {/* Alternative: Manual Transfer */}
-                    <div className="pt-2">
-                      <div className="relative flex items-center justify-center mb-3">
-                        <div className="border-t border-slate-200 w-full"></div>
-                        <span className="bg-white px-3 text-[10px] font-black uppercase text-slate-400 tracking-wider absolute">
-                          {platformSettings.fedapayEnabled ? 'Ou par transfert manuel classique' : 'Coordonnées de transfert'}
-                        </span>
+                    {/* Payment Numbers Cards */}
+                    <div className="space-y-2.5">
+                      {/* T-Money Card */}
+                      <div className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 transition-all flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center font-black text-amber-700 text-xs shrink-0">
+                            TM
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">T-Money (Togocom)</span>
+                              <span className="text-[9px] font-mono text-slate-400 font-bold">(*145#)</span>
+                            </div>
+                            <p className="text-sm font-black text-slate-900 tracking-wide">{platformSettings.tmoneyNumber || '+228 90 00 00 00'}</p>
+                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.tmoneyHolder || 'CardSchool Togo'}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNumber(platformSettings.tmoneyNumber || '+228 90 00 00 00')}
+                          className="px-3 py-1.5 bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0 shadow-xs"
+                          title="Copier le numéro T-Money"
+                        >
+                          {copiedNumber === (platformSettings.tmoneyNumber || '+228 90 00 00 00') ? (
+                            <>
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Copié !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Copier</span>
+                            </>
+                          )}
+                        </button>
                       </div>
 
-                      {platformSettings.paymentInstructions && (
-                        <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs text-emerald-950 font-medium leading-relaxed flex items-start gap-2 mb-3">
-                          <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                          <span>{platformSettings.paymentInstructions}</span>
+                      {/* Flooz Card */}
+                      <div className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 transition-all flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center font-black text-blue-700 text-xs shrink-0">
+                            FL
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Moov Flooz (Moov Africa)</span>
+                              <span className="text-[9px] font-mono text-slate-400 font-bold">(*155#)</span>
+                            </div>
+                            <p className="text-sm font-black text-slate-900 tracking-wide">{platformSettings.floozNumber || '+228 95 00 00 00'}</p>
+                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.floozHolder || 'CardSchool Togo'}</p>
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNumber(platformSettings.floozNumber || '+228 95 00 00 00')}
+                          className="px-3 py-1.5 bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0 shadow-xs"
+                          title="Copier le numéro Flooz"
+                        >
+                          {copiedNumber === (platformSettings.floozNumber || '+228 95 00 00 00') ? (
+                            <>
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Copié !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Copier</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 3-Step Simple Guide */}
+                    <div className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-2">
+                      <p className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        Procédure d'activation en 3 étapes :
+                      </p>
+                      <ol className="text-xs text-slate-600 space-y-1.5 font-medium pl-1">
+                        <li className="flex items-start gap-2">
+                          <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
+                          <span>Transférez les <strong>{(platformSettings.annualPriceCFA || 30000).toLocaleString()} FCFA</strong> vers le numéro T-Money ou Flooz ci-dessus.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
+                          <span>Faites une capture d'écran du SMS de confirmation de transfert reçu sur votre téléphone.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
+                          <span>Envoyez la capture dans le <strong>Chat d'assistance</strong> ci-dessous. Dès réception, l'administrateur valide votre compte immédiatement.</span>
+                        </li>
+                      </ol>
+                    </div>
+
+                    {/* Action Buttons: Chat & WhatsApp */}
+                    <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                      {onOpenChat && (
+                        <button
+                          type="button"
+                          onClick={onOpenChat}
+                          className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer active:scale-95 transition-all"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Ouvrir le Chat & Envoyer le Reçu</span>
+                        </button>
                       )}
-
-                      <div className="space-y-2">
-                        <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase">T-Money (Togo)</p>
-                            <p className="text-sm font-extrabold text-gray-900">{platformSettings.tmoneyNumber || '+228 90 00 00 00'}</p>
-                          </div>
-                          <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded">
-                            {platformSettings.tmoneyHolder || 'CardSchool SAS'}
-                          </span>
-                        </div>
-
-                        <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase">Flooz / Moov Money</p>
-                            <p className="text-sm font-extrabold text-gray-900">{platformSettings.floozNumber || '+228 95 00 00 00'}</p>
-                          </div>
-                          <span className="text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded">
-                            {platformSettings.floozHolder || 'CardSchool SAS'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2.5 mt-3">
-                        {onOpenChat && (
-                          <button
-                            type="button"
-                            onClick={onOpenChat}
-                            className="flex-1 py-3 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95 transition-all"
-                          >
-                            💬 Envoyer le reçu dans le Chat
-                          </button>
-                        )}
-                        {platformSettings.whatsappNumber && (
-                          <a 
-                            href={`https://wa.me/${platformSettings.whatsappNumber.replace(/[^0-9]/g, '')}?text=Bonjour,%20je%20souhaite%20activer%20le%20plan%20PRO%20pour%20l'%C3%A9tablissement%20${encodeURIComponent(schoolInfo.name || '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
-                          >
-                            <PhoneCall className="w-4 h-4 text-emerald-600" /> WhatsApp
-                          </a>
-                        )}
-                      </div>
+                      {platformSettings.whatsappNumber && (
+                        <a 
+                          href={`https://wa.me/${platformSettings.whatsappNumber.replace(/[^0-9]/g, '')}?text=Bonjour,%20je%20viens%20d'effectuer%20le%20paiement%20PRO%20pour%20l'%C3%A9tablissement%20${encodeURIComponent(schoolInfo.name || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0"
+                        >
+                          <PhoneCall className="w-4 h-4 text-emerald-400" /> WhatsApp Direct
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -633,32 +550,52 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                     Vous avez reçu une clé de licence PRO de la part de l'administration ? Saisissez-la ci-dessous pour débloquer immédiatement votre compte.
                   </p>
 
-                  <form 
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const target = e.currentTarget;
-                      const input = target.querySelector('input') as HTMLInputElement;
-                      const code = input?.value || '';
-                      if (!code.trim()) return;
+                  {licenseFeedback && (
+                    <div className={`p-3.5 rounded-xl text-xs font-bold flex items-start gap-2.5 animate-fadeIn ${
+                      licenseFeedback.type === 'success' 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      {licenseFeedback.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">{licenseFeedback.message}</div>
+                    </div>
+                  )}
 
-                      const res = await redeemLicenseKey(code.trim(), session.userId, schoolInfo.name);
-                      alert(res.message);
-                      if (res.success) {
-                        window.location.reload();
-                      }
-                    }}
+                  <form 
+                    onSubmit={handleRedeemLicense}
                     className="flex flex-col sm:flex-row gap-2"
                   >
                     <input
                       type="text"
-                      placeholder="Ex: TOGO-PRO-2026-X89A"
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 uppercase font-mono font-bold text-xs outline-none focus-brand bg-white"
+                      placeholder="Ex: TOGO-PRO-2026-X89A ou avec tirets"
+                      value={licenseInputCode}
+                      onChange={(e) => {
+                        setLicenseInputCode(e.target.value);
+                        if (licenseFeedback) setLicenseFeedback(null);
+                      }}
+                      disabled={isRedeemingLicense}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 uppercase font-mono font-bold text-xs outline-none focus-brand bg-white disabled:bg-gray-100"
                     />
                     <button
                       type="submit"
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
+                      disabled={isRedeemingLicense || !licenseInputCode.trim()}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
                     >
-                      Activer la Clé
+                      {isRedeemingLicense ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Vérification...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCheck className="w-4 h-4" />
+                          <span>Activer la Clé</span>
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
@@ -876,63 +813,6 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
       </div>
 
-      {/* FedaPay Success Celebration Modal */}
-      {paymentSuccessData && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-emerald-100 text-center relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-100 rounded-full blur-2xl pointer-events-none opacity-60"></div>
-            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-100 rounded-full blur-2xl pointer-events-none opacity-60"></div>
-
-            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-3xl flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-500/20">
-              <CheckCheck className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full">
-                Paiement FedaPay Validé
-              </span>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Félicitations ! Votre Plan PRO est Actif 🎉
-              </h2>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Votre transaction de <strong>{paymentSuccessData.amount.toLocaleString()} FCFA</strong> a été confirmée avec succès. Vous bénéficiez désormais de l'impression illimitée de cartes scolaires pour 365 jours.
-              </p>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Établissement</span>
-                <span className="font-bold text-slate-800 truncate max-w-[200px]">{schoolInfo.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Formule</span>
-                <span className="font-extrabold text-emerald-700">PRO Annuel (Cartes Illimitées)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Valable jusqu'au</span>
-                <span className="font-black text-slate-900">{paymentSuccessData.expiresAt}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Réf. Transaction</span>
-                <span className="font-mono text-[11px] text-slate-600 font-bold">#{paymentSuccessData.transactionId}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentSuccessData(null);
-                onBack();
-              }}
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-95 transition-all"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Générer mes cartes scolaires dès maintenant</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

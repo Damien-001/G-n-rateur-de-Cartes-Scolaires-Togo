@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { User, Session as SupabaseSession } from '@supabase/supabase-js';
 import { getCachedSession, setCachedSession, setStoredSchoolInfo } from './offlineStorage';
-import { saveAdminLog, registerSchoolRecord, AdminSchoolDetail } from './db';
+import { saveAdminLog, registerSchoolRecord, createPreassignedLicenseForSchool, AdminSchoolDetail } from './db';
 import { DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, SchoolInfo } from '../types';
 
 // On réexporte Session avec la même interface qu'avant
@@ -117,7 +117,15 @@ export async function register(
     // 1. Enregistrer dans tous les canaux de persistance
     await registerSchoolRecord(schoolDetail);
 
-    // 2. Journaliser l'inscription dans le registre d'audit
+    // 2. Générer automatiquement une clé de licence pré-assignée pour cette école
+    await createPreassignedLicenseForSchool(
+      data.user.id,
+      schoolName.trim().toUpperCase(),
+      email.trim().toLowerCase(),
+      phone.trim()
+    ).catch(err => console.warn('Auto-generation preassigned license error:', err));
+
+    // 3. Journaliser l'inscription dans le registre d'audit
     await saveAdminLog(
       data.user.id,
       'Nouvelle Inscription',

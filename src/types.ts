@@ -42,6 +42,10 @@ export interface LicenseKey {
   plan: 'pro';
   durationMonths: number;
   targetSchoolName?: string; // Nom de l'école ciblée
+  targetSchoolId?: string;   // ID du compte de l'école ciblée
+  targetSchoolEmail?: string;
+  targetSchoolPhone?: string;
+  autoAssigned?: boolean;    // Générée automatiquement à l'inscription
   isUsed: boolean;
   isSuspended?: boolean;     // Clé désactivée / suspendue par l'admin
   usedBySchoolId?: string;
@@ -147,17 +151,17 @@ export interface PlatformSettings {
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   tmoneyNumber: '+228 90 00 00 00',
-  tmoneyHolder: 'CardSchool SAS (Togo)',
+  tmoneyHolder: 'CardSchool Togo',
   floozNumber: '+228 95 00 00 00',
-  floozHolder: 'CardSchool SAS (Togo)',
+  floozHolder: 'CardSchool Togo',
   annualPriceCFA: 30000,
   supportEmail: 'contact@cardschool.tg',
   supportPhone: '+228 90 00 00 00',
   whatsappNumber: '+228 90 00 00 00',
   officeAddress: 'Lomé, Togo',
-  fedapayEnabled: true,
+  fedapayEnabled: false,
   fedapayPublicKey: '',
   fedapayEnvironment: 'sandbox',
-  paymentInstructions: "Effectuez votre transfert T-Money ou Flooz en précisant le nom de votre établissement. Téléversez ensuite votre capture d'écran dans le chat pour validation sous 15 minutes.",
+  paymentInstructions: "Effectuez votre transfert T-Money ou Flooz. Téléversez ensuite votre capture d'écran dans le chat support pour validation immédiate par l'administrateur.",
   supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte."
 };

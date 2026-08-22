@@ -261,6 +261,39 @@ export default function App({ session, onLogout }: AppProps) {
     };
   }, [session.userId]);
 
+  // ── Écouteur temps-réel des activations et mises à jour d'abonnement ───────────
+  useEffect(() => {
+    const handleSubscriptionChange = (e: any) => {
+      if (e?.detail?.plan) {
+        setSchoolInfo(prev => ({
+          ...prev,
+          subscriptionPlan: e.detail.plan,
+          subscriptionExpiresAt: e.detail.expiresAt || prev.subscriptionExpiresAt
+        }));
+      } else {
+        fetchSchoolInfo(session.userId).then(s => {
+          if (s) setSchoolInfo(s);
+        }).catch(() => {});
+      }
+    };
+
+    const handleStorageChange = () => {
+      fetchSchoolInfo(session.userId).then(s => {
+        if (s) setSchoolInfo(s);
+      }).catch(() => {});
+    };
+
+    window.addEventListener('cardschool_subscription_updated', handleSubscriptionChange);
+    window.addEventListener('cardschool_school_registered', handleSubscriptionChange);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('cardschool_subscription_updated', handleSubscriptionChange);
+      window.removeEventListener('cardschool_school_registered', handleSubscriptionChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [session.userId]);
+
   // ── Sauvegarde school_info avec debounce (évite trop d'appels) ──────────────
   useEffect(() => {
     if (loading) return;

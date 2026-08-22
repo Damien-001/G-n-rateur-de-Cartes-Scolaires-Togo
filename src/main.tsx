@@ -5,7 +5,7 @@ import { AuthPage } from './components/AuthPage.tsx';
 import { AdminLoginPage } from './components/AdminLoginPage.tsx';
 import { LandingPage } from './components/LandingPage.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { onAuthStateChange, getSession, Session } from './lib/auth.ts';
+import { onAuthStateChange, getSession, logout, Session } from './lib/auth.ts';
 import { isAppOnline, getCachedSession, setCachedSession } from './lib/offlineStorage.ts';
 import './index.css';
 
