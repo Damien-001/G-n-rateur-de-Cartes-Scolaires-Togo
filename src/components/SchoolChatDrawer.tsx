@@ -10,7 +10,8 @@ import {
   Smartphone,
   Paperclip,
   Trash2,
-  Sparkles
+  Sparkles,
+  ArrowDown
 } from 'lucide-react';
 import { ChatMessage, SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import { fetchChatMessages, sendChatMessage, fetchPlatformSettings, compressImageForChat } from '../lib/db';
@@ -39,7 +40,31 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(DEFAULT_PLATFORM_SETTINGS);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef<boolean>(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track when user scrolls up to read history
+  const handleChatScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 60;
+    userScrolledUpRef.current = !isNearBottom;
+    setShowScrollBottomBtn(!isNearBottom);
+  };
+
+  const scrollToChatBottom = (smooth: boolean = true) => {
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    if (messagesContainerRef.current) {
+      if (smooth) {
+        messagesContainerRef.current.scrollTo({ top: messagesContainerRef.current.scrollHeight, behavior: 'smooth' });
+      } else {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    }
+  };
 
   useEffect(() => {
     const refreshSettings = () => {
@@ -114,9 +139,10 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0);
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
+      // Only scroll down if user has not scrolled up
+      if (!userScrolledUpRef.current) {
+        setTimeout(() => scrollToChatBottom(false), 80);
+      }
     }
   }, [isOpen, messages]);
 
@@ -175,6 +201,7 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
         if (exists) return prev;
         return [...prev, sent];
       });
+      setTimeout(() => scrollToChatBottom(true), 60);
     } catch (err) {
       console.error('Error sending message:', err);
       alert('Erreur lors de l\'envoi du message.');
@@ -254,7 +281,11 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
           </div>
 
           {/* Messages scroll area */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#faf9f6]">
+          <div 
+            ref={messagesContainerRef} 
+            onScroll={handleChatScroll} 
+            className="flex-1 min-h-0 p-4 overflow-y-auto space-y-3 bg-[#faf9f6] relative"
+          >
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500">
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mb-3">
@@ -331,6 +362,20 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
               })
             )}
             <div ref={messagesEndRef} />
+
+            {/* Floating jump to bottom button when scrolled up */}
+            {showScrollBottomBtn && (
+              <div className="sticky bottom-2 flex justify-center z-20 pointer-events-none">
+                <button
+                  type="button"
+                  onClick={() => scrollToChatBottom(true)}
+                  className="pointer-events-auto px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold rounded-full shadow-lg flex items-center gap-1.5 transition-all cursor-pointer animate-bounce-once"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  <span>Nouveaux messages</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Selected image preview or processing state */}

@@ -51,7 +51,8 @@ import {
   Menu,
   X,
   Zap,
-  Lock
+  Lock,
+  ArrowDown
 } from 'lucide-react';
 import { 
   fetchAllSchools, 
@@ -150,6 +151,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [adminReplyText, setAdminReplyText] = useState('');
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef<boolean>(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
   // Live real-time notification state
   const [latestNotification, setLatestNotification] = useState<{
@@ -324,11 +328,43 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (activeSubTab === 'payments' && chatBottomRef.current) {
-      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+  // Scroll handler to track when admin scrolls up manually to read older messages
+  const handleChatScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 70;
+    userScrolledUpRef.current = !isNearBottom;
+    setShowScrollBottomBtn(!isNearBottom);
+  };
+
+  const scrollToChatBottom = (smooth: boolean = true) => {
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    if (messagesContainerRef.current) {
+      if (smooth) {
+        messagesContainerRef.current.scrollTo({ top: messagesContainerRef.current.scrollHeight, behavior: 'smooth' });
+      } else {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
     }
-  }, [selectedSchoolChatId, chatMessages, activeSubTab]);
+  };
+
+  useEffect(() => {
+    // When switching conversations, force scroll to bottom immediately
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    const t = setTimeout(() => scrollToChatBottom(false), 60);
+    return () => clearTimeout(t);
+  }, [selectedSchoolChatId]);
+
+  useEffect(() => {
+    if (activeSubTab === 'payments' && messagesContainerRef.current) {
+      // Only auto-scroll down if the user has NOT scrolled up to read history
+      if (!userScrolledUpRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    }
+  }, [chatMessages, activeSubTab]);
 
   // Filter schools based on search and region
   const filteredSchools = schools.filter(school => {
@@ -592,6 +628,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         if (exists) return prev;
         return [...prev, newMsg];
       });
+      setTimeout(() => scrollToChatBottom(true), 60);
     } catch (err) {
       console.error('Error sending reply:', err);
     }
@@ -1274,13 +1311,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
           {/* TAB 3: CHAT & MOBILE MONEY PAYMENT PROOFS */}
           {activeSubTab === 'payments' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[680px]">
+            <div className="space-y-4 animate-fadeIn">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-210px)] min-h-[580px] max-h-[780px]">
                 
                 {/* Left column: Schools conversations list */}
-                <div className="lg:col-span-4 double-bezel-outer h-full flex flex-col">
-                  <div className="double-bezel-inner p-4 bg-white flex-1 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                <div className="lg:col-span-4 double-bezel-outer h-full flex flex-col min-h-0">
+                  <div className="double-bezel-inner p-4 bg-white flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/70 shrink-0">
                       <div className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-emerald-600" />
                         <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Discussions & Preuves</h3>
@@ -1288,7 +1325,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       <span className="text-[10px] font-bold text-gray-400">{sortedConversations.length} échanges</span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto divide-y divide-gray-100 mt-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100 mt-2">
                       {sortedConversations.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-10 font-medium">Aucun échange ou établissement pour l'instant.</p>
                       ) : (
@@ -1337,8 +1374,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </div>
 
                 {/* Right column: Selected conversation message view */}
-                <div className="lg:col-span-8 double-bezel-outer h-full flex flex-col">
-                  <div className="double-bezel-inner p-0 bg-white flex-1 flex flex-col overflow-hidden">
+                <div className="lg:col-span-8 double-bezel-outer h-full flex flex-col min-h-0">
+                  <div className="double-bezel-inner p-0 bg-white flex-1 flex flex-col min-h-0 overflow-hidden">
                     {selectedSchoolChatId ? (
                       (() => {
                         const currentSchool = schools.find(s => s.userId === selectedSchoolChatId);
@@ -1352,7 +1389,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         return (
                           <>
                             {/* Chat Header */}
-                            <div className="p-4 bg-gray-50/80 border-b border-slate-200/70 flex items-center justify-between">
+                            <div className="p-4 bg-gray-50/80 border-b border-slate-200/70 flex items-center justify-between shrink-0">
                               <div>
                                 <h4 className="text-sm font-black text-gray-900 flex items-center gap-2">
                                   {schoolDisplayName}
@@ -1388,7 +1425,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </div>
 
                             {/* Chat messages */}
-                            <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#faf9f6]">
+                            <div 
+                              ref={messagesContainerRef}
+                              onScroll={handleChatScroll}
+                              className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 bg-[#faf9f6] relative"
+                            >
                               {currentSchoolMessages.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400">
                                   <Smartphone className="w-10 h-10 text-gray-300 mb-2" />
@@ -1451,10 +1492,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 })
                               )}
                               <div ref={chatBottomRef} />
+
+                              {/* Floating jump to bottom button when scrolled up */}
+                              {showScrollBottomBtn && (
+                                <div className="sticky bottom-2 flex justify-center z-20 pointer-events-none">
+                                  <button
+                                    type="button"
+                                    onClick={() => scrollToChatBottom(true)}
+                                    className="pointer-events-auto px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold rounded-full shadow-lg flex items-center gap-1.5 transition-all cursor-pointer animate-bounce-once"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                    <span>Nouveaux messages</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {/* Reply Input Form */}
-                            <form onSubmit={handleSendAdminReply} className="p-4 bg-white border-t border-slate-200/70 flex items-center gap-2">
+                            <form onSubmit={handleSendAdminReply} className="p-4 bg-white border-t border-slate-200/70 flex items-center gap-2 shrink-0">
                               <input
                                 type="text"
                                 value={adminReplyText}
