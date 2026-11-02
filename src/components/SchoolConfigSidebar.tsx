@@ -11,7 +11,11 @@ interface SchoolConfigSidebarProps {
   setSchoolInfo: (info: SchoolInfo) => void;
   setIsSchoolSettingsOpen: (open: boolean) => void;
   students: Student[];
-  onImport: (newStudents: Student[]) => void;
+  onImport: (newStudents: Student[], targetClass?: string) => Promise<void> | void;
+  allClasses?: string[];
+  currentClassFilter?: string;
+  isEffectivePro?: boolean;
+  effectiveQuota?: number;
 }
 
 export const SchoolConfigSidebar: React.FC<SchoolConfigSidebarProps> = ({
@@ -20,6 +24,10 @@ export const SchoolConfigSidebar: React.FC<SchoolConfigSidebarProps> = ({
   setIsSchoolSettingsOpen,
   students,
   onImport,
+  allClasses = [],
+  currentClassFilter = 'all',
+  isEffectivePro = false,
+  effectiveQuota = 15,
 }) => {
   return (
     <div className="space-y-6">
@@ -31,7 +39,14 @@ export const SchoolConfigSidebar: React.FC<SchoolConfigSidebarProps> = ({
             <Download className="w-5 h-5 text-emerald-600" />
             <h2 className="font-bold text-gray-900">Import / Export</h2>
           </div>
-          <ImportExport onImport={onImport} students={students} />
+          <ImportExport 
+            onImport={onImport} 
+            students={students} 
+            allClasses={allClasses}
+            currentClassFilter={currentClassFilter}
+            isEffectivePro={isEffectivePro}
+            effectiveQuota={effectiveQuota}
+          />
         </section>
       </div>
 

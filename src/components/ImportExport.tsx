@@ -1,64 +1,61 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import Papa from 'papaparse';
 import { Student } from '../types';
-import { Upload, Download, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Upload, FileSpreadsheet, FileDown } from 'lucide-react';
+import { ClassImportModal } from './ClassImportModal';
 
 interface ImportExportProps {
-  onImport: (students: Student[]) => void;
+  onImport: (students: Student[], targetClass?: string) => Promise<void> | void;
   students: Student[];
+  allClasses?: string[];
+  currentClassFilter?: string;
+  isEffectivePro?: boolean;
+  effectiveQuota?: number;
 }
 
-export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: '', // auto-detect ; or ,
-      complete: (results) => {
-        const importedStudents: Student[] = results.data.map((row: any) => ({
-          id: crypto.randomUUID(),
-          firstName: row.prenom || row.firstName || '',
-          lastName: row.nom || row.lastName || '',
-          matricule: row.matricule || '',
-          className: row.classe || row.className || '',
-          schoolYear: row.annee_scolaire || row.schoolYear || row.annee || '2025-2026',
-          birthDate: row.date_naissance || row.birthDate || '',
-          birthPlace: row.lieu_naissance || row.birthPlace || '',
-          examCenter: row.centre_examen || row.examCenter || row.centre || '',
-          photoUrl: row.photo_url || row.photoUrl || row.photo || '',
-          expirationDate: row.date_expiration || row.expirationDate || '',
-        }));
-        onImport(importedStudents);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      },
-    });
-  };
+export const ImportExport: React.FC<ImportExportProps> = ({ 
+  onImport, 
+  students,
+  allClasses = [],
+  currentClassFilter = 'all',
+  isEffectivePro = false,
+  effectiveQuota = 15,
+}) => {
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const downloadTemplate = () => {
+    const templateClass = currentClassFilter !== 'all' ? currentClassFilter : '6ème A';
     const template = [
       {
         nom: 'KOFFI',
         prenom: 'Jean',
-        matricule: '2024-TG-001',
-        classe: 'Terminale C',
+        matricule: '2025-TG-001',
+        classe: templateClass,
         annee_scolaire: '2025-2026',
-        date_naissance: '12/05/2008',
+        date_naissance: '12/05/2010',
         lieu_naissance: 'Lomé',
         centre_examen: 'Lycée de Tokoin',
         photo_url: '',
         date_expiration: '31/12/2026',
       },
+      {
+        nom: 'MENSAH',
+        prenom: 'Afi',
+        matricule: '2025-TG-002',
+        classe: templateClass,
+        annee_scolaire: '2025-2026',
+        date_naissance: '24/09/2011',
+        lieu_naissance: 'Kpalimé',
+        centre_examen: 'Lycée de Tokoin',
+        photo_url: '',
+        date_expiration: '31/12/2026',
+      }
     ];
     const csv = Papa.unparse(template, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
     });
-    // BOM UTF-8 pour que Excel ouvre correctement les accents
+    // BOM UTF-8 pour ouverture correcte dans Microsoft Excel avec accents
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -69,12 +66,19 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
   };
 
   const handleExportCSV = () => {
-    if (students.length === 0) {
-      alert('Aucun élève à exporter.');
+    const studentsToExport = currentClassFilter !== 'all'
+      ? students.filter(s => s.className === currentClassFilter)
+      : students;
+
+    if (studentsToExport.length === 0) {
+      alert(currentClassFilter !== 'all' 
+        ? `Aucun élève trouvé dans la classe ${currentClassFilter}.` 
+        : 'Aucun élève à exporter.'
+      );
       return;
     }
 
-    const dataToExport = students.map(s => ({
+    const dataToExport = studentsToExport.map(s => ({
       nom: s.lastName,
       prenom: s.firstName,
       matricule: s.matricule,
@@ -96,7 +100,8 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `eleves_cardschool_${dateStr}.csv`);
+    const classSuffix = currentClassFilter !== 'all' ? `_${currentClassFilter.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : '';
+    link.setAttribute('download', `eleves_cardschool${classSuffix}_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -104,17 +109,10 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
 
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept=".csv"
-        className="hidden"
-      />
       <button
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => setIsImportModalOpen(true)}
         className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
-        title="Importer des élèves depuis un fichier CSV"
+        title="Importer des élèves par classe depuis un fichier CSV ou Excel"
       >
         <Upload className="w-3.5 h-3.5 text-emerald-700" />
         Importer CSV
@@ -124,10 +122,13 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
         onClick={handleExportCSV}
         disabled={students.length === 0}
         className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 disabled:opacity-50 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
-        title="Exporter la liste des élèves au format Excel / CSV"
+        title={currentClassFilter !== 'all' ? `Exporter les élèves de ${currentClassFilter}` : "Exporter tous les élèves au format Excel / CSV"}
       >
         <FileDown className="w-3.5 h-3.5 text-slate-600" />
-        Exporter CSV ({students.length})
+        {currentClassFilter !== 'all' 
+          ? `Exporter ${currentClassFilter} (${students.filter(s => s.className === currentClassFilter).length})`
+          : `Exporter CSV (${students.length})`
+        }
       </button>
 
       <button
@@ -138,7 +139,18 @@ export const ImportExport: React.FC<ImportExportProps> = ({ onImport, students }
         <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
         Modèle CSV
       </button>
+
+      {/* Dedicated Class-Aware Import Modal */}
+      <ClassImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={onImport}
+        existingClasses={allClasses}
+        initialClass={currentClassFilter !== 'all' ? currentClassFilter : undefined}
+        totalCurrentStudents={students.length}
+        effectiveQuota={effectiveQuota}
+        isEffectivePro={isEffectivePro}
+      />
     </div>
   );
 };
-

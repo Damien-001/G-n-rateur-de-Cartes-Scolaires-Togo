@@ -9,14 +9,22 @@ interface StudentFormProps {
   schoolInfo: SchoolInfo;
   onSubmit: (student: Student) => void;
   onCancel: () => void;
+  defaultClass?: string;
+  existingClasses?: string[];
 }
 
-export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, onSubmit, onCancel }) => {
+export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, onSubmit, onCancel, defaultClass, existingClasses = [] }) => {
+  const availableClasses = Array.from(new Set([
+    ...(existingClasses || []),
+    ...CLASSES_LIST,
+    ...(defaultClass ? [defaultClass] : []),
+    ...(student?.className ? [student.className] : [])
+  ])).filter(Boolean);
   const [formData, setFormData] = useState<Partial<Student>>({
     firstName:  student?.firstName  ?? '',
     lastName:   student?.lastName   ?? '',
     matricule:  student?.matricule  ?? '',
-    className:  student?.className  ?? '',
+    className:  student?.className  ?? (defaultClass || ''),
     schoolYear: student?.schoolYear ?? '2025-2026',
     birthDate:  student?.birthDate  ?? '',
     birthPlace: student?.birthPlace ?? '',
@@ -26,6 +34,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
     expirationDate: student?.expirationDate ?? '',
   });
 
+  const [isCustomClassInput, setIsCustomClassInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -314,20 +323,47 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
             <div className="space-y-4">
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-gray-400/80" /> Classe
-                </label>
-                <select
-                  required
-                  value={formData.className}
-                  onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
-                >
-                  <option value="">Sélectionner une classe</option>
-                  {CLASSES_LIST.map(cls => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    <BookOpen className="w-3.5 h-3.5 text-gray-400/80" /> Classe
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomClassInput(!isCustomClassInput)}
+                    className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                  >
+                    {isCustomClassInput ? "Choisir dans la liste" : "+ Saisie libre"}
+                  </button>
+                </div>
+                {isCustomClassInput ? (
+                  <input
+                    required
+                    type="text"
+                    placeholder="Ex: 6ème A, 3ème 2, Terminale CD..."
+                    value={formData.className}
+                    onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus-brand outline-none text-sm font-semibold text-gray-800"
+                  />
+                ) : (
+                  <select
+                    required
+                    value={formData.className}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setIsCustomClassInput(true);
+                      } else {
+                        setFormData({ ...formData, className: e.target.value });
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 cursor-pointer"
+                  >
+                    <option value="">Sélectionner une classe</option>
+                    {availableClasses.map(cls => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                    <option value="__custom__">+ Autre classe personnalisée...</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">

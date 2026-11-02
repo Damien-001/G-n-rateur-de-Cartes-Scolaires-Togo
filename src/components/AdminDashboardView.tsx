@@ -13,9 +13,10 @@ import {
   TrendingUp, 
   History, 
   Check, 
-  RefreshCw, 
-  LogOut, 
-  Sparkles, 
+  RefreshCw,
+  LogOut,
+  ChevronLeft,
+  ChevronRight, 
   Key, 
   Download, 
   Copy, 
@@ -86,7 +87,7 @@ import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFO
 interface AdminDashboardViewProps {
   session: Session;
   onLogout: () => void;
-  onSwitchToSchoolView: () => void;
+  onSwitchToSchoolView?: () => void;
 }
 
 type AdminLog = AdminLogItem;
@@ -118,6 +119,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 }) => {
   const [schools, setSchools] = useState<AdminSchoolDetail[]>([]);
   const [totalStudents, setTotalStudents] = useState<number>(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('cardschool_admin_sidebar_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cardschool_admin_sidebar_open', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'settings' | 'logs'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -739,14 +758,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={onSwitchToSchoolView}
-            title="Simuler Vue École"
-            className="p-2 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200 cursor-pointer active:scale-95 shadow-xs"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
-
+          
           <button
             onClick={loadData}
             className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer active:scale-95 shadow-xs"
@@ -766,80 +778,128 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       </header>
       
       {/* Fixed Side Menu Navigation - Desktop Only */}
-      <aside className="hidden md:flex md:w-64 md:h-full bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 border-r border-slate-200/80 shadow-sm overflow-y-auto">
-        <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
+      <aside className={`hidden md:flex ${
+        isSidebarOpen ? 'md:w-64' : 'md:w-20'
+      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out`}>
+        {/* Top Logo Section: exact height h-[73px], edge-to-edge border-b */}
+        <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0" title={!isSidebarOpen ? "Console Admin - CardSchool Togo" : undefined}>
               <Shield className="w-5 h-5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-wider">
-                Console Admin
-              </h2>
-              <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.1em] mt-0.5">CardSchool Togo</p>
-            </div>
+            {isSidebarOpen && (
+              <div className="min-w-0 flex-1 animate-fadeIn">
+                <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-wider">
+                  Console Admin
+                </h2>
+                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.1em] mt-0.5">CardSchool Togo</p>
+              </div>
+            )}
           </div>
-
-          <nav className="space-y-1">
-            {[
-              { id: 'overview', label: 'Supervision Globale', icon: TrendingUp },
-              { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
-              { id: 'payments', label: 'Chat & Preuves Paiement', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
-              { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
-              { id: 'settings', label: 'Paramètres & Contacts', icon: Settings },
-              { id: 'logs', label: "Journal d'Activité", icon: History },
-            ].map(item => {
-              const Icon = item.icon;
-              const isActive = activeSubTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSubTab(item.id as any)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                    isActive 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && item.badge > 0 ? (
-                    <span className="bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
         </div>
 
-        <div className="pt-6 border-t border-slate-200/80 space-y-4">
-          <button
-            onClick={onSwitchToSchoolView}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm cursor-pointer active:scale-95"
-          >
-            <Sparkles className="w-4 h-4" />
-            Simuler Vue École
-          </button>
-          
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4 text-red-600" />
-            Déconnexion
-          </button>
+        <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
+          <div>
+            <nav className="space-y-1.5">
+              {[
+                { id: 'overview', label: 'Supervision Globale', icon: TrendingUp },
+                { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
+                { id: 'payments', label: 'Chat & Preuves Paiement', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
+                { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
+                { id: 'settings', label: 'Paramètres & Contacts', icon: Settings },
+                { id: 'logs', label: "Journal d'Activité", icon: History },
+              ].map(item => {
+                const Icon = item.icon;
+                const isActive = activeSubTab === item.id;
+                return (
+                  <div key={item.id} className="relative group">
+                    <button
+                      onClick={() => setActiveSubTab(item.id as any)}
+                      className={`w-full flex items-center ${
+                        isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                      } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                        isActive 
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <div className="relative shrink-0 flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
+                        {item.badge && item.badge > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      {isSidebarOpen && <span className="truncate">{item.label}</span>}
+                    </button>
+
+                    {!isSidebarOpen && (
+                      <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                        {item.label}
+                        {item.badge && item.badge > 0 && (
+                          <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] bg-amber-400 text-slate-950 font-black">
+                            {item.badge}
+                          </span>
+                        )}
+                        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="pt-4 border-t border-slate-200 space-y-2">
+            {/* Déconnexion */}
+            <div className="relative group">
+              <button
+                onClick={onLogout}
+                className={`w-full flex items-center ${
+                  isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+              >
+                <LogOut className="w-4 h-4 text-red-600 shrink-0" />
+                {isSidebarOpen && <span>Déconnexion</span>}
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  Déconnexion
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+
+            {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
+            <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+              <button
+                onClick={toggleSidebar}
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
+              >
+                {isSidebarOpen ? (
+                  <ChevronLeft className="w-5 h-5 text-slate-500" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                )}
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  Agrandir le menu
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Main dashboard panels scroll area */}
       <main className="flex-1 min-w-0 md:h-full overflow-y-auto bg-gray-50/50 pb-20 md:pb-8">
         
-        {/* Desktop / Tablet Header toolbar */}
-        <header className="hidden md:flex bg-white border-b border-slate-200/70 py-4 px-8 justify-between items-center sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        {/* Desktop / Tablet Header toolbar: exact h-[73px], edge-to-edge border-b */}
+        <header className="hidden md:flex bg-white border-b border-slate-200 h-[73px] px-8 justify-between items-center sticky top-0 z-10 shadow-xs shrink-0">
           <div>
             <h1 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
               <Shield className="w-5 h-5 text-emerald-600" />

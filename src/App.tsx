@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Papa from 'papaparse';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { 
-  Trash2, 
-  Search, 
+  Trash2,
+  Search,
+  GraduationCap,
+  LayoutGrid,
+  Printer,
+  Upload, 
   ChevronRight,
+  ChevronLeft,
   FileDown,
+  FileSpreadsheet,
   Loader2,
   Plus,
   Users,
@@ -29,6 +36,8 @@ import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord } from './lib/db';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { StudentForm } from './components/StudentForm';
+import { ClassImportModal } from './components/ClassImportModal';
+import { ClassDirectoryView } from './components/ClassDirectoryView';
 import { ImportExport } from './components/ImportExport';
 import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
@@ -72,10 +81,115 @@ export default function App({ session, onLogout }: AppProps) {
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('cardschool_school_sidebar_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cardschool_school_sidebar_open', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const [printClassFilter, setPrintClassFilter] = useState<string>('all');
   const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
+  const [studentViewMode, setStudentViewMode] = useState<'cards' | 'classes'>('cards');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importTargetClass, setImportTargetClass] = useState<string | undefined>(undefined);
+
+  const handleOpenImportModal = (targetClass?: string) => {
+    setImportTargetClass(targetClass || (studentClassFilter !== 'all' ? studentClassFilter : undefined));
+    setIsImportModalOpen(true);
+  };
+
+  const handleExportClassCSV = (cls: string) => {
+    const isAll = !cls || cls === 'all';
+    const list = isAll ? students : students.filter(s => s.className === cls);
+    if (list.length === 0) {
+      alert(!isAll ? `Aucun élève trouvé dans la classe ${cls}.` : 'Aucun élève à exporter.');
+      return;
+    }
+    const dataToExport = list.map(s => ({
+      nom: s.lastName,
+      prenom: s.firstName,
+      matricule: s.matricule,
+      classe: s.className,
+      annee_scolaire: s.schoolYear || '2025-2026',
+      date_naissance: s.birthDate || '',
+      lieu_naissance: s.birthPlace || '',
+      centre_examen: s.examCenter || '',
+      photo_url: s.photoUrl || '',
+      date_expiration: s.expirationDate || '',
+    }));
+    const csv = Papa.unparse(dataToExport, {
+      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      delimiter: ';',
+    });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().split('T')[0];
+    const classSuffix = !isAll ? `_${cls.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : '';
+    link.setAttribute('download', `eleves${classSuffix}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadClassTemplate = (cls: string) => {
+    const templateClass = cls && cls !== 'all' ? cls : '6ème A';
+    const sample = [
+      {
+        nom: 'KOFFI',
+        prenom: 'Jean',
+        matricule: '2025-TG-001',
+        classe: templateClass,
+        annee_scolaire: '2025-2026',
+        date_naissance: '12/05/2010',
+        lieu_naissance: 'Lomé',
+        centre_examen: 'Lycée de Tokoin',
+        photo_url: '',
+        date_expiration: '31/12/2026',
+      },
+      {
+        nom: 'MENSAH',
+        prenom: 'Afi',
+        matricule: '2025-TG-002',
+        classe: templateClass,
+        annee_scolaire: '2025-2026',
+        date_naissance: '24/09/2011',
+        lieu_naissance: 'Kpalimé',
+        centre_examen: 'Lycée de Tokoin',
+        photo_url: '',
+        date_expiration: '31/12/2026',
+      }
+    ];
+
+    const csv = Papa.unparse(sample, {
+      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      delimiter: ';',
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const classSuffix = templateClass.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    link.setAttribute('download', `modele_eleves_${classSuffix}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const schoolInfoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -424,7 +538,7 @@ export default function App({ session, onLogout }: AppProps) {
     setIsFormOpen(true);
   };
 
-  const handleImport = useCallback(async (newStudents: Student[]) => {
+  const handleImport = useCallback(async (newStudents: Student[], targetClass?: string) => {
     if (isAccountSuspended) {
       alert("⚠️ Votre compte est actuellement suspendu. L'importation d'élèves est bloquée. Veuillez contacter le support pour réactiver votre compte.");
       setIsChatOpen(true);
@@ -443,6 +557,9 @@ export default function App({ session, onLogout }: AppProps) {
     try {
       const saved = await insertStudents(newStudents, session.userId);
       setStudents(prev => [...prev, ...saved]);
+      if (targetClass) {
+        setStudentClassFilter(targetClass);
+      }
       saveAdminLog(
         session.userId,
         'Importation CSV',
@@ -577,93 +694,175 @@ export default function App({ session, onLogout }: AppProps) {
         </header>
 
         {/* Global Sidebar - Fixed on desktop */}
-        <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
-          <div className="space-y-8">
-            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
-              <button
-                onClick={() => setIsAdminView(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
-              >
-                <Shield className="w-4 h-4" />
-                Console d'administration
-              </button>
-            )}
-            {/* School logo & identity */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
+        <aside className={`hidden md:flex ${
+          isSidebarOpen ? 'md:w-64' : 'md:w-20'
+        } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out`}>
+          {/* School Logo Section: exact height h-[73px], edge-to-edge border-b */}
+          <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0" title={!isSidebarOpen ? schoolInfo.name : undefined}>
                 <Palette className="w-5 h-5" />
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
-                  {schoolInfo.name.split(' (')[0] || "Mon École"}
-                </h2>
-                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
-              </div>
+              {isSidebarOpen && (
+                <div className="min-w-0 flex-1 animate-fadeIn">
+                  <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
+                    {schoolInfo.name.split(' (')[0] || "Mon École"}
+                  </h2>
+                  <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
+                </div>
+              )}
             </div>
-
-            {/* Navigation links */}
-            <nav className="space-y-1">
-              {[
-                { id: 'students', label: 'Gestion des élèves', icon: Users },
-                { id: 'design', label: 'Design de la carte', icon: Palette },
-                { id: 'print', label: 'Impression des cartes', icon: FileDown },
-                { id: 'settings', label: "Paramètres de l'école", icon: Settings },
-                { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
-              ].map(item => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id as any)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                      isActive 
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* Quick Verification Button */}
-            <button
-              onClick={() => setIsVerificationOpen(true)}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-              <span>Vérifier une carte</span>
-            </button>
           </div>
 
-          {/* Profile & Logout */}
-          <div className="pt-6 border-t border-slate-200/80 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                {session.fullName.charAt(0)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+          <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
+            <div className="space-y-4">
+              {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+                <div className="relative group">
+                  <button
+                    onClick={() => setIsAdminView(true)}
+                    className={`w-full flex items-center ${
+                      isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                    } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
+                  >
+                    <Shield className="w-4 h-4 shrink-0" />
+                    {isSidebarOpen && <span>Console Admin</span>}
+                  </button>
+                  {!isSidebarOpen && (
+                    <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                      Console d'administration
+                      <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Navigation links */}
+              <nav className="space-y-1.5">
+                {[
+                  { id: 'students', label: 'Gestion des élèves', icon: Users },
+                  { id: 'design', label: 'Design de la carte', icon: Palette },
+                  { id: 'print', label: 'Impression des cartes', icon: FileDown },
+                  { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+                  { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <div key={item.id} className="relative group">
+                      <button
+                        onClick={() => setActiveTab(item.id as any)}
+                        className={`w-full flex items-center ${
+                          isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                        } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                          isActive 
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 shrink-0" />
+                        {isSidebarOpen && <span className="truncate">{item.label}</span>}
+                      </button>
+
+                      {!isSidebarOpen && (
+                        <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                          {item.label}
+                          <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+
+              {/* Quick Verification Button */}
+              <div className="relative group pt-1">
+                <button
+                  onClick={() => setIsVerificationOpen(true)}
+                  className={`w-full flex items-center ${
+                    isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  {isSidebarOpen && <span>Vérifier une carte</span>}
+                </button>
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                    Vérifier une carte
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 text-red-600" />
-              Déconnexion
-            </button>
+
+            {/* Profile & Logout & Arrow at the BOTTOM */}
+            <div className="pt-4 border-t border-slate-200/80 space-y-2">
+              <div className="relative group">
+                <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2' : 'justify-center'}`}>
+                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                    {session.fullName.charAt(0)}
+                  </div>
+                  {isSidebarOpen && (
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                      <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                    <p className="font-bold">{session.fullName}</p>
+                    <p className="text-[10px] text-slate-400 font-normal">{session.email}</p>
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                )}
+              </div>
+
+              <div className="relative group">
+                <button
+                  onClick={handleLogout}
+                  className={`w-full flex items-center ${
+                    isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+                >
+                  <LogOut className="w-4 h-4 text-red-600 shrink-0" />
+                  {isSidebarOpen && <span>Déconnexion</span>}
+                </button>
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                    Déconnexion
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                )}
+              </div>
+
+              {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
+              <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+                <button
+                  onClick={toggleSidebar}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                  title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
+                >
+                  {isSidebarOpen ? (
+                    <ChevronLeft className="w-5 h-5 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-slate-600" />
+                  )}
+                </button>
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                    Agrandir le menu
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </aside>
 
         {/* Content area - Independently scrollable */}
         <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-24 md:pb-8">
           {/* Top Sticky Bar */}
-          <div className="sticky top-0 z-40 bg-white shadow-md px-4 sm:px-6 py-3 no-print border-b border-slate-100 space-y-3 md:space-y-0">
+          <div className="sticky top-0 z-40 bg-white shadow-xs px-6 md:h-[73px] py-3 md:py-0 flex flex-col md:flex-row md:items-center justify-between no-print border-b border-slate-200 shrink-0 space-y-3 md:space-y-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <span className="text-xs sm:text-sm text-slate-800 font-extrabold flex items-center gap-1.5 truncate">
@@ -924,92 +1123,211 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
       </header>
 
-      {/* Global Navigation Sidebar - Fixed on desktop */}
-      <aside className="hidden md:flex md:h-full md:w-64 bg-[#f8faf6] text-slate-700 flex-col justify-between p-6 shrink-0 no-print border-r border-slate-200/80 shadow-sm overflow-y-auto">
-        <div className="space-y-8">
-            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
-              <button
-                onClick={() => setIsAdminView(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98] mb-4"
-              >
-                <Shield className="w-4 h-4" />
-                Console d'administration
-              </button>
-            )}
-            {/* Logo & School Name */}
-            <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0">
+      {/* Global Navigation Sidebar - Desktop Only */}
+      <aside className={`hidden md:flex ${
+        isSidebarOpen ? 'md:w-64' : 'md:w-20'
+      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out`}>
+        {/* School Logo Section: exact height h-[73px], edge-to-edge border-b */}
+        <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0" title={!isSidebarOpen ? schoolInfo.name : undefined}>
               <Palette className="w-5 h-5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
-                {schoolInfo.name.split(' (')[0] || "Mon École"}
-              </h2>
-              <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
-            </div>
+            {isSidebarOpen && (
+              <div className="min-w-0 flex-1 animate-fadeIn">
+                <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
+                  {schoolInfo.name.split(' (')[0] || "Mon École"}
+                </h2>
+                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.12em] mt-0.5">Togo • UEMOA</p>
+              </div>
+            )}
           </div>
-
-          {/* Navigation links */}
-          <nav className="space-y-1">
-            {[
-              { id: 'students', label: 'Gestion des élèves', icon: Users },
-              { id: 'design', label: 'Design de la carte', icon: Palette },
-              { id: 'print', label: 'Impression des cartes', icon: FileDown },
-              { id: 'settings', label: "Paramètres de l'école", icon: Settings },
-              { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
-            ].map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                    isActive 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Quick Verification Button */}
-          <button
-            onClick={() => setIsVerificationOpen(true)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>Vérifier une carte</span>
-          </button>
         </div>
 
-        {/* Profile & Logout */}
-        <div className="pt-6 border-t border-slate-200/80 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-              {session.fullName.charAt(0)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-              <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+        {/* Scrollable Nav & Footer Content */}
+        <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
+          <div className="space-y-4">
+            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+              <div className="relative group">
+                <button
+                  onClick={() => setIsAdminView(true)}
+                  className={`w-full flex items-center ${
+                    isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
+                  title={!isSidebarOpen ? "Console d'administration" : undefined}
+                >
+                  <Shield className="w-4 h-4 shrink-0" />
+                  {isSidebarOpen && <span>Console Admin</span>}
+                </button>
+                {!isSidebarOpen && (
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                    Console d'administration
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Navigation links */}
+            <nav className="space-y-1.5">
+              {[
+                { id: 'students', label: 'Gestion des élèves', icon: Users },
+                { id: 'design', label: 'Design de la carte', icon: Palette },
+                { id: 'print', label: 'Impression des cartes', icon: FileDown },
+                { id: 'settings', label: "Paramètres de l'école", icon: Settings },
+                { id: 'billing', label: "Mon Abonnement", icon: CreditCard },
+              ].map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <div key={item.id} className="relative group">
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id as any)}
+                      className={`w-full flex items-center ${
+                        isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                      } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
+                        isActive 
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 shrink-0" />
+                      {isSidebarOpen && <span className="truncate">{item.label}</span>}
+                    </button>
+
+                    {/* Floating Tooltip on hover when collapsed */}
+                    {!isSidebarOpen && (
+                      <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                        {item.label}
+                        <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+
+            {/* Quick Verification Button */}
+            <div className="relative group pt-1">
+              <button
+                onClick={() => setIsVerificationOpen(true)}
+                className={`w-full flex items-center ${
+                  isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                {isSidebarOpen && <span>Vérifier une carte</span>}
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  Vérifier une carte
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4 text-red-600" />
-            Déconnexion
-          </button>
+
+          {/* Profile, Logout & Collapse arrow AT THE BOTTOM */}
+          <div className="pt-4 border-t border-slate-200/80 space-y-2">
+            {/* User Profile */}
+            <div className="relative group">
+              <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2' : 'justify-center'}`}>
+                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                  {session.fullName.charAt(0)}
+                </div>
+                {isSidebarOpen && (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                    <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                  </div>
+                )}
+              </div>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  <p className="font-bold">{session.fullName}</p>
+                  <p className="text-[10px] text-slate-400 font-normal">{session.email}</p>
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+
+            {/* Logout */}
+            <div className="relative group">
+              <button
+                onClick={handleLogout}
+                className={`w-full flex items-center ${
+                  isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+              >
+                <LogOut className="w-4 h-4 text-red-600 shrink-0" />
+                {isSidebarOpen && <span>Déconnexion</span>}
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  Déconnexion
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+
+            {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
+            <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+              <button
+                onClick={toggleSidebar}
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
+              >
+                {isSidebarOpen ? (
+                  <ChevronLeft className="w-5 h-5 text-slate-500" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                )}
+              </button>
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  Agrandir le menu
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 md:h-full overflow-y-auto pb-24 md:pb-8">
+        {/* Desktop Header Toolbar */}
+        <header className="hidden md:flex bg-white border-b border-slate-200 h-[73px] px-6 sm:px-8 justify-between items-center sticky top-0 z-20 shadow-xs shrink-0">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                {schoolInfo.name.split(' (')[0] || "Mon Établissement"}
+              </h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                Année Scolaire 2025 - 2026 • Portail Officiel Togo
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
+              isEffectivePro ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {isEffectivePro ? '⭐ Plan PRO Actif' : 'Plan Découverte'}
+            </span>
+
+            <button
+              onClick={() => setIsVerificationOpen(true)}
+              title="Vérifier une carte officielle"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 text-xs font-bold cursor-pointer active:scale-95 shadow-xs"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Vérifier une carte</span>
+            </button>
+          </div>
+        </header>
         {/* Bandeau d'avertissement inactivité */}
         {showInactivityWarning && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 text-white px-6 py-3.5 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-950/10 no-print border border-amber-400/20 max-w-md w-full animate-bounce-once">
@@ -1105,21 +1423,95 @@ export default function App({ session, onLogout }: AppProps) {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-5 border-b border-slate-200">
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Gestion des élèves</h1>
-                <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">Configurez le visuel des cartes et gérez la liste de vos élèves.</p>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2.5">
+                  <span>Gestion des Élèves</span>
+                  {studentViewMode === 'classes' && (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-850 font-black border border-emerald-200">
+                      Vue Répertoire par Classe
+                    </span>
+                  )}
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+                  {studentViewMode === 'classes' 
+                    ? 'Répertoire des effectifs, suivi de la prise de photos et impression directe par classe.' 
+                    : 'Configurez le visuel des cartes et gérez la liste nominative de vos élèves.'}
+                </p>
               </div>
-              <button 
-                onClick={handleOpenAddStudent}
-                className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 btn-primary active:scale-95 text-xs sm:text-sm cursor-pointer shadow-md w-full sm:w-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Ajouter Élève
-              </button>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Switcher: Vue Cartes vs Vue par Classe */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setStudentViewMode('cards')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      studentViewMode === 'cards'
+                        ? 'bg-white text-emerald-850 shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Affichage individuel sous forme de cartes d'identité"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Vue Cartes</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStudentViewMode('classes')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      studentViewMode === 'classes'
+                        ? 'bg-white text-emerald-850 shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Affichage synthétique par classe et registre d'élèves"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Vue par Classe</span>
+                    {allClasses.length > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                        studentViewMode === 'classes' ? 'bg-emerald-100 text-emerald-850' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {allClasses.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <button 
+                  onClick={handleOpenAddStudent}
+                  className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 btn-primary active:scale-95 text-xs sm:text-sm cursor-pointer shadow-md shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Ajouter un élève</span>
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {studentViewMode === 'classes' ? (
+              <ClassDirectoryView
+                students={students}
+                allClasses={allClasses}
+                schoolInfo={schoolInfo}
+                onOpenAddStudent={(cls) => {
+                  if (cls) setStudentClassFilter(cls);
+                  handleOpenAddStudent();
+                }}
+                onOpenImportModal={(cls) => handleOpenImportModal(cls)}
+                onDownloadTemplate={(cls) => handleDownloadClassTemplate(cls)}
+                onExportClassCSV={(cls) => handleExportClassCSV(cls)}
+                onPrintClass={(cls) => {
+                  setPrintClassFilter(cls);
+                  setActiveTab('print');
+                }}
+                onEditStudent={handleEditStudent}
+                onDeleteStudent={handleDeleteStudent}
+                selectedStudents={selectedStudents}
+                onToggleSelectStudent={toggleSelect}
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Sidebar / Config */}
               <div className="lg:col-span-4 space-y-6">
                 <SchoolConfigSidebar
@@ -1180,6 +1572,146 @@ export default function App({ session, onLogout }: AppProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Class Quick-Navigation Tabs & Actions Toolbar */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/70 p-2.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                  {/* Left: Scrollable Class Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none flex-1 min-w-0">
+                    <button
+                      onClick={() => setStudentClassFilter('all')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        studentClassFilter === 'all'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      Toutes les classes ({students.length})
+                    </button>
+                    {allClasses.map(cls => {
+                      const count = students.filter(s => s.className === cls).length;
+                      const isActive = studentClassFilter === cls;
+                      return (
+                        <button
+                          key={cls}
+                          onClick={() => setStudentClassFilter(cls)}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                            isActive
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          <GraduationCap className="w-3.5 h-3.5 opacity-70" />
+                          <span>{cls}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                            isActive ? 'bg-emerald-700/60 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => handleOpenImportModal()}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-850 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shrink-0 cursor-pointer"
+                      title="Importer une classe via fichier CSV"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Importer une classe</span>
+                    </button>
+                  </div>
+
+                  {/* Right side: Quick Action Tools to fill the right space */}
+                  <div className="flex items-center gap-2 shrink-0 justify-end pt-1 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    <button
+                      onClick={() => handleDownloadClassTemplate(studentClassFilter !== 'all' ? studentClassFilter : '6ème A')}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-850 border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
+                      title="Télécharger le modèle CSV officiel"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Modèle CSV</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleExportClassCSV(studentClassFilter !== 'all' ? studentClassFilter : 'all')}
+                      disabled={students.length === 0}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
+                      title="Exporter la liste au format CSV"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Exporter</span>
+                    </button>
+
+                    <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600 shrink-0">
+                      <Users className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{allClasses.length} classe{allClasses.length > 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Specific Class Header Banner with direct actions */}
+                {studentClassFilter !== 'all' && (
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <GraduationCap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black text-slate-900">
+                            Classe : {studentClassFilter}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-850 border border-emerald-200">
+                            {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Gestion ciblée et impression pour la classe {studentClassFilter}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setPrintClassFilter(studentClassFilter);
+                          setActiveTab('print');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        title={`Imprimer les cartes de la classe ${studentClassFilter}`}
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Imprimer la classe</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenImportModal(studentClassFilter)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        title={`Importer des élèves dans la classe ${studentClassFilter}`}
+                      >
+                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Importer dans {studentClassFilter}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDownloadClassTemplate(studentClassFilter)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-850 border border-emerald-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        title={`Télécharger le modèle CSV pré-rempli pour la classe ${studentClassFilter}`}
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Modèle CSV</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleExportClassCSV(studentClassFilter)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        title={`Exporter le fichier CSV de la classe ${studentClassFilter}`}
+                      >
+                        <FileDown className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Exporter CSV</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Barre d'action contextuelle — suppression massive */}
                 {selectedStudents.length > 0 && (
@@ -1247,6 +1779,7 @@ export default function App({ session, onLogout }: AppProps) {
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
       </main>
@@ -1289,8 +1822,21 @@ export default function App({ session, onLogout }: AppProps) {
             setIsFormOpen(false);
             setEditingStudent(undefined);
           }}
+          defaultClass={studentClassFilter !== 'all' ? studentClassFilter : undefined}
+          existingClasses={allClasses}
         />
       )}
+
+      <ClassImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImport}
+        existingClasses={allClasses}
+        initialClass={importTargetClass}
+        totalCurrentStudents={students.length}
+        effectiveQuota={effectiveQuota}
+        isEffectivePro={isEffectivePro}
+      />
 
       {isSchoolSettingsOpen && (
         <SchoolSettings

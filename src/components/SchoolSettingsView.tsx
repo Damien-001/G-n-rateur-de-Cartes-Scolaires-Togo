@@ -253,8 +253,10 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
         {mode === 'billing' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* Plan Overview Card */}
-            <div className="lg:col-span-6 double-bezel-outer">
+            {/* Left Column: Formule Actuelle, Activation & Assistance */}
+            <div className="lg:col-span-6 space-y-6">
+              {/* Plan Overview Card */}
+              <div className="double-bezel-outer">
               <div className="double-bezel-inner p-6 sm:p-8 space-y-6 bg-white">
                 <div className="flex justify-between items-start">
                   <div>
@@ -330,6 +332,103 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         Le plan découverte est limité à {maxFreeStudents} cartes scolaires. Passez au Plan PRO pour imprimer toutes les cartes de l'établissement sans restriction.
                       </p>
                     </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+              {/* License Key Redemption Card */}
+              <div className="double-bezel-outer">
+                <div className="double-bezel-inner p-6 space-y-4 bg-white">
+                  <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Key className="w-4 h-4 text-emerald-600" />
+                    Activer une Clé de Licence PRO
+                  </h2>
+                  <p className="text-xs text-gray-500 font-semibold leading-relaxed">
+                    Vous avez reçu une clé de licence PRO de la part de l'administration ? Saisissez-la ci-dessous pour débloquer immédiatement votre compte.
+                  </p>
+
+                  {licenseFeedback && (
+                    <div className={`p-3.5 rounded-xl text-xs font-bold flex items-start gap-2.5 animate-fadeIn ${
+                      licenseFeedback.type === 'success' 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      {licenseFeedback.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">{licenseFeedback.message}</div>
+                    </div>
+                  )}
+
+                  <form 
+                    onSubmit={handleRedeemLicense}
+                    className="flex flex-col sm:flex-row gap-2"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Ex: TOGO-PRO-2026-X89A ou avec tirets"
+                      value={licenseInputCode}
+                      onChange={(e) => {
+                        setLicenseInputCode(e.target.value);
+                        if (licenseFeedback) setLicenseFeedback(null);
+                      }}
+                      disabled={isRedeemingLicense}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 uppercase font-mono font-bold text-xs outline-none focus-brand bg-white disabled:bg-gray-100"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isRedeemingLicense || !licenseInputCode.trim()}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
+                    >
+                      {isRedeemingLicense ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Vérification...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCheck className="w-4 h-4" />
+                          <span>Activer la Clé</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Support & Assistance Card */}
+              <div className="double-bezel-outer">
+                <div className="double-bezel-inner p-6 space-y-3 bg-white">
+                  <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-emerald-600" />
+                    Assistance & Contacts Officiels
+                  </h2>
+                  <p className="text-xs text-gray-500 font-semibold leading-relaxed">
+                    Besoin d'aide ou d'une facture proforma ? Contactez notre équipe d'assistance :
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
+                    <a 
+                      href={`mailto:${platformSettings.supportEmail}`}
+                      className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl flex items-center gap-2 text-slate-800 transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">{platformSettings.supportEmail}</span>
+                    </a>
+                    <a 
+                      href={`tel:${platformSettings.supportPhone}`}
+                      className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl flex items-center gap-2 text-slate-800 transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">{platformSettings.supportPhone}</span>
+                    </a>
+                  </div>
+                  {platformSettings.supportNotice && (
+                    <p className="text-[11px] text-slate-400 font-medium italic pt-1">
+                      ℹ️ {platformSettings.supportNotice}
+                    </p>
                   )}
                 </div>
               </div>
@@ -502,102 +601,6 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                       )}
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Support & Assistance Card */}
-              <div className="double-bezel-outer">
-                <div className="double-bezel-inner p-6 space-y-3 bg-white">
-                  <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-emerald-600" />
-                    Assistance & Contacts Officiels
-                  </h2>
-                  <p className="text-xs text-gray-500 font-semibold leading-relaxed">
-                    Besoin d'aide ou d'une facture proforma ? Contactez notre équipe d'assistance :
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
-                    <a 
-                      href={`mailto:${platformSettings.supportEmail}`}
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl flex items-center gap-2 text-slate-800 transition-colors"
-                    >
-                      <Mail className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="truncate">{platformSettings.supportEmail}</span>
-                    </a>
-                    <a 
-                      href={`tel:${platformSettings.supportPhone}`}
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl flex items-center gap-2 text-slate-800 transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="truncate">{platformSettings.supportPhone}</span>
-                    </a>
-                  </div>
-                  {platformSettings.supportNotice && (
-                    <p className="text-[11px] text-slate-400 font-medium italic pt-1">
-                      ℹ️ {platformSettings.supportNotice}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* License Key Redemption Card */}
-              <div className="double-bezel-outer">
-                <div className="double-bezel-inner p-6 space-y-4 bg-white">
-                  <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    <Key className="w-4 h-4 text-emerald-600" />
-                    Activer une Clé de Licence PRO
-                  </h2>
-                  <p className="text-xs text-gray-500 font-semibold leading-relaxed">
-                    Vous avez reçu une clé de licence PRO de la part de l'administration ? Saisissez-la ci-dessous pour débloquer immédiatement votre compte.
-                  </p>
-
-                  {licenseFeedback && (
-                    <div className={`p-3.5 rounded-xl text-xs font-bold flex items-start gap-2.5 animate-fadeIn ${
-                      licenseFeedback.type === 'success' 
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                        : 'bg-red-50 text-red-800 border border-red-200'
-                    }`}>
-                      {licenseFeedback.type === 'success' ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1">{licenseFeedback.message}</div>
-                    </div>
-                  )}
-
-                  <form 
-                    onSubmit={handleRedeemLicense}
-                    className="flex flex-col sm:flex-row gap-2"
-                  >
-                    <input
-                      type="text"
-                      placeholder="Ex: TOGO-PRO-2026-X89A ou avec tirets"
-                      value={licenseInputCode}
-                      onChange={(e) => {
-                        setLicenseInputCode(e.target.value);
-                        if (licenseFeedback) setLicenseFeedback(null);
-                      }}
-                      disabled={isRedeemingLicense}
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 uppercase font-mono font-bold text-xs outline-none focus-brand bg-white disabled:bg-gray-100"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isRedeemingLicense || !licenseInputCode.trim()}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
-                    >
-                      {isRedeemingLicense ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Vérification...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCheck className="w-4 h-4" />
-                          <span>Activer la Clé</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
                 </div>
               </div>
             </div>
