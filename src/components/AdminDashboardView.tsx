@@ -866,7 +866,44 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </nav>
           </div>
 
-          <div className="pt-4 border-t border-slate-200 space-y-2">
+          <div className="pt-4 border-t border-slate-200/80 space-y-2">
+            {/* User Profile & Collapse Arrow */}
+            <div className="relative group">
+              {isSidebarOpen ? (
+                <div className="flex items-center justify-between gap-2.5 px-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                      <span className="leading-none select-none">{session.fullName?.charAt(0) || session.email?.charAt(0) || 'A'}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate leading-tight">{session.fullName || 'Administrateur'}</p>
+                      <p className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">{session.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleSidebar}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/80 transition-colors cursor-pointer shrink-0 border border-slate-200/60 shadow-2xs active:scale-95 ml-1"
+                    title="Réduire le menu"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-12 h-12 mx-auto">
+                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                    <span className="leading-none select-none">{session.fullName?.charAt(0) || session.email?.charAt(0) || 'A'}</span>
+                  </div>
+                </div>
+              )}
+              {!isSidebarOpen && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
+                  <p className="font-bold">{session.fullName || 'Administrateur'}</p>
+                  <p className="text-[10px] text-slate-400 font-normal">{session.email}</p>
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
+                </div>
+              )}
+            </div>
+
             {/* Déconnexion */}
             <div className="relative group">
               <button
@@ -886,26 +923,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               )}
             </div>
 
-            {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
-            <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
-              <button
-                onClick={toggleSidebar}
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
-                title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
-              >
-                {isSidebarOpen ? (
-                  <ChevronLeft className="w-5 h-5 text-slate-500" />
-                ) : (
+            {/* Collapse/Expand Toggle Arrow Button when collapsed */}
+            {!isSidebarOpen && (
+              <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+                <button
+                  onClick={toggleSidebar}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                  title="Agrandir le menu"
+                >
                   <ChevronRight className="w-5 h-5 text-slate-600" />
-                )}
-              </button>
-              {!isSidebarOpen && (
+                </button>
                 <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
                   Agrandir le menu
                   <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </aside>

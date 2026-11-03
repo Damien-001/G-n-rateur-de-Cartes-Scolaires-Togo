@@ -840,14 +840,14 @@ export default function App({ session, onLogout }: AppProps) {
             <div className="pt-4 border-t border-slate-200/80 space-y-2">
               <div className="relative group">
                 {isSidebarOpen ? (
-                  <div className="flex items-center justify-between gap-2 px-2">
+                  <div className="flex items-center justify-between gap-2.5 px-2">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                        {session.fullName.charAt(0)}
+                      <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                        <span className="leading-none select-none">{session.fullName?.charAt(0) || 'U'}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                        <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                        <p className="text-xs font-bold text-slate-900 truncate leading-tight">{session.fullName}</p>
+                        <p className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">{session.email}</p>
                       </div>
                     </div>
                     <button
@@ -860,8 +860,8 @@ export default function App({ session, onLogout }: AppProps) {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center w-12 h-12 mx-auto">
-                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                      {session.fullName.charAt(0)}
+                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                      <span className="leading-none select-none">{session.fullName?.charAt(0) || 'U'}</span>
                     </div>
                   </div>
                 )}
@@ -1286,14 +1286,14 @@ export default function App({ session, onLogout }: AppProps) {
             {/* User Profile */}
             <div className="relative group">
               {isSidebarOpen ? (
-                <div className="flex items-center justify-between gap-2 px-2">
+                <div className="flex items-center justify-between gap-2.5 px-2">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                      {session.fullName.charAt(0)}
+                    <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                      <span className="leading-none select-none">{session.fullName?.charAt(0) || 'U'}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                      <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                      <p className="text-xs font-bold text-slate-900 truncate leading-tight">{session.fullName}</p>
+                      <p className="text-[10px] text-slate-500 font-medium truncate leading-tight mt-0.5">{session.email}</p>
                     </div>
                   </div>
                   <button
@@ -1306,8 +1306,8 @@ export default function App({ session, onLogout }: AppProps) {
                 </div>
               ) : (
                 <div className="flex items-center justify-center w-12 h-12 mx-auto">
-                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                    {session.fullName.charAt(0)}
+                  <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs uppercase shrink-0">
+                    <span className="leading-none select-none">{session.fullName?.charAt(0) || 'U'}</span>
                   </div>
                 </div>
               )}

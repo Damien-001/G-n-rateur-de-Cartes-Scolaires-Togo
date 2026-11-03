@@ -164,7 +164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             <span className="font-extrabold text-base sm:text-lg">C</span>
           </motion.div>
           <div>
-            <h1 className="text-xs sm:text-base font-black text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors uppercase tracking-tight">CardSchool SaaS</h1>
+            <span className="text-xs sm:text-base font-black text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors uppercase tracking-tight block">CardSchool SaaS</span>
             <p className="text-[8px] sm:text-[9px] text-emerald-700 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
           </div>
         </div>
@@ -325,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
 
           <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.12]">
-            Générez les cartes scolaires de vos élèves <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
+            Générez les cartes scolaires de vos élèves au Togo <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
           </motion.h1>
 
           <motion.p variants={itemVariants} className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-medium">

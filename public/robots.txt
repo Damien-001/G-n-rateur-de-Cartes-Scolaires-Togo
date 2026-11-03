@@ -1,0 +1,8 @@
+# robots.txt for CardSchool Togo (https://cardschool.tg)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /src/
+
+# Sitemap location
+Sitemap: https://cardschool.tg/sitemap.xml

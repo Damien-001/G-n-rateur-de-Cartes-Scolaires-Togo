@@ -1,21 +1,181 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Générateur de Cartes Scolaires — Togo</title>
-    <meta name="description" content="Application de génération de cartes scolaires pour les établissements du Togo" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>CardSchool Togo — Générateur Officiel de Cartes Scolaires & Badges d'Élèves</title>
+    <meta name="title" content="CardSchool Togo — Générateur Officiel de Cartes Scolaires & Badges d'Élèves" />
+    <meta name="description" content="Plateforme SaaS de génération et d'impression de cartes scolaires pour les collèges, lycées et écoles du Togo. Importation Excel/CSV en 3s, QR code dynamique anti-fraude, webcam intégrée et mode hors-ligne." />
+    <meta name="keywords" content="cartes scolaires togo, generateur carte scolaire, logiciel carte scolaire, impression cartes scolaires togo, badges eleves togo, qr code scolaire togo, lome togo education, cardschool togo, lycee togo, college togo" />
+    <meta name="author" content="CardSchool SAS Togo" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://cardschool.tg/" />
+
+    <!-- Local / Geographic SEO (Togo & UEMOA) -->
+    <meta name="geo.region" content="TG" />
+    <meta name="geo.placename" content="Lomé, Togo" />
+    <meta name="geo.position" content="6.1375;1.2125" />
+    <meta name="ICBM" content="6.1375, 1.2125" />
+
+    <!-- Open Graph / Facebook / WhatsApp Preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cardschool.tg/" />
+    <meta property="og:site_name" content="CardSchool Togo" />
+    <meta property="og:title" content="CardSchool Togo — Générateur de Cartes Scolaires avec QR Code & Export PDF" />
+    <meta property="og:description" content="Solution complète pour les directeurs et secrétariats d'écoles au Togo. Importation Excel en 3s, personnalisation aux couleurs de l'école et export PDF A4 prêt à imprimer." />
+    <meta property="og:image" content="https://cardschool.tg/icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Logo CardSchool Togo - Cartes Scolaires Officielles" />
+    <meta property="og:locale" content="fr_TG" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://cardschool.tg/" />
+    <meta name="twitter:title" content="CardSchool Togo — Générateur de Cartes Scolaires" />
+    <meta name="twitter:description" content="Générez et imprimez les cartes scolaires officielles de vos élèves au Togo en quelques clics." />
+    <meta name="twitter:image" content="https://cardschool.tg/icon-512.png" />
+
+    <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23047857'/><text y='.9em' font-size='70' x='50%' text-anchor='middle' dominant-baseline='auto' dy='0.1em'>🏫</text></svg>" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#059669" />
     <link rel="apple-touch-icon" href="/icon-512.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#047857" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CardSchool" />
+
+    <!-- Performance & Font Preconnections -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://ptmigsqqamaizizjkspo.supabase.co" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- JSON-LD Structured Data for Search Engines (Schema.org) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://cardschool.tg/#webapp",
+          "name": "CardSchool Togo",
+          "url": "https://cardschool.tg/",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web, All",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "XOF",
+            "description": "Formule découverte gratuite jusqu'à 15 élèves"
+          },
+          "featureList": [
+            "Importation instantanée de listes Excel/CSV",
+            "Génération de QR Code dynamique anti-falsification",
+            "Capture photo via webcam intégrée",
+            "Fonds guillochés et armoiries du Togo",
+            "Export PDF haute résolution prêt à l'impression A4",
+            "Fonctionnement hors-ligne PWA"
+          ],
+          "description": "Plateforme SaaS tout-en-un de gestion, création et impression de cartes d'identité scolaires pour les écoles, collèges et lycées au Togo."
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://cardschool.tg/#organization",
+          "name": "CardSchool Togo",
+          "url": "https://cardschool.tg/",
+          "logo": "https://cardschool.tg/icon-512.png",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Lomé",
+            "addressCountry": "TG"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+228 91 30 21 38",
+            "contactType": "customer support",
+            "availableLanguage": "French"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://cardschool.tg/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Quel papier utiliser pour imprimer les planches de cartes scolaires ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nous recommandons d'utiliser du papier bristol épais (180g ou 220g) ou du papier couché mat. Après impression, découpez les cartes et insérez-les dans des pochettes de plastification thermique de 125 microns pour une solidité optimale."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Comment payer mon abonnement annuel au Togo ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Vous pouvez régler votre abonnement annuel directement par T-Money (+228 97 64 23 13) ou Moov Money Flooz (+228 91 30 21 38). Dès confirmation du transfert, votre compte passe instantanément en formule illimitée."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Les photos des élèves sont-elles en sécurité ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Oui, les photos et données scolaires sont stockées de manière chiffrée sur notre cloud sécurisé et isolées par établissement. Seules les personnes autorisées par votre école ont accès à vos données."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "L'application fonctionne-t-elle sans connexion internet (hors-ligne) ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Oui, grâce à notre technologie Progressive Web App (PWA), vous pouvez continuer d'ajouter des élèves, de prendre des photos avec la webcam et de générer vos planches sans interruption. Vos données se synchronisent automatiquement au retour de la connexion."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
-    <div class="noise-overlay"></div>
+    <div class="noise-overlay" aria-hidden="true"></div>
     <div id="root"></div>
+
+    <!-- Fallback Crawlable Content for Search Engines & Non-JS Clients -->
+    <noscript>
+      <div style="font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 24px; line-height: 1.6; color: #1f2937;">
+        <h1 style="color: #047857;">CardSchool Togo — Générateur Officiel de Cartes Scolaires</h1>
+        <p><strong>CardSchool Togo</strong> est la plateforme de référence pour les collèges, lycées et écoles du Togo et de l'espace UEMOA pour concevoir, gérer et imprimer les cartes d'identité scolaires des élèves.</p>
+        
+        <h2>Fonctionnalités principales</h2>
+        <ul>
+          <li><strong>Importation Excel/CSV en 3 secondes</strong> : chargez les listes de classes entières directement depuis vos fichiers administratifs.</li>
+          <li><strong>QR Code dynamique et sécurisé</strong> : vérification instantanée de l'authenticité de la carte contre les fraudes.</li>
+          <li><strong>Fonds anti-falsification</strong> : motifs guillochés, filigranes nationaux et armoiries du Togo.</li>
+          <li><strong>Webcam intégrée</strong> : prise de vue directe de la photo d'identité de l'élève sur place.</li>
+          <li><strong>Exportation PDF A4 haute résolution</strong> : planches prêtes à découper et à plastifier.</li>
+          <li><strong>Mode Hors-Ligne 100% fonctionnel</strong> : travaillez sans interruption même en cas de coupure de courant ou d'internet.</li>
+        </ul>
+
+        <h2>Tarifs & Abonnements</h2>
+        <ul>
+          <li><strong>Plan Découverte Gratuit</strong> : 0 F CFA / à vie (jusqu'à 15 élèves).</li>
+          <li><strong>Plan Établissement PRO</strong> : 30 000 F CFA / an (Cartes illimitées, logos personnalisés, aucun filigrane, support WhatsApp direct).</li>
+          <li><strong>Plan Inspection & Multi-écoles</strong> : sur mesure pour complexes scolaires et inspections régionales.</li>
+        </ul>
+
+        <h2>Contacts & Support Togo</h2>
+        <p>Email : <a href="mailto:contact@cardschool.tg">contact@cardschool.tg</a> | Téléphone / WhatsApp : +228 91 30 21 38 / +228 97 64 23 13</p>
+        <p><em>Veuillez activer JavaScript dans votre navigateur pour utiliser l'interface interactive de CardSchool Togo.</em></p>
+      </div>
+    </noscript>
+
     <!-- FedaPay Mobile Money & Card Checkout SDK -->
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
     <script type="module" src="/src/main.tsx"></script>
