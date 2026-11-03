@@ -10,7 +10,7 @@ interface StudentCardItemProps {
   onDelete: (id: string) => void;
 }
 
-export const StudentCardItem: React.FC<StudentCardItemProps> = ({
+export const StudentCardItem: React.FC<StudentCardItemProps> = React.memo(({
   student,
   isSelected,
   onToggleSelect,
@@ -47,7 +47,7 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = ({
           isSelected ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-gray-100 bg-gray-50'
         }`}>
           {student.photoUrl ? (
-            <img src={student.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={student.photoUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-100">
               <Users className="w-7 h-7 text-gray-300" />
@@ -88,4 +88,4 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = ({
       </div>
     </div>
   );
-};
+});

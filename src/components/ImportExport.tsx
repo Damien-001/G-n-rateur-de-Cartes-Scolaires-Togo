@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import Papa from 'papaparse';
 import { Student } from '../types';
 import { Upload, FileSpreadsheet, FileDown } from 'lucide-react';
-import { ClassImportModal } from './ClassImportModal';
+
+const ClassImportModal = React.lazy(() => import('./ClassImportModal').then(m => ({ default: m.ClassImportModal })));
 
 interface ImportExportProps {
   onImport: (students: Student[], targetClass?: string) => Promise<void> | void;
@@ -23,7 +23,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const templateClass = currentClassFilter !== 'all' ? currentClassFilter : '6ème A';
     const template = [
       {
@@ -51,6 +51,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
         date_expiration: '31/12/2026',
       }
     ];
+    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(template, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -65,7 +66,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     const studentsToExport = currentClassFilter !== 'all'
       ? students.filter(s => s.className === currentClassFilter)
       : students;
@@ -91,6 +92,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       date_expiration: s.expirationDate || '',
     }));
 
+    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(dataToExport, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -141,16 +143,20 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       </button>
 
       {/* Dedicated Class-Aware Import Modal */}
-      <ClassImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImport={onImport}
-        existingClasses={allClasses}
-        initialClass={currentClassFilter !== 'all' ? currentClassFilter : undefined}
-        totalCurrentStudents={students.length}
-        effectiveQuota={effectiveQuota}
-        isEffectivePro={isEffectivePro}
-      />
+      {isImportModalOpen && (
+        <React.Suspense fallback={null}>
+          <ClassImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={onImport}
+            existingClasses={allClasses}
+            initialClass={currentClassFilter !== 'all' ? currentClassFilter : undefined}
+            totalCurrentStudents={students.length}
+            effectiveQuota={effectiveQuota}
+            isEffectivePro={isEffectivePro}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 };

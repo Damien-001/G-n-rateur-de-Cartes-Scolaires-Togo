@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Papa from 'papaparse';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { 
   Trash2,
   Search,
@@ -35,21 +32,23 @@ import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PR
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord } from './lib/db';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
-import { StudentForm } from './components/StudentForm';
-import { ClassImportModal } from './components/ClassImportModal';
 import { ClassDirectoryView } from './components/ClassDirectoryView';
 import { ImportExport } from './components/ImportExport';
-import { PrintLayout } from './components/PrintLayout';
 import { IDCard } from './components/IDCard';
 import { SchoolSettings } from './components/SchoolSettings';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
-import { SchoolSettingsView } from './components/SchoolSettingsView';
-import { CardDesignView } from './components/CardDesignView';
-import { AdminDashboardView } from './components/AdminDashboardView';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
-import { SchoolChatDrawer } from './components/SchoolChatDrawer';
-import { CardVerificationModal } from './components/CardVerificationModal';
+
+// Code-splitting via React.lazy pour les vues volumineuses
+const StudentForm = React.lazy(() => import('./components/StudentForm').then(m => ({ default: m.StudentForm })));
+const ClassImportModal = React.lazy(() => import('./components/ClassImportModal').then(m => ({ default: m.ClassImportModal })));
+const PrintLayout = React.lazy(() => import('./components/PrintLayout').then(m => ({ default: m.PrintLayout })));
+const SchoolSettingsView = React.lazy(() => import('./components/SchoolSettingsView').then(m => ({ default: m.SchoolSettingsView })));
+const CardDesignView = React.lazy(() => import('./components/CardDesignView').then(m => ({ default: m.CardDesignView })));
+const AdminDashboardView = React.lazy(() => import('./components/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
+const SchoolChatDrawer = React.lazy(() => import('./components/SchoolChatDrawer').then(m => ({ default: m.SchoolChatDrawer })));
+const CardVerificationModal = React.lazy(() => import('./components/CardVerificationModal').then(m => ({ default: m.CardVerificationModal })));
 
 
 interface AppProps {
@@ -112,7 +111,7 @@ export default function App({ session, onLogout }: AppProps) {
     setIsImportModalOpen(true);
   };
 
-  const handleExportClassCSV = (cls: string) => {
+  const handleExportClassCSV = async (cls: string) => {
     const isAll = !cls || cls === 'all';
     const list = isAll ? students : students.filter(s => s.className === cls);
     if (list.length === 0) {
@@ -131,6 +130,7 @@ export default function App({ session, onLogout }: AppProps) {
       photo_url: s.photoUrl || '',
       date_expiration: s.expirationDate || '',
     }));
+    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(dataToExport, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -146,7 +146,7 @@ export default function App({ session, onLogout }: AppProps) {
     document.body.removeChild(link);
   };
 
-  const handleDownloadClassTemplate = (cls: string) => {
+  const handleDownloadClassTemplate = async (cls: string) => {
     const templateClass = cls && cls !== 'all' ? cls : '6ème A';
     const sample = [
       {
@@ -175,6 +175,7 @@ export default function App({ session, onLogout }: AppProps) {
       }
     ];
 
+    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(sample, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -243,6 +244,12 @@ export default function App({ session, onLogout }: AppProps) {
         return;
       }
 
+      // Chargement dynamique des bibliothèques PDF & Canvas à la demande
+      const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+
       // A4 en mm: 210 × 297
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const A4_W_MM = 210;
@@ -299,8 +306,11 @@ export default function App({ session, onLogout }: AppProps) {
       }, 15000);
       
       try {
-        // Charger school_info d'abord (plus rapide)
-        const fetchedSchool = await fetchSchoolInfo(session.userId);
+        // Charger school_info et students en PARALLÈLE (élimine la cascade réseau)
+        const [fetchedSchool, fetchedStudents] = await Promise.all([
+          fetchSchoolInfo(session.userId),
+          fetchStudents(session.userId)
+        ]);
         if (fetchedSchool) {
           if (!fetchedSchool.name && (session.schoolName || session.fullName)) {
             fetchedSchool.name = (session.schoolName || session.fullName).toUpperCase();
@@ -350,8 +360,7 @@ export default function App({ session, onLogout }: AppProps) {
           ).catch(() => {});
         }
         
-        // Puis charger les étudiants
-        const fetchedStudents = await fetchStudents(session.userId);
+        // Affecter les étudiants chargés en parallèle
         setStudents(fetchedStudents);
         
         const endTime = performance.now();
@@ -641,11 +650,17 @@ export default function App({ session, onLogout }: AppProps) {
   }
   if (isAdminView) {
     return (
-      <AdminDashboardView 
-        session={session}
-        onLogout={handleLogout}
-        onSwitchToSchoolView={() => setIsAdminView(false)}
-      />
+      <React.Suspense fallback={
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+        </div>
+      }>
+        <AdminDashboardView 
+          session={session}
+          onLogout={handleLogout}
+          onSwitchToSchoolView={() => setIsAdminView(false)}
+        />
+      </React.Suspense>
     );
   }
 
@@ -1834,56 +1849,60 @@ export default function App({ session, onLogout }: AppProps) {
         })}
       </nav>
 
-      {/* Modals */}
-      {isFormOpen && (
-        <StudentForm 
-          student={editingStudent}
+      {/* Modals & Drawers avec Suspense */}
+      <React.Suspense fallback={null}>
+        {isFormOpen && (
+          <StudentForm 
+            student={editingStudent}
+            schoolInfo={schoolInfo}
+            onSubmit={handleAddStudent}
+            onCancel={() => {
+              setIsFormOpen(false);
+              setEditingStudent(undefined);
+            }}
+            defaultClass={studentClassFilter !== 'all' ? studentClassFilter : undefined}
+            existingClasses={allClasses}
+          />
+        )}
+
+        {isImportModalOpen && (
+          <ClassImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            onImport={handleImport}
+            existingClasses={allClasses}
+            initialClass={importTargetClass}
+            totalCurrentStudents={students.length}
+            effectiveQuota={effectiveQuota}
+            isEffectivePro={isEffectivePro}
+          />
+        )}
+
+        {isSchoolSettingsOpen && (
+          <SchoolSettings
+            schoolInfo={schoolInfo}
+            onUpdate={setSchoolInfo}
+            onClose={() => setIsSchoolSettingsOpen(false)}
+          />
+        )}
+
+        {/* Floating Chat Drawer for Support & Payment */}
+        <SchoolChatDrawer
+          session={session}
           schoolInfo={schoolInfo}
-          onSubmit={handleAddStudent}
-          onCancel={() => {
-            setIsFormOpen(false);
-            setEditingStudent(undefined);
-          }}
-          defaultClass={studentClassFilter !== 'all' ? studentClassFilter : undefined}
-          existingClasses={allClasses}
+          isOpen={isChatOpen}
+          onOpen={() => setIsChatOpen(true)}
+          onClose={() => setIsChatOpen(false)}
         />
-      )}
 
-      <ClassImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImport={handleImport}
-        existingClasses={allClasses}
-        initialClass={importTargetClass}
-        totalCurrentStudents={students.length}
-        effectiveQuota={effectiveQuota}
-        isEffectivePro={isEffectivePro}
-      />
-
-      {isSchoolSettingsOpen && (
-        <SchoolSettings
+        {/* Official Card Verification Modal */}
+        <CardVerificationModal
+          isOpen={isVerificationOpen}
+          onClose={() => setIsVerificationOpen(false)}
+          students={students}
           schoolInfo={schoolInfo}
-          onUpdate={setSchoolInfo}
-          onClose={() => setIsSchoolSettingsOpen(false)}
         />
-      )}
-
-      {/* Floating Chat Drawer for Support & Payment */}
-      <SchoolChatDrawer
-        session={session}
-        schoolInfo={schoolInfo}
-        isOpen={isChatOpen}
-        onOpen={() => setIsChatOpen(true)}
-        onClose={() => setIsChatOpen(false)}
-      />
-
-      {/* Official Card Verification Modal */}
-      <CardVerificationModal
-        isOpen={isVerificationOpen}
-        onClose={() => setIsVerificationOpen(false)}
-        students={students}
-        schoolInfo={schoolInfo}
-      />
+      </React.Suspense>
 
       {/* Offline Status & Sync Banner */}
       <OfflineStatusBanner 
