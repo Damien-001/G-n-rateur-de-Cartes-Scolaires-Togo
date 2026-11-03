@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WifiOff, Wifi, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { subscribeToNetworkStatus, isAppOnline, getSyncQueue } from '../lib/offlineStorage';
+import { subscribeToNetworkStatus, isAppOnline, getSyncQueue, isValidUuid } from '../lib/offlineStorage';
 import { syncOfflineQueue } from '../lib/db';
 
 interface OfflineStatusBannerProps {
@@ -15,10 +15,12 @@ export const OfflineStatusBanner: React.FC<OfflineStatusBannerProps> = ({ userId
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncCount, setSyncCount] = useState<number>(0);
   const [pendingChanges, setPendingChanges] = useState<number>(0);
+  const onSyncCompleteRef = useRef(onSyncComplete);
+  onSyncCompleteRef.current = onSyncComplete;
 
   useEffect(() => {
     // Vérifier les modifications en attente au chargement
-    if (userId) {
+    if (userId && isValidUuid(userId)) {
       setPendingChanges(getSyncQueue(userId).length);
     }
 
@@ -27,13 +29,13 @@ export const OfflineStatusBanner: React.FC<OfflineStatusBannerProps> = ({ userId
 
       if (isNowOnline) {
         setJustReconnected(true);
-        if (userId) {
+        if (userId && isValidUuid(userId)) {
           setIsSyncing(true);
           const result = await syncOfflineQueue(userId);
           setSyncCount(result.synced);
           setPendingChanges(0);
           setIsSyncing(false);
-          if (onSyncComplete) onSyncComplete();
+          if (onSyncCompleteRef.current) onSyncCompleteRef.current();
         }
 
         const timer = setTimeout(() => {
@@ -43,14 +45,14 @@ export const OfflineStatusBanner: React.FC<OfflineStatusBannerProps> = ({ userId
         return () => clearTimeout(timer);
       } else {
         setJustReconnected(false);
-        if (userId) {
+        if (userId && isValidUuid(userId)) {
           setPendingChanges(getSyncQueue(userId).length);
         }
       }
     });
 
     return () => unsubscribe();
-  }, [userId, onSyncComplete]);
+  }, [userId]);
 
   return (
     <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 w-full max-w-md">

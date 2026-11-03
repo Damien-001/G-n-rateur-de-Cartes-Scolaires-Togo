@@ -95,7 +95,13 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
   const loadMessages = async () => {
     try {
       const msgs = await fetchChatMessages(session.userId);
-      setMessages(msgs);
+      setMessages(prev => {
+        if (prev.length === msgs.length) {
+          const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
+          if (!hasDiff) return prev;
+        }
+        return msgs;
+      });
       
       // Calculate unread admin messages
       if (!isOpen) {

@@ -8,6 +8,12 @@ export interface SyncAction {
   timestamp: number;
 }
 
+/** Vérifie si une chaîne est un UUID valide (36 caractères avec tirets) */
+export function isValidUuid(str?: string | null): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim());
+}
+
 const STORAGE_KEYS = {
   STUDENTS_PREFIX: 'cartes_togo_students_',
   SCHOOL_PREFIX: 'cartes_togo_school_',
@@ -115,6 +121,11 @@ export function getSyncQueue(userId: string): SyncAction[] {
 }
 
 export function enqueueSyncAction(userId: string, action: Omit<SyncAction, 'id' | 'timestamp'>): void {
+  // Ne jamais empiler d'action de synchronisation distante pour des identifiants non-UUID (ex: admin, invité démo)
+  if (!userId || !isValidUuid(userId)) {
+    return;
+  }
+
   try {
     const queue = getSyncQueue(userId);
     const item: SyncAction = {
@@ -146,3 +157,27 @@ export function removeSyncAction(userId: string, actionId: string): void {
     console.error('Erreur retrait action sync:', e);
   }
 }
+
+/** Nettoie automatiquement les files d'attente créées avec des identifiants invalides */
+export function purgeInvalidSyncQueues(): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_KEYS.SYNC_QUEUE_PREFIX)) {
+        const userId = key.replace(STORAGE_KEYS.SYNC_QUEUE_PREFIX, '');
+        if (!isValidUuid(userId)) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach(k => {
+      localStorage.removeItem(k);
+      console.log('🧹 Purge de la file de sync orpheline:', k);
+    });
+  } catch {}
+}
+
+// Nettoyage immédiat au chargement du module
+purgeInvalidSyncQueues();

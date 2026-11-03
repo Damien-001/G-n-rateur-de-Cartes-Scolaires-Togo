@@ -10,8 +10,11 @@ import {
   enqueueSyncAction, 
   getSyncQueue, 
   removeSyncAction, 
-  isAppOnline 
+  isAppOnline,
+  isValidUuid
 } from './offlineStorage';
+
+export { isValidUuid };
 
 // ─── Helpers de conversion ────────────────────────────────────────────────────
 
@@ -71,9 +74,9 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
 export async function fetchStudents(userId: string): Promise<Student[]> {
   const localStudents = getStoredStudents(userId);
 
-  // Si l'utilisateur est hors-ligne, renvoyer immédiatement les données du cache local
-  if (!isAppOnline()) {
-    console.log(`⚡ [Hors-ligne] ${localStudents.length} élèves chargés depuis le stockage local`);
+  // Si l'utilisateur est hors-ligne ou que l'ID n'est pas un UUID valide (ex: admin, invité démo),
+  // renvoyer immédiatement les données du cache local sans requêter Supabase
+  if (!isAppOnline() || !isValidUuid(userId)) {
     return localStudents;
   }
 
@@ -131,6 +134,11 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
     updatedList = [studentToSave, ...localList];
   }
   setStoredStudents(userId, updatedList);
+
+  // Si userId n'est pas un UUID valide (ex: admin, invité démo), persister uniquement en local
+  if (!isValidUuid(userId)) {
+    return studentToSave;
+  }
 
   // 2. Si hors-ligne, empiler dans la file de synchronisation
   if (!isAppOnline()) {
@@ -204,6 +212,11 @@ export async function insertStudents(students: Student[], userId: string): Promi
   const combined = [...preparedStudents, ...localList];
   setStoredStudents(userId, combined);
 
+  // Si userId n'est pas un UUID valide, ne pas synchroniser avec Supabase
+  if (!isValidUuid(userId)) {
+    return preparedStudents;
+  }
+
   if (!isAppOnline()) {
     enqueueSyncAction(userId, {
       type: 'insert_students_bulk',
@@ -254,8 +267,9 @@ export async function deleteStudent(id: string, userId?: string): Promise<void> 
     setStoredStudents(userId, local);
   }
 
-  if (!isAppOnline()) {
-    if (userId) {
+  // Ne pas tenter d'appeler Supabase si pas d'ID, UUID invalide ou hors-ligne
+  if (!userId || !isValidUuid(userId) || !isAppOnline()) {
+    if (userId && isValidUuid(userId) && !isAppOnline()) {
       enqueueSyncAction(userId, {
         type: 'delete_student',
         payload: { id }
@@ -273,7 +287,7 @@ export async function deleteStudent(id: string, userId?: string): Promise<void> 
     if (error) throw error;
   } catch (error: any) {
     console.warn('⚠️ Suppression distante échouée, mise en file:', error.message);
-    if (userId) {
+    if (userId && isValidUuid(userId)) {
       enqueueSyncAction(userId, {
         type: 'delete_student',
         payload: { id }
@@ -288,6 +302,10 @@ export async function deleteStudents(ids: string[], userId?: string): Promise<vo
   if (userId) {
     const local = getStoredStudents(userId).filter(s => !ids.includes(s.id));
     setStoredStudents(userId, local);
+  }
+
+  if (!userId || !isValidUuid(userId) || !isAppOnline()) {
+    return;
   }
 
   if (!isAppOnline()) {
@@ -326,8 +344,9 @@ export async function deleteStudents(ids: string[], userId?: string): Promise<vo
 export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null> {
   const localSchool = getStoredSchoolInfo(userId);
 
-  if (!isAppOnline()) {
-    console.log('⚡ [Hors-ligne] Infos école chargées depuis le stockage local');
+  // Si l'utilisateur est hors-ligne ou que l'identifiant n'est pas un UUID valide (ex: admin, invité démo),
+  // renvoyer immédiatement les données du cache local sans appeler Supabase
+  if (!isAppOnline() || !isValidUuid(userId)) {
     return localSchool;
   }
 
@@ -367,6 +386,11 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<void> {
   // 1. Sauvegarde locale immédiate
   setStoredSchoolInfo(userId, info);
+
+  // Ne jamais tenter d'écrire dans Supabase si userId n'est pas un UUID valide (ex: admin, invité démo)
+  if (!isValidUuid(userId)) {
+    return;
+  }
 
   if (!isAppOnline()) {
     enqueueSyncAction(userId, {
@@ -478,7 +502,7 @@ export function dataUrlToFile(dataUrl: string, filename: string): File {
 // ─── Synchronisation Automatique de la file d'attente ──────────────────────────
 
 export async function syncOfflineQueue(userId: string): Promise<{ synced: number; failed: number }> {
-  if (!isAppOnline() || !userId) {
+  if (!isAppOnline() || !userId || !isValidUuid(userId)) {
     return { synced: 0, failed: 0 };
   }
 
@@ -575,6 +599,10 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
       synced++;
     } catch (err: any) {
       console.error(`❌ Échec synchro action ${action.id}:`, err);
+      // Supprimer l'action si l'erreur est syntaxique/irrécupérable (ex: UUID invalide) pour stopper les boucles
+      if (err?.message?.includes('invalid input syntax for type uuid') || err?.code === '22P02') {
+        removeSyncAction(userId, action.id);
+      }
       failed++;
     }
   }
@@ -653,6 +681,8 @@ export function saveRegisteredSchoolRegistry(school: AdminSchoolDetail) {
     !school ||
     !school.userId ||
     school.userId === 'admin-super-user-id' ||
+    school.userId === 'local-offline-user' ||
+    !isValidUuid(school.userId) ||
     school.userId === PLATFORM_SETTINGS_SYSTEM_USER_ID ||
     school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' ||
     school.name?.toUpperCase().includes('ADMINISTRATION CENTRALE') ||
@@ -671,11 +701,16 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
     !school ||
     !school.userId ||
     school.userId === 'admin-super-user-id' ||
+    school.userId === 'local-offline-user' ||
+    !isValidUuid(school.userId) ||
     school.userId === PLATFORM_SETTINGS_SYSTEM_USER_ID ||
     school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' ||
     school.name?.toUpperCase().includes('ADMINISTRATION CENTRALE') ||
     school.name?.toUpperCase().includes('CONFIGURATION SYSTEME')
   ) {
+    if (school && school.userId) {
+      setStoredSchoolInfo(school.userId, school);
+    }
     return;
   }
 
@@ -709,10 +744,9 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
     console.warn('registerSchoolRecord Supabase upsert error:', err);
   }
 
-  // 3. Émettre l'événement pour mise à jour immédiate de tous les composants ouverts
+  // 3. Émettre l'événement pour mise à jour immédiate des composants
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: school }));
-    window.dispatchEvent(new Event('storage'));
   }
 }
 
@@ -723,6 +757,9 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
 
   const isSystemId = (id?: string) => 
     !id || 
+    id === 'admin-super-user-id' ||
+    id === 'local-offline-user' ||
+    !isValidUuid(id) ||
     id === PLATFORM_SETTINGS_SYSTEM_USER_ID || 
     id === LICENSE_KEYS_SYSTEM_USER_ID || 
     id.startsWith('00000000-0000-0000-0000-') || 
@@ -963,15 +1000,17 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
     localStorage.setItem(REGISTERED_SCHOOLS_KEY, JSON.stringify(remaining));
   } catch {}
 
-  // 3. Supprimer de Supabase (school_info, students, admin_logs, chat_messages, license_keys)
-  try {
-    await supabase.from('school_info').delete().eq('user_id', userId);
-    await supabase.from('students').delete().eq('user_id', userId);
-    await supabase.from('admin_logs').delete().eq('school_id', userId);
-    await supabase.from('chat_messages').delete().eq('school_id', userId);
-    await supabase.from('license_keys').delete().or(`target_school_id.eq.${userId},used_by_school_id.eq.${userId}`);
-  } catch (err) {
-    console.warn('deleteSchoolByAdmin Supabase error:', err);
+  // 3. Supprimer de Supabase (school_info, students, admin_logs, chat_messages, license_keys) SI UUID valide
+  if (isValidUuid(userId)) {
+    try {
+      await supabase.from('school_info').delete().eq('user_id', userId);
+      await supabase.from('students').delete().eq('user_id', userId);
+      await supabase.from('admin_logs').delete().eq('school_id', userId);
+      await supabase.from('chat_messages').delete().eq('school_id', userId);
+      await supabase.from('license_keys').delete().or(`target_school_id.eq.${userId},used_by_school_id.eq.${userId}`);
+    } catch (err) {
+      console.warn('deleteSchoolByAdmin Supabase error:', err);
+    }
   }
 
   // 4. Supprimer les clés de licence associées dans le registre persistant
@@ -991,6 +1030,7 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
   try {
     localStorage.removeItem('cartes_togo_school_' + userId);
     localStorage.removeItem('cartes_togo_students_' + userId);
+    localStorage.removeItem('cartes_togo_sync_queue_' + userId);
   } catch {}
 
   // 6. Journaliser la suppression
@@ -1003,7 +1043,6 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: userId }));
-    window.dispatchEvent(new Event('storage'));
   }
 
   return true;
@@ -1185,7 +1224,6 @@ export async function updateSchoolSubscription(
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt } }));
     window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan, expiresAt } }));
-    window.dispatchEvent(new Event('storage'));
   }
 
   return true;
@@ -1863,7 +1901,6 @@ export async function activateSchoolDirectly(
       window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: 'pro', subscriptionExpiresAt: expiresAtStr } }));
       window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
       window.dispatchEvent(new CustomEvent('cardschool_licenses_updated', { detail: keys }));
-      window.dispatchEvent(new Event('storage'));
     }
 
     return {
@@ -2148,10 +2185,14 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
-  // Clean and sync localStorage so duplicates don't persist on disk
+  // Clean and sync localStorage so duplicates don't persist on disk (uniquement si le contenu a changé)
   try {
-    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(sorted));
-    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, JSON.stringify(sorted));
+    const serialized = JSON.stringify(sorted);
+    const existing = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+    if (existing !== serialized) {
+      localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, serialized);
+      localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, serialized);
+    }
   } catch {}
 
   return sorted;
@@ -2327,7 +2368,6 @@ export async function sendChatMessage(
     window.dispatchEvent(new CustomEvent('cardschool_chat_message_received', {
       detail: finalMsg
     }));
-    window.dispatchEvent(new Event('storage'));
   }
 
   return finalMsg;
@@ -2638,7 +2678,6 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', {
       detail: settingsToSave
     }));
-    window.dispatchEvent(new Event('storage'));
   }
 
   return true;

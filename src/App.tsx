@@ -31,7 +31,8 @@ import {
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord } from './lib/db';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid } from './lib/db';
+import { setStoredSchoolInfo } from './lib/offlineStorage';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { ClassDirectoryView } from './components/ClassDirectoryView';
 import { ImportExport } from './components/ImportExport';
@@ -40,6 +41,8 @@ import { SchoolSettings } from './components/SchoolSettings';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
+import { SchoolChatDrawer } from './components/SchoolChatDrawer';
+import { CardVerificationModal } from './components/CardVerificationModal';
 
 // Code-splitting via React.lazy pour les vues volumineuses
 const StudentForm = React.lazy(() => import('./components/StudentForm').then(m => ({ default: m.StudentForm })));
@@ -48,8 +51,6 @@ const PrintLayout = React.lazy(() => import('./components/PrintLayout').then(m =
 const SchoolSettingsView = React.lazy(() => import('./components/SchoolSettingsView').then(m => ({ default: m.SchoolSettingsView })));
 const CardDesignView = React.lazy(() => import('./components/CardDesignView').then(m => ({ default: m.CardDesignView })));
 const AdminDashboardView = React.lazy(() => import('./components/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
-const SchoolChatDrawer = React.lazy(() => import('./components/SchoolChatDrawer').then(m => ({ default: m.SchoolChatDrawer })));
-const CardVerificationModal = React.lazy(() => import('./components/CardVerificationModal').then(m => ({ default: m.CardVerificationModal })));
 
 
 interface AppProps {
@@ -385,6 +386,11 @@ export default function App({ session, onLogout }: AppProps) {
 
   // ── Écouteur temps-réel des activations et mises à jour d'abonnement ───────────
   useEffect(() => {
+    // Si c'est l'admin, ne pas écouter les changements d'abonnement d'école
+    if (session.userId === 'admin-super-user-id' || session.email?.toLowerCase().trim() === 'admin@cardschool.tg') {
+      return;
+    }
+
     const handleSubscriptionChange = (e: any) => {
       if (e?.detail?.plan) {
         setSchoolInfo(prev => ({
@@ -399,7 +405,14 @@ export default function App({ session, onLogout }: AppProps) {
       }
     };
 
-    const handleStorageChange = () => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Ne réagir que si la clé modifiée concerne spécifiquement l'école actuelle
+      if (e?.key && !e.key.includes(session.userId) && !e.key.includes('subscription')) {
+        return;
+      }
+      if (!isValidUuid(session.userId)) {
+        return;
+      }
       fetchSchoolInfo(session.userId).then(s => {
         if (s) setSchoolInfo(s);
       }).catch(() => {});
@@ -414,23 +427,38 @@ export default function App({ session, onLogout }: AppProps) {
       window.removeEventListener('cardschool_school_registered', handleSubscriptionChange);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [session.userId]);
+  }, [session.userId, session.email]);
 
   // ── Sauvegarde school_info avec debounce (évite trop d'appels) ──────────────
   useEffect(() => {
     if (loading) return;
+    // Ne jamais auto-sauvegarder sur Supabase pour le super-admin ou un compte local non-UUID
+    if (session.userId === 'admin-super-user-id' || session.email?.toLowerCase().trim() === 'admin@cardschool.tg' || !isValidUuid(session.userId)) {
+      if (session.userId && !isValidUuid(session.userId)) {
+        setStoredSchoolInfo(session.userId, schoolInfo);
+      }
+      return;
+    }
+
     if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
     schoolInfoSaveTimer.current = setTimeout(() => {
       saveSchoolInfo(schoolInfo, session.userId)
         .catch(err => {
           console.error('Erreur sauvegarde school info:', err);
-          // Ne pas afficher d'alerte pour ne pas gêner l'utilisateur
         });
-    }, 2000); // Augmenté à 2s pour éviter les timeouts
+    }, 2000);
     return () => {
       if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
     };
-  }, [schoolInfo, session.userId, loading]);
+  }, [schoolInfo, session.userId, session.email, loading]);
+
+  // ── Synchro Hors-ligne ──────────────────────────────────────────────────────
+  const handleSyncComplete = useCallback(() => {
+    if (session.userId && isValidUuid(session.userId)) {
+      fetchStudents(session.userId).then(setStudents);
+      fetchSchoolInfo(session.userId).then(s => s && setSchoolInfo(s));
+    }
+  }, [session.userId]);
 
   // ── CRUD Élèves ─────────────────────────────────────────────────────────────
   const handleAddStudent = useCallback(async (student: Student) => {
@@ -1906,10 +1934,7 @@ export default function App({ session, onLogout }: AppProps) {
       {/* Offline Status & Sync Banner */}
       <OfflineStatusBanner 
         userId={session.userId} 
-        onSyncComplete={() => {
-          fetchStudents(session.userId).then(setStudents);
-          fetchSchoolInfo(session.userId).then(s => s && setSchoolInfo(s));
-        }}
+        onSyncComplete={handleSyncComplete}
       />
     </div>
   );

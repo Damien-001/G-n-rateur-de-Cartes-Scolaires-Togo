@@ -204,8 +204,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [isProcessingDirectActivation, setIsProcessingDirectActivation] = useState(false);
 
   // Load SaaS statistics & configuration — all fetches run in parallel
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const [allSchools, studentCount, logs, allMsgs, pSettings, keys] = await Promise.all([
         fetchAllSchools(),
@@ -219,7 +219,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setTotalStudents(studentCount);
       setActivityLogs(logs);
       setLicenseKeys(keys);
-      setChatMessages(allMsgs);
+      setChatMessages(prev => {
+        if (prev.length === allMsgs.length) {
+          const hasDiff = prev.some((m, idx) => m.id !== allMsgs[idx]?.id || m.message !== allMsgs[idx]?.message || m.status !== allMsgs[idx]?.status);
+          if (!hasDiff) return prev;
+        }
+        return allMsgs;
+      });
       setPlatformSettings(pSettings);
 
       // Auto-select first chat if none selected
@@ -229,7 +235,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     } catch (err) {
       console.error('Error loading admin statistics:', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -237,7 +243,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     loadData();
 
     const handleDataChanged = () => {
-      loadData();
+      loadData(true);
     };
 
     const handleLicensesChanged = (e: any) => {
@@ -329,7 +335,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
     const interval = setInterval(() => {
       fetchChatMessages().then(msgs => {
-        setChatMessages(msgs);
+        setChatMessages(prev => {
+          if (prev.length === msgs.length) {
+            const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
+            if (!hasDiff) return prev;
+          }
+          return msgs;
+        });
       }).catch(() => {});
     }, 4000);
 

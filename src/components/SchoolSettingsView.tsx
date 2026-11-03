@@ -77,11 +77,15 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
 
     const handleSubscriptionUpdate = (e: any) => {
       if (e?.detail?.plan) {
-        onSaveSchoolInfo({
-          ...schoolInfo,
-          subscriptionPlan: e.detail.plan,
-          subscriptionExpiresAt: e.detail.expiresAt || schoolInfo.subscriptionExpiresAt
-        });
+        const newPlan = e.detail.plan;
+        const newExp = e.detail.expiresAt || schoolInfo.subscriptionExpiresAt;
+        if (schoolInfo.subscriptionPlan !== newPlan || schoolInfo.subscriptionExpiresAt !== newExp) {
+          onSaveSchoolInfo({
+            ...schoolInfo,
+            subscriptionPlan: newPlan,
+            subscriptionExpiresAt: newExp
+          });
+        }
       }
     };
 

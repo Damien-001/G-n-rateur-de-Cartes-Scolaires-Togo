@@ -238,15 +238,25 @@ createRoot(document.getElementById('root')!).render(
   </ErrorBoundary>,
 );
 
-// Enregistrement du Service Worker pour support PWA et hors-ligne
+// Enregistrement du Service Worker pour support PWA et hors-ligne (en production uniquement)
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((reg) => {
-        console.log('✅ Service Worker enregistré avec succès (Scope:', reg.scope, ')');
-      })
-      .catch((err) => {
-        console.warn('Erreur d\'enregistrement du Service Worker:', err);
-      });
-  });
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('✅ Service Worker enregistré avec succès (Scope:', reg.scope, ')');
+        })
+        .catch((err) => {
+          console.warn('Erreur d\'enregistrement du Service Worker:', err);
+        });
+    });
+  } else {
+    // En développement, désactiver les anciens Service Workers pour assurer un HMR Vite fluide et éviter les rechargements
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+        console.log('🧹 Ancien Service Worker désactivé en mode dev');
+      }
+    }).catch(() => {});
+  }
 }
