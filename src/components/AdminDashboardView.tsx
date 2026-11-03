@@ -81,6 +81,7 @@ import {
   purgeOrphanLicenseKeys
 } from '../lib/db';
 import { supabase } from '../lib/supabase';
+import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
 import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 
@@ -334,16 +335,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     } catch {}
 
     const interval = setInterval(() => {
-      fetchChatMessages().then(msgs => {
-        setChatMessages(prev => {
-          if (prev.length === msgs.length) {
-            const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
-            if (!hasDiff) return prev;
-          }
-          return msgs;
-        });
-      }).catch(() => {});
-    }, 4000);
+      if (isAppOnline()) {
+        fetchChatMessages().then(msgs => {
+          setChatMessages(prev => {
+            if (prev.length === msgs.length) {
+              const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
+              if (!hasDiff) return prev;
+            }
+            return msgs;
+          });
+        }).catch(() => {});
+      }
+    }, 5000);
 
     return () => {
       window.removeEventListener('cardschool_school_registered', handleDataChanged);

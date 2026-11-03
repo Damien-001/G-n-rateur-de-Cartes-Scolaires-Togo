@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import { fetchChatMessages, sendChatMessage, fetchPlatformSettings, compressImageForChat } from '../lib/db';
+import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
 
 interface SchoolChatDrawerProps {
@@ -134,7 +135,14 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
     };
 
     window.addEventListener('cardschool_chat_message_received', handleNewMsg);
-    const interval = setInterval(loadMessages, 5000);
+    
+    // Polling adapté : 6s si le chat est ouvert, 30s s'il est fermé, et uniquement si connecté
+    const intervalMs = isOpen ? 6000 : 30000;
+    const interval = setInterval(() => {
+      if (isAppOnline()) {
+        loadMessages().catch(() => {});
+      }
+    }, intervalMs);
 
     return () => {
       window.removeEventListener('cardschool_chat_message_received', handleNewMsg);

@@ -2136,29 +2136,37 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
     messagesList.push(msg);
   };
 
-  // 1. Try Supabase chat_messages (Primary)
-  try {
-    let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
-    if (schoolId) {
-      query = query.eq('school_id', schoolId);
-    }
-    const { data, error } = await query;
-    if (!error && data && data.length > 0) {
-      data.forEach((d: any) => {
-        addUnique({
-          id: d.id?.toString() || `${d.school_id}_${d.created_at}`,
-          schoolId: d.school_id,
-          schoolName: d.school_name || 'Établissement',
-          senderRole: (d.sender_role || d.sender) === 'admin' ? 'admin' : 'school',
-          message: d.message || '',
-          attachmentUrl: d.attachment_url || undefined,
-          createdAt: d.created_at || new Date().toISOString(),
-          status: d.status || 'sent',
+  // 1. Try Supabase chat_messages (Primary, uniquement si en ligne)
+  if (isAppOnline()) {
+    try {
+      let query = supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
+      if (schoolId) {
+        query = query.eq('school_id', schoolId);
+      }
+      
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout chat messages')), 3500)
+      );
+
+      const res = await Promise.race([query, timeoutPromise]).catch(() => ({ data: null, error: null }));
+      const { data, error } = res || {};
+      if (!error && data && data.length > 0) {
+        data.forEach((d: any) => {
+          addUnique({
+            id: d.id?.toString() || `${d.school_id}_${d.created_at}`,
+            schoolId: d.school_id,
+            schoolName: d.school_name || 'Établissement',
+            senderRole: (d.sender_role || d.sender) === 'admin' ? 'admin' : 'school',
+            message: d.message || '',
+            attachmentUrl: d.attachment_url || undefined,
+            createdAt: d.created_at || new Date().toISOString(),
+            status: d.status || 'sent',
+          });
         });
-      });
+      }
+    } catch {
+      // Échec réseau ou timeout : fallback automatique sur le cache local
     }
-  } catch (err) {
-    // Continue to next tier
   }
 
   // 2. Local storage fallback (Both keys)
