@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Papa from 'papaparse';
 import { Student } from '../types';
 import { Upload, FileSpreadsheet, FileDown } from 'lucide-react';
 
@@ -51,7 +52,6 @@ export const ImportExport: React.FC<ImportExportProps> = ({
         date_expiration: '31/12/2026',
       }
     ];
-    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(template, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -92,7 +92,6 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       date_expiration: s.expirationDate || '',
     }));
 
-    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(dataToExport, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Papa from 'papaparse';
 import { 
   Trash2,
   Search,
@@ -130,7 +131,6 @@ export default function App({ session, onLogout }: AppProps) {
       photo_url: s.photoUrl || '',
       date_expiration: s.expirationDate || '',
     }));
-    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(dataToExport, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
@@ -175,7 +175,6 @@ export default function App({ session, onLogout }: AppProps) {
       }
     ];
 
-    const { default: Papa } = await import('papaparse');
     const csv = Papa.unparse(sample, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
