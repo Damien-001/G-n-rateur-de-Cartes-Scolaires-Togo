@@ -797,15 +797,26 @@ export default function App({ session, onLogout }: AppProps) {
             {/* Profile & Logout & Arrow at the BOTTOM */}
             <div className="pt-4 border-t border-slate-200/80 space-y-2">
               <div className="relative group">
-                <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2' : 'justify-center'}`}>
-                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                    {session.fullName.charAt(0)}
+                <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2 justify-between' : 'justify-center'}`}>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                      {session.fullName.charAt(0)}
+                    </div>
+                    {isSidebarOpen && (
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                        <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                      </div>
+                    )}
                   </div>
                   {isSidebarOpen && (
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                      <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
-                    </div>
+                    <button
+                      onClick={toggleSidebar}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/80 transition-colors cursor-pointer shrink-0 border border-slate-200/60 shadow-2xs active:scale-95 ml-1"
+                      title="Réduire le menu"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-slate-500" />
+                    </button>
                   )}
                 </div>
                 {!isSidebarOpen && (
@@ -835,26 +846,22 @@ export default function App({ session, onLogout }: AppProps) {
                 )}
               </div>
 
-              {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
-              <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
-                <button
-                  onClick={toggleSidebar}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
-                  title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
-                >
-                  {isSidebarOpen ? (
-                    <ChevronLeft className="w-5 h-5 text-slate-500" />
-                  ) : (
+              {/* Collapse/Expand Toggle Arrow Button when collapsed */}
+              {!isSidebarOpen && (
+                <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+                  <button
+                    onClick={toggleSidebar}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                    title="Agrandir le menu"
+                  >
                     <ChevronRight className="w-5 h-5 text-slate-600" />
-                  )}
-                </button>
-                {!isSidebarOpen && (
+                  </button>
                   <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
                     Agrandir le menu
                     <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -1232,15 +1239,26 @@ export default function App({ session, onLogout }: AppProps) {
           <div className="pt-4 border-t border-slate-200/80 space-y-2">
             {/* User Profile */}
             <div className="relative group">
-              <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2' : 'justify-center'}`}>
-                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
-                  {session.fullName.charAt(0)}
+              <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2 justify-between' : 'justify-center'}`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shadow-sm uppercase shrink-0">
+                    {session.fullName.charAt(0)}
+                  </div>
+                  {isSidebarOpen && (
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
+                      <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
+                    </div>
+                  )}
                 </div>
                 {isSidebarOpen && (
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{session.fullName}</p>
-                    <p className="text-[10px] text-slate-500 truncate leading-none">{session.email}</p>
-                  </div>
+                  <button
+                    onClick={toggleSidebar}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/80 transition-colors cursor-pointer shrink-0 border border-slate-200/60 shadow-2xs active:scale-95 ml-1"
+                    title="Réduire le menu"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-slate-500" />
+                  </button>
                 )}
               </div>
               {!isSidebarOpen && (
@@ -1271,26 +1289,22 @@ export default function App({ session, onLogout }: AppProps) {
               )}
             </div>
 
-            {/* Collapse/Expand Toggle Arrow Button at the BOTTOM (icon only) */}
-            <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
-              <button
-                onClick={toggleSidebar}
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
-                title={isSidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
-              >
-                {isSidebarOpen ? (
-                  <ChevronLeft className="w-5 h-5 text-slate-500" />
-                ) : (
+            {/* Collapse/Expand Toggle Arrow Button when collapsed */}
+            {!isSidebarOpen && (
+              <div className="relative group pt-1 border-t border-slate-200/60 flex justify-center">
+                <button
+                  onClick={toggleSidebar}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 transition-colors cursor-pointer border border-transparent hover:border-slate-200 active:scale-95"
+                  title="Agrandir le menu"
+                >
                   <ChevronRight className="w-5 h-5 text-slate-600" />
-                )}
-              </button>
-              {!isSidebarOpen && (
+                </button>
                 <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform -translate-x-1 group-hover:translate-x-0">
                   Agrandir le menu
                   <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-slate-900" />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </aside>
