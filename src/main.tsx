@@ -7,6 +7,7 @@ import { LandingPage } from './components/LandingPage.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { onAuthStateChange, getSession, logout, Session } from './lib/auth.ts';
 import { isAppOnline, getCachedSession, setCachedSession } from './lib/offlineStorage.ts';
+import { recordPageView } from './lib/analytics.ts';
 import './index.css';
 
 // Monkey-patch global Node DOM methods to prevent browser extensions (like translation tools or password managers) from crashing React.
@@ -65,6 +66,12 @@ function Root() {
   });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [ready, setReady] = useState(false);
+
+  // Tracking universel d'audience des visiteurs
+  useEffect(() => {
+    const routePath = page === 'dashboard' ? '/app' : (page === 'auth' ? '/auth' : (page === 'admin-login' ? '/admin' : '/'));
+    recordPageView(routePath);
+  }, [page]);
 
   useEffect(() => {
     let isMounted = true;

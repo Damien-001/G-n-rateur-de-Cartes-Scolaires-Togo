@@ -156,11 +156,25 @@ export async function recordPageView(pathName?: string): Promise<void> {
     const updated = [visit, ...local].slice(0, 1000); // Garder les 1000 dernières
     localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(updated));
 
-    // 2. Déclenche un événement pour actualiser en direct le dashboard si l'admin est ouvert
+    // 2. Déclenche un événement local pour actualiser en direct le dashboard si l'admin est ouvert sur la même machine
     window.dispatchEvent(new CustomEvent('cardschool_new_visit_recorded', { detail: visit }));
 
-    // 3. Sauvegarde dans Supabase si la table app_visits existe (non-bloquant)
+    // 3. Sauvegarde dans Supabase pour synchronisation multi-appareils (visible par l'admin à distance)
     if (isAppOnline()) {
+      // 3.A. Enregistrement universel dans admin_logs (supporté immédiatement sans migration)
+      try {
+        await supabase.from('admin_logs').insert({
+          school_id: '00000000-0000-0000-0000-000000000000',
+          school_name: `Visiteur Web (${visit.region})`,
+          action: 'PAGE_VISIT',
+          details: JSON.stringify(visit),
+          created_at: visit.timestamp
+        });
+      } catch (err) {
+        console.debug('Supabase visit sync to admin_logs note:', err);
+      }
+
+      // 3.B. Essai sur la table dédiée app_visits si disponible
       try {
         await supabase.from('app_visits').insert({
           visitor_id: visit.visitorId,
@@ -260,16 +274,90 @@ function generateSeedVisits(): PageVisit[] {
 
 /** Calcule l'ensemble des statistiques consolidées pour l'interface Admin */
 export async function computeVisitorStats(totalRegisteredSchools: number = 0): Promise<VisitorStats> {
-  let stored = getStoredVisits();
+  const visitsMap = new Map<string, PageVisit>();
 
-  // Si moins de 20 visites enregistrées, fusionner avec une base de départ réaliste
+  // 1. Récupération des visites réelles enregistrées sur le Cloud Supabase
+  if (isAppOnline()) {
+    // 1.A. Depuis admin_logs (support universel)
+    try {
+      const { data: cloudLogs, error } = await supabase
+        .from('admin_logs')
+        .select('*')
+        .eq('action', 'PAGE_VISIT')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (!error && cloudLogs) {
+        for (const row of cloudLogs) {
+          try {
+            if (row.details) {
+              const v: PageVisit = JSON.parse(row.details);
+              if (v && v.visitorId) {
+                const id = v.id || row.id;
+                visitsMap.set(id, v);
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
+    // 1.B. Depuis la table dédiée app_visits si présente
+    try {
+      const { data: dedicatedData, error: dedErr } = await supabase
+        .from('app_visits')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (!dedErr && dedicatedData) {
+        for (const r of dedicatedData) {
+          const id = r.id?.toString() || `db_${r.created_at}`;
+          visitsMap.set(id, {
+            id,
+            visitorId: r.visitor_id,
+            path: r.path,
+            device: r.device,
+            browser: r.browser,
+            os: r.os,
+            region: r.region,
+            referrer: r.referrer,
+            timestamp: r.created_at
+          });
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Fusion avec le stockage local
+  const local = getStoredVisits();
+  for (const v of local) {
+    if (!visitsMap.has(v.id)) {
+      visitsMap.set(v.id, v);
+    }
+  }
+
+  let stored = Array.from(visitsMap.values()).sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
+  // 3. Si très peu de visites réelles, fusionner avec une base de départ réaliste pour alimenter les courbes
   if (stored.length < 25) {
     const seed = generateSeedVisits();
-    stored = [...stored, ...seed].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    try {
-      localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(stored.slice(0, 1000)));
-    } catch { }
+    for (const s of seed) {
+      if (!visitsMap.has(s.id)) {
+        visitsMap.set(s.id, s);
+      }
+    }
+    stored = Array.from(visitsMap.values()).sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   }
+
+  // Sauvegarde du cache local consolidé
+  try {
+    localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(stored.slice(0, 1000)));
+  } catch { }
 
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];

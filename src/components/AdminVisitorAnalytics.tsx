@@ -20,6 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { VisitorStats, computeVisitorStats, PageVisit } from '../lib/analytics';
+import { supabase } from '../lib/supabase';
 
 interface AdminVisitorAnalyticsProps {
   totalRegisteredSchools: number;
@@ -48,14 +49,28 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
   useEffect(() => {
     loadStats();
 
-    // Écouter les nouvelles visites en direct
+    // 1. Écouter les visites locales (sur la même session)
     const handleNewVisit = () => {
       loadStats();
     };
-
     window.addEventListener('cardschool_new_visit_recorded', handleNewVisit);
+
+    // 2. Écouter Supabase Realtime pour détecter les visites distantes en temps réel
+    const channel = supabase
+      .channel('admin_realtime_visitor_tracking')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'admin_logs',
+        filter: 'action=eq.PAGE_VISIT'
+      }, () => {
+        loadStats();
+      })
+      .subscribe();
+
     return () => {
       window.removeEventListener('cardschool_new_visit_recorded', handleNewVisit);
+      supabase.removeChannel(channel);
     };
   }, [totalRegisteredSchools]);
 

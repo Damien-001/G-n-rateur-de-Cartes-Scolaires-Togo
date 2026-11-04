@@ -193,17 +193,40 @@ ALTER TABLE public.license_keys ADD COLUMN IF NOT EXISTS note TEXT;
 ALTER TABLE public.license_keys ADD COLUMN IF NOT EXISTS target_school_name TEXT;
 ALTER TABLE public.license_keys ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT false;
 
+-- 8. TABLE : app_visits (Statistiques Visiteurs & Tracking d'Audience)
+CREATE TABLE IF NOT EXISTS public.app_visits (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  visitor_id  TEXT NOT NULL,
+  path        TEXT NOT NULL DEFAULT '/',
+  device      TEXT NOT NULL DEFAULT 'mobile',
+  browser     TEXT,
+  os          TEXT,
+  region      TEXT,
+  referrer    TEXT,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS path TEXT DEFAULT '/';
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS device TEXT DEFAULT 'mobile';
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS browser TEXT;
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS os TEXT;
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS region TEXT;
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS referrer TEXT;
+ALTER TABLE public.app_visits ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
 -- ============================================================
--- 8. INDEX POUR PERFORMANCES OPTIMALES
+-- 9. INDEX POUR PERFORMANCES OPTIMALES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS students_user_id_idx ON public.students(user_id);
 CREATE INDEX IF NOT EXISTS school_info_user_id_idx ON public.school_info(user_id);
 CREATE INDEX IF NOT EXISTS admin_logs_school_id_idx ON public.admin_logs(school_id);
 CREATE INDEX IF NOT EXISTS audit_logs_school_id_idx ON public.audit_logs(school_id);
 CREATE INDEX IF NOT EXISTS chat_messages_school_id_idx ON public.chat_messages(school_id);
+CREATE INDEX IF NOT EXISTS app_visits_created_at_idx ON public.app_visits(created_at);
 
 -- ============================================================
--- 9. ROW LEVEL SECURITY (RLS)
+-- 10. ROW LEVEL SECURITY (RLS)
 -- ============================================================
 ALTER TABLE public.school_info ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
@@ -212,6 +235,7 @@ ALTER TABLE public.admin_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.license_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_visits ENABLE ROW LEVEL SECURITY;
 
 -- Nettoyage des anciennes politiques
 DROP POLICY IF EXISTS "Allow all on school_info" ON public.school_info;
@@ -233,6 +257,7 @@ DROP POLICY IF EXISTS "Allow all on admin_logs" ON public.admin_logs;
 DROP POLICY IF EXISTS "Allow all on audit_logs" ON public.audit_logs;
 DROP POLICY IF EXISTS "Allow all on chat_messages" ON public.chat_messages;
 DROP POLICY IF EXISTS "Allow all on license_keys" ON public.license_keys;
+DROP POLICY IF EXISTS "Allow all on app_visits" ON public.app_visits;
 
 -- Politiques Universelles Permissives
 CREATE POLICY "Allow all on school_info" ON public.school_info FOR ALL USING (true) WITH CHECK (true);
@@ -242,6 +267,7 @@ CREATE POLICY "Allow all on admin_logs" ON public.admin_logs FOR ALL USING (true
 CREATE POLICY "Allow all on audit_logs" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on chat_messages" ON public.chat_messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on license_keys" ON public.license_keys FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on app_visits" ON public.app_visits FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- 10. STORAGE BUCKET (school-assets)

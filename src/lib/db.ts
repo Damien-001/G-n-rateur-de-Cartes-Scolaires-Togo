@@ -1305,7 +1305,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
 
     if (adminData) {
       for (const log of adminData) {
-        if (log.action === 'SYNC_PLATFORM_SETTINGS') continue;
+        if (log.action === 'SYNC_PLATFORM_SETTINGS' || log.action === 'SYNC_LICENSE_KEYS' || log.action === 'PAGE_VISIT') continue;
         const id = log.id?.toString() || `${log.created_at}-${log.school_id}`;
         logsMap.set(id, {
           id,
@@ -1326,7 +1326,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
     if (stored) {
       const localList: AdminLogItem[] = JSON.parse(stored);
       for (const item of localList) {
-        if (item.action === 'SYNC_PLATFORM_SETTINGS') continue;
+        if (item.action === 'SYNC_PLATFORM_SETTINGS' || item.action === 'SYNC_LICENSE_KEYS' || item.action === 'PAGE_VISIT') continue;
         if (!logsMap.has(item.id)) {
           logsMap.set(item.id, item);
         }
