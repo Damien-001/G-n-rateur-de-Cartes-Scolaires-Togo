@@ -795,7 +795,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {/* Fixed Side Menu Navigation - Desktop Only */}
       <aside className={`hidden md:flex ${
         isSidebarOpen ? 'md:w-64' : 'md:w-20'
-      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out`}>
+      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
         {/* Top Logo Section: exact height h-[73px], edge-to-edge border-b */}
         <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
           <div className="flex items-center gap-3 min-w-0">
@@ -813,7 +813,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
         </div>
 
-        <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
+        <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto overflow-x-hidden ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
           <div>
             <nav className="space-y-1.5">
               {[
