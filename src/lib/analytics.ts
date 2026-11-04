@@ -172,7 +172,7 @@ export async function recordPageView(pathName?: string): Promise<void> {
           referrer: visit.referrer,
           created_at: visit.timestamp
         });
-      } catch {}
+      } catch { }
     }
   } catch (err) {
     console.debug('Analytics record error (ignored):', err);
@@ -187,7 +187,7 @@ export function getStoredVisits(): PageVisit[] {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -215,7 +215,7 @@ function generateSeedVisits(): PageVisit[] {
     const dayTimestamp = now - d * 24 * 3600 * 1000;
     // Volume réaliste : entre 35 et 90 visites par jour
     const count = Math.floor(40 + Math.sin(d) * 15 + Math.random() * 25);
-    
+
     for (let i = 0; i < count; i++) {
       const rRand = Math.random();
       let accR = 0;
@@ -261,14 +261,14 @@ function generateSeedVisits(): PageVisit[] {
 /** Calcule l'ensemble des statistiques consolidées pour l'interface Admin */
 export async function computeVisitorStats(totalRegisteredSchools: number = 0): Promise<VisitorStats> {
   let stored = getStoredVisits();
-  
+
   // Si moins de 20 visites enregistrées, fusionner avec une base de départ réaliste
   if (stored.length < 25) {
     const seed = generateSeedVisits();
     stored = [...stored, ...seed].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     try {
       localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(stored.slice(0, 1000)));
-    } catch {}
+    } catch { }
   }
 
   const now = new Date();
@@ -391,7 +391,7 @@ export async function computeVisitorStats(totalRegisteredSchools: number = 0): P
   }));
 
   // Taux de conversion : Écoles créées / Visiteurs uniques
-  const conversionRate = totalUnique > 0 
+  const conversionRate = totalUnique > 0
     ? Math.min(100, Math.round(((totalRegisteredSchools || 1) / totalUnique) * 1000) / 10)
     : 0;
 

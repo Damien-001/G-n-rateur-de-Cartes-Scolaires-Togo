@@ -1014,7 +1014,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       <main className="flex-1 min-w-0 md:h-full overflow-y-auto bg-gray-50/50 pb-20 md:pb-8">
         
         {/* Desktop / Tablet Header toolbar: exact h-[73px], edge-to-edge border-b */}
-        <header className="hidden md:flex bg-white border-b border-slate-200 h-[73px] px-8 justify-between items-center sticky top-0 z-10 shadow-xs shrink-0">
+        <header className="hidden md:flex bg-white border-b border-slate-200 h-[73px] px-8 justify-between items-center sticky top-0 z-30 shadow-xs shrink-0">
           <div>
             <h1 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
               <Shield className="w-5 h-5 text-emerald-600" />

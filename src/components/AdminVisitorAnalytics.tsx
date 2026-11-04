@@ -99,47 +99,49 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* Top Banner with live badge & Controls */}
-      <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-700/40 relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-40 top-0 w-48 h-48 bg-teal-400/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-3 w-3 relative">
+      {/* Header Banner - Elegant, clean, perfectly harmonized with dashboard theme */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 border border-emerald-200/80 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-sm shrink-0 mt-0.5">
+            <Activity className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
               </span>
-              <span className="text-[11px] font-black uppercase tracking-widest text-emerald-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
                 Tracking d'Audience en Temps Réel • CardSchool Togo
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h2 className="text-base font-black text-slate-900 tracking-tight mt-0.5">
               Statistiques des Visiteurs & Fréquentation
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-medium leading-relaxed">
-              Consultez l'affluence des directeurs d'école, les régions togolaises d'où proviennent les connexions et le taux de conversion vers les inscriptions.
+            <p className="text-xs text-slate-600 font-medium mt-0.5">
+              Affluence des directeurs d'école, provenance régionale et taux de conversion vers les inscriptions
             </p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={exportVisitsCSV}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
-            >
-              <Download className="w-4 h-4 text-emerald-300" />
-              <span>Export CSV</span>
-            </button>
-            <button
-              onClick={loadStats}
-              disabled={isLoading}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/40 cursor-pointer active:scale-95"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Actualiser</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+          <button
+            onClick={exportVisitsCSV}
+            className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-95"
+            title="Télécharger les logs des visites en CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV Visites</span>
+          </button>
+          <button
+            onClick={loadStats}
+            disabled={isLoading}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer active:scale-95 disabled:opacity-50"
+            title="Actualiser les statistiques"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Actualiser</span>
+          </button>
         </div>
       </div>
 
@@ -534,3 +536,4 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
     </div>
   );
 };
+
