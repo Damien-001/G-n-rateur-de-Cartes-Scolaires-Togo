@@ -109,37 +109,36 @@ export const ImportExport: React.FC<ImportExportProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5">
+    <div className="flex flex-col gap-2.5">
       <button
         onClick={() => setIsImportModalOpen(true)}
-        className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
-        title="Importer des élèves par classe depuis un fichier CSV ou Excel"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
+        title="Importer des élèves depuis un fichier Excel ou CSV"
       >
-        <Upload className="w-3.5 h-3.5 text-emerald-700" />
-        Importer CSV
+        <Upload className="w-4 h-4" />
+        <span>Importer Excel / CSV</span>
       </button>
 
-      <button
-        onClick={handleExportCSV}
-        disabled={students.length === 0}
-        className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 disabled:opacity-50 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer active:scale-95"
-        title={currentClassFilter !== 'all' ? `Exporter les élèves de ${currentClassFilter}` : "Exporter tous les élèves au format Excel / CSV"}
-      >
-        <FileDown className="w-3.5 h-3.5 text-slate-600" />
-        {currentClassFilter !== 'all' 
-          ? `Exporter ${currentClassFilter} (${students.filter(s => s.className === currentClassFilter).length})`
-          : `Exporter CSV (${students.length})`
-        }
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={downloadTemplate}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-850 border border-emerald-200/80 rounded-xl transition-all font-bold text-xs cursor-pointer active:scale-95"
+          title="Télécharger le modèle Excel pré-formaté"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+          <span>Modèle Excel</span>
+        </button>
 
-      <button
-        onClick={downloadTemplate}
-        className="flex items-center gap-2 px-3.5 py-2 bg-slate-100/80 hover:bg-slate-200/80 text-slate-600 rounded-xl transition-all font-bold text-xs cursor-pointer active:scale-95"
-        title="Télécharger le modèle CSV officiel"
-      >
-        <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
-        Modèle CSV
-      </button>
+        <button
+          onClick={handleExportCSV}
+          disabled={students.length === 0}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 disabled:opacity-40 rounded-xl transition-all font-bold text-xs shadow-xs cursor-pointer active:scale-95"
+          title={currentClassFilter !== 'all' ? `Exporter les élèves de ${currentClassFilter}` : "Exporter tous les élèves"}
+        >
+          <FileDown className="w-3.5 h-3.5 text-slate-600" />
+          <span>Exporter ({currentClassFilter !== 'all' ? students.filter(s => s.className === currentClassFilter).length : students.length})</span>
+        </button>
+      </div>
 
       {/* Dedicated Class-Aware Import Modal */}
       {isImportModalOpen && (

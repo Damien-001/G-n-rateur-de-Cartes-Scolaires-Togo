@@ -1584,6 +1584,10 @@ export default function App({ session, onLogout }: AppProps) {
                   setIsSchoolSettingsOpen={setIsSchoolSettingsOpen}
                   students={students}
                   onImport={handleImport}
+                  allClasses={allClasses}
+                  currentClassFilter={studentClassFilter}
+                  isEffectivePro={isEffectivePro}
+                  effectiveQuota={effectiveQuota}
                 />
               </div>
 
@@ -1596,38 +1600,21 @@ export default function App({ session, onLogout }: AppProps) {
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input 
                         type="text" 
-                        placeholder="Rechercher un élève par nom ou matricule..."
+                        placeholder="Rechercher un élève par nom, prénom ou matricule..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-xs font-semibold"
                       />
                     </div>
 
-                    {/* Filter by class selector */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Filter className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block" />
-                      <select
-                        value={studentClassFilter}
-                        onChange={(e) => setStudentClassFilter(e.target.value)}
-                        className="w-full sm:w-auto bg-gray-55 hover:bg-gray-100 text-xs font-bold text-slate-800 rounded-xl px-3 py-2.5 border border-gray-200 outline-none cursor-pointer focus:border-emerald-500 transition-colors"
-                      >
-                        <option value="all">Toutes les classes ({students.length})</option>
-                        {allClasses.map(cls => (
-                          <option key={cls} value={cls}>
-                            {cls} ({students.filter(s => s.className === cls).length})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
                       <span className="text-xs font-bold text-gray-400 uppercase shrink-0">
                         {filteredStudents.length} affiché{filteredStudents.length > 1 ? 's' : ''}
                       </span>
                       <button
                         onClick={handleSelectAll}
                         disabled={filteredStudents.length === 0}
-                        className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-sm cursor-pointer whitespace-nowrap"
+                        className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-2xs cursor-pointer whitespace-nowrap"
                       >
                         {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
                           ? 'Désélectionner'
@@ -1638,14 +1625,14 @@ export default function App({ session, onLogout }: AppProps) {
                 </div>
 
                 {/* Class Quick-Navigation Tabs & Actions Toolbar */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/70 p-2.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/80 p-2 rounded-2xl border border-slate-200/80 shadow-2xs">
                   {/* Left: Scrollable Class Pills */}
                   <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none flex-1 min-w-0">
                     <button
                       onClick={() => setStudentClassFilter('all')}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                         studentClassFilter === 'all'
-                          ? 'bg-emerald-600 text-white shadow-sm'
+                          ? 'bg-emerald-600 text-white shadow-sm font-black'
                           : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                       }`}
                     >
@@ -1660,7 +1647,7 @@ export default function App({ session, onLogout }: AppProps) {
                           onClick={() => setStudentClassFilter(cls)}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                             isActive
-                              ? 'bg-emerald-600 text-white shadow-sm'
+                              ? 'bg-emerald-600 text-white shadow-sm font-black'
                               : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                           }`}
                         >
@@ -1677,38 +1664,17 @@ export default function App({ session, onLogout }: AppProps) {
                     <button
                       onClick={() => handleOpenImportModal()}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-850 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shrink-0 cursor-pointer"
-                      title="Importer une classe via fichier CSV"
+                      title="Ajouter ou importer une nouvelle classe"
                     >
                       <Plus className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Importer une classe</span>
+                      <span>+ Nouvelle classe</span>
                     </button>
                   </div>
 
-                  {/* Right side: Quick Action Tools to fill the right space */}
-                  <div className="flex items-center gap-2 shrink-0 justify-end pt-1 md:pt-0 border-t md:border-t-0 border-slate-100">
-                    <button
-                      onClick={() => handleDownloadClassTemplate(studentClassFilter !== 'all' ? studentClassFilter : '6ème A')}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-850 border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
-                      title="Télécharger le modèle CSV officiel"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Modèle CSV</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleExportClassCSV(studentClassFilter !== 'all' ? studentClassFilter : 'all')}
-                      disabled={students.length === 0}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
-                      title="Exporter la liste au format CSV"
-                    >
-                      <FileDown className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Exporter</span>
-                    </button>
-
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600 shrink-0">
-                      <Users className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{allClasses.length} classe{allClasses.length > 1 ? 's' : ''}</span>
-                    </div>
+                  {/* Right side: Total classes count */}
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600 shrink-0">
+                    <Users className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{allClasses.length} classe{allClasses.length > 1 ? 's' : ''}</span>
                   </div>
                 </div>
 
@@ -1740,38 +1706,20 @@ export default function App({ session, onLogout }: AppProps) {
                           setPrintClassFilter(studentClassFilter);
                           setActiveTab('print');
                         }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
                         title={`Imprimer les cartes de la classe ${studentClassFilter}`}
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        <span>Imprimer la classe</span>
+                        <span>Imprimer {studentClassFilter}</span>
                       </button>
 
                       <button
                         onClick={() => handleOpenImportModal(studentClassFilter)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
                         title={`Importer des élèves dans la classe ${studentClassFilter}`}
                       >
                         <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Importer dans {studentClassFilter}</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleDownloadClassTemplate(studentClassFilter)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/80 text-emerald-850 border border-emerald-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
-                        title={`Télécharger le modèle CSV pré-rempli pour la classe ${studentClassFilter}`}
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Modèle CSV</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleExportClassCSV(studentClassFilter)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
-                        title={`Exporter le fichier CSV de la classe ${studentClassFilter}`}
-                      >
-                        <FileDown className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Exporter CSV</span>
+                        <span>Importer dans cette classe</span>
                       </button>
                     </div>
                   </div>
