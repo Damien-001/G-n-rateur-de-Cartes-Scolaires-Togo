@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { recordPageView } from '../lib/analytics';
 import { login, Session } from '../lib/auth';
 import { setCachedSession } from '../lib/offlineStorage';
 
@@ -10,6 +11,9 @@ interface AdminLoginPageProps {
 const ADMIN_EMAIL = 'admin@cardschool.tg';
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackToLanding }) => {
+  useEffect(() => {
+    recordPageView('/login');
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

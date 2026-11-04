@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
+  BarChart3,
+  Sparkles,
   Shield, 
   Users, 
   Building2, 
@@ -84,6 +86,7 @@ import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
 import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
+import { AdminVisitorAnalytics } from './AdminVisitorAnalytics';
 
 interface AdminDashboardViewProps {
   session: Session;
@@ -139,7 +142,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
   };
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'settings' | 'logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'analytics' | 'settings' | 'logs'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
   
@@ -174,6 +177,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef<boolean>(false);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+
+  // Live account creation notification state
+  const [newAccountNotification, setNewAccountNotification] = useState<{
+    id: string;
+    name: string;
+    schoolType: string;
+    location: string;
+    managerEmail?: string;
+    managerName?: string;
+    time: string;
+  } | null>(null);
+  const [unreadNewAccountsCount, setUnreadNewAccountsCount] = useState<number>(0);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
 
   // Live real-time notification state
   const [latestNotification, setLatestNotification] = useState<{
@@ -282,6 +298,25 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       }
     };
 
+    // Live school registration event handler
+    const handleSchoolRegistered = (e: any) => {
+      const school = e.detail;
+      if (school && school.userId !== 'admin-super-user-id') {
+        playAdminChime();
+        setNewAccountNotification({
+          id: school.userId || Date.now().toString(),
+          name: school.name || 'Nouvel Établissement',
+          schoolType: school.schoolType || 'Établissement',
+          location: school.location || 'Togo',
+          managerEmail: school.managerEmail || school.email || '',
+          managerName: school.managerName || '',
+          time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        });
+        setUnreadNewAccountsCount(prev => prev + 1);
+        fetchAllSchools().then(setSchools).catch(() => {});
+      }
+    };
+    window.addEventListener('cardschool_school_registered', handleSchoolRegistered);
     window.addEventListener('cardschool_school_registered', handleDataChanged);
     window.addEventListener('cardschool_school_deleted', handleDataChanged);
     window.addEventListener('cardschool_audit_log_added', handleDataChanged);
@@ -296,6 +331,36 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     try {
       realtimeSub = supabase
         .channel('admin_live_chat_channel')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'school_info' }, (payload) => {
+          const row = payload.new as any;
+          if (row && row.user_id && row.user_id !== 'admin-super-user-id') {
+            playAdminChime();
+            setNewAccountNotification({
+              id: row.user_id,
+              name: row.name || 'Nouvel Établissement',
+              schoolType: (row.card_colors as any)?.schoolType || 'Établissement',
+              location: (row.card_colors as any)?.location || 'Togo',
+              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            });
+            setUnreadNewAccountsCount(prev => prev + 1);
+            fetchAllSchools().then(setSchools).catch(() => {});
+          }
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_logs' }, (payload) => {
+          const row = payload.new as any;
+          if (row && (row.action === 'Nouvelle Inscription' || row.action?.toLowerCase().includes('inscription'))) {
+            playAdminChime();
+            setNewAccountNotification({
+              id: row.school_id || Date.now().toString(),
+              name: row.school_name || 'Nouvel Établissement',
+              schoolType: 'Établissement',
+              location: 'Togo',
+              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            });
+            setUnreadNewAccountsCount(prev => prev + 1);
+            fetchAllSchools().then(setSchools).catch(() => {});
+          }
+        })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
           const row = payload.new as any;
           if (row) {
@@ -349,6 +414,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     }, 5000);
 
     return () => {
+      window.removeEventListener('cardschool_school_registered', handleSchoolRegistered);
       window.removeEventListener('cardschool_school_registered', handleDataChanged);
       window.removeEventListener('cardschool_school_deleted', handleDataChanged);
       window.removeEventListener('cardschool_audit_log_added', handleDataChanged);
@@ -821,6 +887,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
                 { id: 'payments', label: 'Chat & Preuves Paiement', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
                 { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
+                { id: 'analytics', label: 'Statistiques Visiteurs', icon: BarChart3 },
                 { id: 'settings', label: 'Paramètres & Contacts', icon: Settings },
                 { id: 'logs', label: "Journal d'Activité", icon: History },
               ].map(item => {
@@ -957,18 +1024,106 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
           
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActiveSubTab('payments')}
-              className="relative p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-xl transition-all cursor-pointer"
-              title="Discussions et Notifications Directes"
-            >
-              <Bell className="w-4 h-4" />
-              {unreadSchoolMessagesCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                  {unreadSchoolMessagesCount > 9 ? '9+' : unreadSchoolMessagesCount}
-                </span>
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationDropdownOpen(!isNotificationDropdownOpen)}
+                className="relative p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 rounded-xl transition-all cursor-pointer"
+                title="Notifications & Activité Récente"
+              >
+                <Bell className="w-4 h-4" />
+                {(unreadSchoolMessagesCount > 0 || unreadNewAccountsCount > 0) && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                    {(unreadSchoolMessagesCount + unreadNewAccountsCount) > 9 ? '9+' : (unreadSchoolMessagesCount + unreadNewAccountsCount)}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Floating Menu */}
+              {isNotificationDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 animate-fadeIn space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-emerald-600" />
+                      Notifications Récentes
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setUnreadNewAccountsCount(0);
+                        setIsNotificationDropdownOpen(false);
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-slate-600"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+
+                  {/* Account Registrations notification item */}
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {newAccountNotification ? (
+                      <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-emerald-800 uppercase">Nouvelle Inscription</span>
+                          <span className="text-[9px] text-slate-400">{newAccountNotification.time}</span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-900">{newAccountNotification.name}</p>
+                        <p className="text-[10px] text-slate-500">{newAccountNotification.schoolType} à {newAccountNotification.location}</p>
+                        <button
+                          onClick={() => {
+                            setSearchTerm(newAccountNotification.name);
+                            setActiveSubTab('schools');
+                            setIsNotificationDropdownOpen(false);
+                          }}
+                          className="mt-1 text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                        >
+                          Voir la fiche école →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-50 rounded-xl text-center text-xs text-slate-500">
+                        Aucune nouvelle inscription en attente
+                      </div>
+                    )}
+
+                    {unreadSchoolMessagesCount > 0 && (
+                      <div 
+                        onClick={() => {
+                          setActiveSubTab('payments');
+                          setIsNotificationDropdownOpen(false);
+                        }}
+                        className="p-3 bg-amber-50 hover:bg-amber-100/70 rounded-xl border border-amber-200 cursor-pointer transition-colors space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-amber-800 uppercase">Messages Écoles</span>
+                          <span className="px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[9px] font-black">{unreadSchoolMessagesCount} non lus</span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800">Preuves de paiement et questions reçues</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <button
+                      onClick={() => {
+                        setActiveSubTab('schools');
+                        setIsNotificationDropdownOpen(false);
+                      }}
+                      className="font-bold text-emerald-700 hover:underline"
+                    >
+                      Voir toutes les écoles
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveSubTab('analytics');
+                        setIsNotificationDropdownOpen(false);
+                      }}
+                      className="font-bold text-slate-600 hover:underline"
+                    >
+                      Voir les statistiques
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             <button
               onClick={() => exportSchoolsToCSV(filteredSchools)}
@@ -988,6 +1143,49 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </button>
           </div>
         </header>
+
+        {/* New Account Registration Toast Banner */}
+        {newAccountNotification && (
+          <div className="mx-8 mt-6 p-4 bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white rounded-2xl shadow-xl flex items-center justify-between border border-emerald-400/50 animate-bounce-once">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/25 flex items-center justify-center text-emerald-300 shrink-0 border border-emerald-400/40 shadow-inner">
+                <Sparkles className="w-6 h-6 animate-pulse text-amber-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-400/30 text-emerald-200 border border-emerald-400/40">
+                    🎉 Nouveau Compte Créé !
+                  </span>
+                  <span className="text-[10px] text-slate-300 font-medium">({newAccountNotification.time})</span>
+                </div>
+                <p className="text-sm font-bold text-white mt-1">
+                  L'établissement <span className="text-emerald-300 font-black">{newAccountNotification.name}</span> ({newAccountNotification.schoolType} à {newAccountNotification.location}) vient de créer son compte !
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  setSearchTerm(newAccountNotification.name);
+                  setActiveSubTab('schools');
+                  setNewAccountNotification(null);
+                  setUnreadNewAccountsCount(0);
+                }}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black rounded-xl shadow cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Voir l'école</span>
+              </button>
+              <button
+                onClick={() => setNewAccountNotification(null)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                title="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Live Chat & Notification Toast Banner */}
         {latestNotification && (
@@ -1040,6 +1238,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 1: OVERVIEW */}
           {activeSubTab === 'overview' && (
             <div className="space-y-8 animate-fadeIn">
+                            {/* Visitor Analytics Shortcut Banner in Overview */}
+              <div className="bg-gradient-to-r from-emerald-950 to-slate-900 text-white rounded-3xl p-5 shadow-sm border border-emerald-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/30">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black flex items-center gap-2">
+                      <span>Statistiques Visiteurs & Fréquentation en Direct</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium mt-0.5">
+                      Analysez les visites quotidiennes, les appareils (smartphones / PC) et la provenance des directeurs d'école au Togo.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveSubTab('analytics')}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 self-start sm:self-auto whitespace-nowrap"
+                >
+                  <span>Consulter l'audience</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
               {/* Stats Widgets */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
@@ -1862,6 +2085,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
           )}
 
+                    {/* TAB: VISITOR ANALYTICS */}
+          {activeSubTab === 'analytics' && (
+            <AdminVisitorAnalytics totalRegisteredSchools={schools.length} />
+          )}
+
           {/* TAB 5: PLATFORM & PAYMENT SETTINGS */}
           {activeSubTab === 'settings' && (
             <div className="space-y-6 animate-fadeIn">
@@ -2640,6 +2868,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           { id: 'schools', label: 'Écoles', icon: Building2 },
           { id: 'payments', label: 'Paiements', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
           { id: 'licenses', label: 'Licences', icon: Key },
+          { id: 'analytics', label: 'Audience', icon: BarChart3 },
           { id: 'settings', label: 'Réglages', icon: Settings },
         ].map(item => {
           const Icon = item.icon;

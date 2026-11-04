@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { recordPageView } from '../lib/analytics';
 import { 
   Users, 
   Sparkles, 
@@ -63,6 +64,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   });
 
   useEffect(() => {
+    recordPageView('/landing');
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
       setShowScrollTop(window.scrollY > 400);

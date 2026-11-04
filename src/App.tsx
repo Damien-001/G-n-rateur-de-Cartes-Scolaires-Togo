@@ -33,6 +33,7 @@ import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PR
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid } from './lib/db';
 import { setStoredSchoolInfo } from './lib/offlineStorage';
+import { recordPageView } from './lib/analytics';
 import { formatDateDisplay } from './lib/utils';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { ClassDirectoryView } from './components/ClassDirectoryView';
