@@ -33,6 +33,7 @@ import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PR
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid } from './lib/db';
 import { setStoredSchoolInfo } from './lib/offlineStorage';
+import { formatDateDisplay } from './lib/utils';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { ClassDirectoryView } from './components/ClassDirectoryView';
 import { ImportExport } from './components/ImportExport';
@@ -126,11 +127,11 @@ export default function App({ session, onLogout }: AppProps) {
       matricule: s.matricule,
       classe: s.className,
       annee_scolaire: s.schoolYear || '2025-2026',
-      date_naissance: s.birthDate || '',
+      date_naissance: formatDateDisplay(s.birthDate),
       lieu_naissance: s.birthPlace || '',
       centre_examen: s.examCenter || '',
       photo_url: s.photoUrl || '',
-      date_expiration: s.expirationDate || '',
+      date_expiration: formatDateDisplay(s.expirationDate),
     }));
     const csv = Papa.unparse(dataToExport, {
       columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],

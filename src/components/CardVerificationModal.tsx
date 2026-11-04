@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Student, SchoolInfo } from '../types';
+import { formatDateDisplay } from '../lib/utils';
 import { QRGenerator } from './QRGenerator';
 
 interface CardVerificationModalProps {
@@ -175,7 +176,7 @@ export const CardVerificationModal: React.FC<CardVerificationModalProps> = ({
                     {verifiedStudent.birthDate && (
                       <p className="text-[11px] text-slate-600 font-medium flex items-center gap-1 pt-0.5">
                         <Calendar className="w-3 h-3 text-slate-400" />
-                        Né(e) le {verifiedStudent.birthDate} {verifiedStudent.birthPlace ? `à ${verifiedStudent.birthPlace}` : ''}
+                        Né(e) le {formatDateDisplay(verifiedStudent.birthDate)} {verifiedStudent.birthPlace ? `à ${verifiedStudent.birthPlace}` : ''}
                       </p>
                     )}
                   </div>
@@ -187,7 +188,7 @@ export const CardVerificationModal: React.FC<CardVerificationModalProps> = ({
                     <Building2 className="w-3 h-3 text-emerald-700" />
                     {schoolInfo.location || 'République Togolaise'}
                   </span>
-                  <span>Expire le : {verifiedStudent.expirationDate || '31/08/2026'}</span>
+                  <span>Expire le : {formatDateDisplay(verifiedStudent.expirationDate) || '31/08/2026'}</span>
                 </div>
               </div>
 

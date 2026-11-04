@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { normalizeDateToInput } from './dateUtils';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
 import { 
@@ -26,11 +27,11 @@ function dbToStudent(row: DbStudent): Student {
     matricule: row.matricule ?? '',
     className: row.class_name ?? '',
     schoolYear: row.school_year ?? '',
-    birthDate: row.birth_date ?? '',
+    birthDate: normalizeDateToInput(row.birth_date) || (row.birth_date ?? ''),
     birthPlace: row.birth_place ?? '',
     examCenter: row.exam_center ?? '',
     photoUrl: row.photo_url ?? '',
-    expirationDate: row.expiration_date ?? '',
+    expirationDate: normalizeDateToInput(row.expiration_date) || (row.expiration_date ?? ''),
   };
 }
 
@@ -43,11 +44,11 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     matricule: student.matricule || '',
     class_name: student.className || '',
     school_year: student.schoolYear || '',
-    birth_date: student.birthDate || null,
+    birth_date: normalizeDateToInput(student.birthDate) || student.birthDate || null,
     birth_place: student.birthPlace || null,
     exam_center: student.examCenter || null,
     photo_url: student.photoUrl || null,
-    expiration_date: student.expirationDate || null,
+    expiration_date: normalizeDateToInput(student.expirationDate) || student.expirationDate || null,
   };
 }
 
@@ -72,7 +73,11 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
 // ─── Students (Offline-First) ─────────────────────────────────────────────────
 
 export async function fetchStudents(userId: string): Promise<Student[]> {
-  const localStudents = getStoredStudents(userId);
+  const localStudents = getStoredStudents(userId).map(s => ({
+    ...s,
+    birthDate: normalizeDateToInput(s.birthDate) || s.birthDate,
+    expirationDate: normalizeDateToInput(s.expirationDate) || s.expirationDate,
+  }));
 
   // Si l'utilisateur est hors-ligne ou que l'ID n'est pas un UUID valide (ex: admin, invité démo),
   // renvoyer immédiatement les données du cache local sans requêter Supabase
@@ -205,7 +210,9 @@ export async function insertStudents(students: Student[], userId: string): Promi
   const localList = getStoredStudents(userId);
   const preparedStudents = students.map(s => ({
     ...s,
-    id: s.id || `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    id: s.id || `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    birthDate: normalizeDateToInput(s.birthDate) || s.birthDate,
+    expirationDate: normalizeDateToInput(s.expirationDate) || s.expirationDate,
   }));
 
   // Sauvegarde locale immédiate

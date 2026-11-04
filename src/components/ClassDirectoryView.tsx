@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Student, SchoolInfo } from '../types';
+import { formatDateDisplay } from '../lib/utils';
 import { 
   GraduationCap, 
   Users, 
@@ -420,7 +421,7 @@ export const ClassDirectoryView: React.FC<ClassDirectoryViewProps> = ({
 
                         {/* Birth */}
                         <td className="py-2.5 px-4 text-slate-600">
-                          <span>{s.birthDate || '—'}</span>
+                          <span className="font-semibold text-slate-800">{formatDateDisplay(s.birthDate)}</span>
                           {s.birthPlace && <span className="text-[10px] text-slate-400 block">{s.birthPlace}</span>}
                         </td>
 

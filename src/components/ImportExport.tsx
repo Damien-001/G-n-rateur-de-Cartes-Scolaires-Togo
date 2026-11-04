@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
 import { Student } from '../types';
+import { formatDateDisplay } from '../lib/utils';
 import { Upload, FileSpreadsheet, FileDown } from 'lucide-react';
 
 const ClassImportModal = React.lazy(() => import('./ClassImportModal').then(m => ({ default: m.ClassImportModal })));
@@ -85,11 +86,11 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       matricule: s.matricule,
       classe: s.className,
       annee_scolaire: s.schoolYear || '2025-2026',
-      date_naissance: s.birthDate || '',
+      date_naissance: formatDateDisplay(s.birthDate),
       lieu_naissance: s.birthPlace || '',
       centre_examen: s.examCenter || '',
       photo_url: s.photoUrl || '',
-      date_expiration: s.expirationDate || '',
+      date_expiration: formatDateDisplay(s.expirationDate),
     }));
 
     const csv = Papa.unparse(dataToExport, {

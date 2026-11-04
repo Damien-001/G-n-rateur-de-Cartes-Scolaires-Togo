@@ -1,6 +1,7 @@
 import React from 'react';
 import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
 import { QRGenerator } from './QRGenerator';
+import { formatDateDisplay } from '../lib/utils';
 
 interface IDCardProps {
   student: Student;
@@ -10,14 +11,7 @@ interface IDCardProps {
 
 export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, showCuttingMarks = true }) => {
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '----';
-    if (dateStr.includes('-')) {
-      const parts = dateStr.split('-');
-      if (parts.length === 3 && parts[0].length === 4) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    }
-    return dateStr;
+    return formatDateDisplay(dateStr);
   };
 
   const colors = { ...DEFAULT_CARD_COLORS, ...schoolInfo.cardColors };

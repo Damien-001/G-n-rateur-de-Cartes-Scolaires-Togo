@@ -3,6 +3,7 @@ import { Student, SchoolInfo, CLASSES_LIST, SCHOOL_YEARS } from '../types';
 import { X, Upload, Plus, Trash2, Edit2, Camera, User, Calendar, MapPin, Shield, Landmark, BookOpen, AlertCircle } from 'lucide-react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
+import { normalizeDateToInput } from '../lib/utils';
 
 interface StudentFormProps {
   student?: Student;
@@ -26,13 +27,32 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
     matricule:  student?.matricule  ?? '',
     className:  student?.className  ?? (defaultClass || ''),
     schoolYear: student?.schoolYear ?? '2025-2026',
-    birthDate:  student?.birthDate  ?? '',
+    birthDate:  normalizeDateToInput(student?.birthDate),
     birthPlace: student?.birthPlace ?? '',
     examCenter: student?.examCenter ?? '',
     photoUrl:   student?.photoUrl   ?? '',
     qrCodeData: student?.qrCodeData ?? '',
-    expirationDate: student?.expirationDate ?? '',
+    expirationDate: normalizeDateToInput(student?.expirationDate),
   });
+
+  // Re-synchroniser si l'etudiant selectionne change
+  useEffect(() => {
+    if (student) {
+      setFormData({
+        firstName:  student.firstName  ?? '',
+        lastName:   student.lastName   ?? '',
+        matricule:  student.matricule  ?? '',
+        className:  student.className  ?? (defaultClass || ''),
+        schoolYear: student.schoolYear ?? '2025-2026',
+        birthDate:  normalizeDateToInput(student.birthDate),
+        birthPlace: student.birthPlace ?? '',
+        examCenter: student.examCenter ?? '',
+        photoUrl:   student.photoUrl   ?? '',
+        qrCodeData: student.qrCodeData ?? '',
+        expirationDate: normalizeDateToInput(student.expirationDate),
+      });
+    }
+  }, [student, defaultClass]);
 
   const [isCustomClassInput, setIsCustomClassInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -213,6 +233,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       const studentData = {
         ...formData,
         id: student?.id || crypto.randomUUID(),
+        birthDate: normalizeDateToInput(formData.birthDate) || formData.birthDate || '',
+        expirationDate: normalizeDateToInput(formData.expirationDate) || formData.expirationDate || '',
       } as Student;
       
       console.log('👤 Données étudiant finales:', studentData);
@@ -388,7 +410,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                   <input
                     required
                     type="date"
-                    value={formData.birthDate}
+                    value={normalizeDateToInput(formData.birthDate)}
                     onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
                   />
@@ -412,7 +434,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                 </label>
                 <input
                   type="date"
-                  value={formData.expirationDate}
+                  value={normalizeDateToInput(formData.expirationDate)}
                   onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
                 />

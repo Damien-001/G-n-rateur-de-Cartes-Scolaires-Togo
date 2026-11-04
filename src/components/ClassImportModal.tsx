@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Papa from 'papaparse';
 import { Student, CLASSES_LIST } from '../types';
+import { normalizeDateToInput, formatDateDisplay } from '../lib/utils';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -23,6 +24,26 @@ interface ClassImportModalProps {
   totalCurrentStudents: number;
   effectiveQuota?: number;
   isEffectivePro?: boolean;
+}
+
+function findRowValue(row: any, keys: string[]): string {
+  if (!row) return '';
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+      return String(row[k]).trim();
+    }
+  }
+  const rowKeys = Object.keys(row);
+  for (const targetKey of keys) {
+    const cleanTarget = targetKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const rk of rowKeys) {
+      const cleanRk = rk.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
+      if (cleanRk === cleanTarget && row[rk] !== undefined && row[rk] !== null && String(row[rk]).trim() !== '') {
+        return String(row[rk]).trim();
+      }
+    }
+  }
+  return '';
 }
 
 export const ClassImportModal: React.FC<ClassImportModalProps> = ({
@@ -92,18 +113,21 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
         let autoClassMissingCount = 0;
 
         results.data.forEach((row: any) => {
-          // Normalize column names
-          const lastName = (row.nom || row.lastName || row.Nom || '').trim();
-          const firstName = (row.prenom || row.firstName || row.Prenom || row.prenoms || row.Prenoms || '').trim();
-          const matricule = (row.matricule || row.Matricule || '').trim();
-          let cls = (row.classe || row.className || row.Classe || '').trim();
+          // Normalisation multi-variantes des colonnes
+          const lastName = findRowValue(row, ['nom', 'lastname', 'last_name', 'nom_de_famille', 'Nom']);
+          const firstName = findRowValue(row, ['prenom', 'prenoms', 'firstname', 'first_name', 'prenom_eleve', 'Prenom']);
+          const matricule = findRowValue(row, ['matricule', 'numero_matricule', 'id_eleve', 'code', 'Matricule']);
+          let cls = findRowValue(row, ['classe', 'class', 'classname', 'class_name', 'Classe', 'niveau']);
 
-          // If assigning to specific class, override
+          // Si affectation à une classe spécifique sélectionnée
           if (importMode === 'specific_class') {
             cls = effectiveTargetClass;
           } else if (!cls) {
             autoClassMissingCount++;
           }
+
+          const rawBirthDate = findRowValue(row, ['date_naissance', 'date_de_naissance', 'birthdate', 'birth_date', 'date_naiss', 'naissance', 'date_naissance_eleve', 'Date de naissance']);
+          const rawExpirationDate = findRowValue(row, ['date_expiration', 'expiration_date', 'expiration', 'expire_le', 'date_fin', 'Date d\'expiration']);
 
           if (lastName || firstName || matricule) {
             validRows.push({
@@ -112,12 +136,12 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
               lastName,
               matricule: matricule || `MTR-${Math.floor(1000 + Math.random() * 9000)}`,
               className: cls || (importMode === 'specific_class' ? effectiveTargetClass : 'Non définie'),
-              schoolYear: (row.annee_scolaire || row.schoolYear || row.annee || '2025-2026').trim(),
-              birthDate: (row.date_naissance || row.birthDate || '').trim(),
-              birthPlace: (row.lieu_naissance || row.birthPlace || '').trim(),
-              examCenter: (row.centre_examen || row.examCenter || '').trim(),
-              photoUrl: (row.photo_url || row.photoUrl || '').trim(),
-              expirationDate: (row.date_expiration || row.expirationDate || '').trim(),
+              schoolYear: findRowValue(row, ['annee_scolaire', 'school_year', 'annee', 'annee_academique']) || '2025-2026',
+              birthDate: normalizeDateToInput(rawBirthDate),
+              birthPlace: findRowValue(row, ['lieu_naissance', 'birth_place', 'lieu_de_naissance', 'lieu', 'ville_naissance']),
+              examCenter: findRowValue(row, ['centre_examen', 'exam_center', 'centre', 'etablissement', 'centre_d_examen']),
+              photoUrl: findRowValue(row, ['photo_url', 'photoUrl', 'photo', 'image', 'url_photo']),
+              expirationDate: normalizeDateToInput(rawExpirationDate),
             });
           }
         });
@@ -479,7 +503,7 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
                           </span>
                         </td>
                         <td className="py-2 px-3 text-slate-500 text-[11px]">
-                          {s.birthDate || '—'}
+                          {formatDateDisplay(s.birthDate)}
                         </td>
                       </tr>
                     ))}
