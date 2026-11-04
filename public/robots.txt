@@ -6,3 +6,4 @@ Disallow: /src/
 
 # Sitemap location
 Sitemap: https://cardschool.tg/sitemap.xml
+
