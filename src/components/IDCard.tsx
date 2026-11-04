@@ -57,23 +57,9 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
       boxSizing: 'border-box',
       display: 'flex',
       flexDirection: 'column',
-      boxShadow: showCuttingMarks ? 'none' : '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
-      borderRadius: showCuttingMarks ? 0 : 12,
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.04)',
+      borderRadius: 10,
     }}>
-
-      {/* Cutting marks */}
-      {showCuttingMarks && (
-        <>
-          <div style={{ position: 'absolute', top: 0, left: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', top: -4, left: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', top: 0, right: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', top: -4, right: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', bottom: 0, left: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', bottom: -4, left: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', bottom: 0, right: -4, width: 10, height: 1, backgroundColor: '#000', zIndex: 10 }} />
-          <div style={{ position: 'absolute', bottom: -4, right: 0, width: 1, height: 10, backgroundColor: '#000', zIndex: 10 }} />
-        </>
-      )}
 
       {/* Header */}
       <div style={{
