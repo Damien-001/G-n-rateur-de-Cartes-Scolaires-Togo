@@ -2507,13 +2507,29 @@ export function getLocalFedaKey(): string {
 
 /** Fetch platform settings configured by super-admin (Aggregating Supabase & LocalStorage) */
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
+  // Read local cache first for video & Fedapay settings fallback
+  let localVideoUrl = '';
+  let localVideoTitle = '';
+  let localVideoPoster = '';
+  let localFedaKey = '';
+  try {
+    const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
+    if (raw) {
+      const p = JSON.parse(raw);
+      localVideoUrl = p.demoVideoUrl || '';
+      localVideoTitle = p.demoVideoTitle || '';
+      localVideoPoster = p.demoVideoPoster || '';
+      localFedaKey = sanitizeKey(p.fedapayPublicKey);
+    }
+  } catch {}
+
   // 1. Try Supabase custom table platform_settings
   try {
     const { data, error } = await supabase
       .from('platform_settings')
       .select('*')
       .eq('id', 'global_config')
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       // Prefer DB key if valid, otherwise fallback to localStorage key
@@ -2530,13 +2546,16 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         whatsappNumber: data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
         officeAddress: data.office_address || DEFAULT_PLATFORM_SETTINGS.officeAddress,
         fedapayEnabled: data.fedapay_enabled !== undefined ? Boolean(data.fedapay_enabled) : DEFAULT_PLATFORM_SETTINGS.fedapayEnabled,
-        fedapayPublicKey: dbKey || getLocalFedaKey(),
+        fedapayPublicKey: dbKey || localFedaKey,
         fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
-        demoVideoUrl: data.demo_video_url !== undefined ? data.demo_video_url : DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
-        demoVideoTitle: data.demo_video_title || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
-        demoVideoPoster: data.demo_video_poster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+        // If data.demo_video_url is undefined/null in DB (e.g. column not yet in remote schema), preserve local cache
+        demoVideoUrl: (data.demo_video_url !== undefined && data.demo_video_url !== null) 
+          ? data.demo_video_url 
+          : (localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl),
+        demoVideoTitle: data.demo_video_title || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
+        demoVideoPoster: data.demo_video_poster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
         updatedAt: data.updated_at
       };
       localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2557,13 +2576,15 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 
     if (!sysError && systemRow && systemRow.card_colors) {
       const parsed = typeof systemRow.card_colors === 'string' ? JSON.parse(systemRow.card_colors) : systemRow.card_colors;
-      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl)) {
         const dbKey = sanitizeKey(parsed.fedapayPublicKey);
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
           ...parsed,
-          // Always prefer a real key: use DB key if valid, else fallback to localStorage key
-          fedapayPublicKey: dbKey || getLocalFedaKey(),
+          demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
+          demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
+          demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+          fedapayPublicKey: dbKey || localFedaKey,
           updatedAt: systemRow.updated_at
         };
         localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2587,12 +2608,15 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     if (!logError && logs && logs.length > 0 && logs[0].details) {
       try {
         const parsed = JSON.parse(logs[0].details);
-        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail)) {
+        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl)) {
           const dbKey = sanitizeKey(parsed.fedapayPublicKey);
           const merged: PlatformSettings = {
             ...DEFAULT_PLATFORM_SETTINGS,
             ...parsed,
-            fedapayPublicKey: dbKey || getLocalFedaKey(),
+            demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
+            demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
+            demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+            fedapayPublicKey: dbKey || localFedaKey,
             updatedAt: logs[0].created_at
           };
           localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2640,9 +2664,24 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     console.warn('savePlatformSettings localStorage error:', err);
   }
 
-  // 2. Try Supabase platform_settings table
+  // 2. Save to Supabase school_info system entry (Guaranteed to exist in DB & persists full JSON)
   try {
-    await supabase.from('platform_settings').upsert({
+    await supabase.from('school_info').upsert({
+      user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
+      name: 'CONFIGURATION SYSTEME SUKUPASS',
+      logo_url: null,
+      signature_url: null,
+      stamp_url: null,
+      card_colors: settingsToSave as any,
+      updated_at: timestamp
+    }, { onConflict: 'user_id' });
+  } catch (err) {
+    console.warn('savePlatformSettings Supabase school_info system row error:', err);
+  }
+
+  // 3. Try Supabase platform_settings table (with fallback if schema does not yet have demo_video columns)
+  try {
+    const { error: fullError } = await supabase.from('platform_settings').upsert({
       id: 'global_config',
       tmoney_number: settingsToSave.tmoneyNumber,
       tmoney_holder: settingsToSave.tmoneyHolder,
@@ -2663,23 +2702,30 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
       demo_video_poster: settingsToSave.demoVideoPoster,
       updated_at: timestamp
     }, { onConflict: 'id' });
+
+    if (fullError) {
+      console.warn('savePlatformSettings Supabase full upsert warning, retrying base columns:', fullError);
+      await supabase.from('platform_settings').upsert({
+        id: 'global_config',
+        tmoney_number: settingsToSave.tmoneyNumber,
+        tmoney_holder: settingsToSave.tmoneyHolder,
+        flooz_number: settingsToSave.floozNumber,
+        flooz_holder: settingsToSave.floozHolder,
+        annual_price_cfa: settingsToSave.annualPriceCFA,
+        support_email: settingsToSave.supportEmail,
+        support_phone: settingsToSave.supportPhone,
+        whatsapp_number: settingsToSave.whatsappNumber,
+        office_address: settingsToSave.officeAddress,
+        fedapay_enabled: settingsToSave.fedapayEnabled,
+        fedapay_public_key: settingsToSave.fedapayPublicKey,
+        fedapay_environment: settingsToSave.fedapayEnvironment,
+        payment_instructions: settingsToSave.paymentInstructions,
+        support_notice: settingsToSave.supportNotice,
+        updated_at: timestamp
+      }, { onConflict: 'id' });
+    }
   } catch (err) {
     console.warn('savePlatformSettings Supabase platform_settings table error:', err);
-  }
-
-  // 3. Save to Supabase school_info system entry (Guaranteed to exist in DB)
-  try {
-    await supabase.from('school_info').upsert({
-      user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
-      name: 'CONFIGURATION SYSTEME SUKUPASS',
-      logo_url: null,
-      signature_url: null,
-      stamp_url: null,
-      card_colors: settingsToSave as any,
-      updated_at: timestamp
-    }, { onConflict: 'user_id' });
-  } catch (err) {
-    console.warn('savePlatformSettings Supabase school_info system row error:', err);
   }
 
   // 4. Save to Supabase admin_logs with raw JSON payload

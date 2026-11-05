@@ -5,16 +5,34 @@
  */
 
 export interface VideoSourceInfo {
-  type: 'youtube' | 'vimeo' | 'loom' | 'gdrive' | 'direct';
+  type: 'youtube' | 'vimeo' | 'loom' | 'gdrive' | 'direct' | 'google_photos_unsupported';
   embedUrl?: string;
   directUrl?: string;
   originalUrl: string;
+  isUnsupported?: boolean;
+  warning?: string;
+}
+
+/** Détecte si l'URL provient de Google Photos (qui bloque l'intégration externe via SAMEORIGIN) */
+export function isGooglePhotosUrl(url?: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  return /photos\.(google\.com|app\.goo\.gl)/i.test(url);
 }
 
 export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const url = rawUrl.trim();
   if (!url) return null;
+
+  // Détection explicite de Google Photos (incompatible avec l'intégration web)
+  if (isGooglePhotosUrl(url)) {
+    return {
+      type: 'google_photos_unsupported',
+      originalUrl: url,
+      isUnsupported: true,
+      warning: "Google Photos n'autorise pas la diffusion de vidéos sur des sites web externes (restriction de sécurité SAMEORIGIN). Veuillez plutôt déposer votre vidéo sur YouTube (en mode Non répertoriée) ou sur Google Drive (en partage public)."
+    };
+  }
 
   // 1. YouTube
   // Formats: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID, youtube.com/shorts/ID
@@ -64,4 +82,5 @@ export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
     originalUrl: url
   };
 }
+
 

@@ -100,7 +100,7 @@ export const LandingVideoSection: React.FC<LandingVideoSectionProps> = ({
             {/* Video Player Display Area */}
             <div className="relative aspect-video w-full bg-slate-950 flex items-center justify-center overflow-hidden">
               
-              {videoSource ? (
+              {videoSource && !videoSource.isUnsupported ? (
                 // 1. EMBED (YouTube, Vimeo, Loom, Google Drive)
                 videoSource.embedUrl ? (
                   !isPlaying && videoPoster ? (

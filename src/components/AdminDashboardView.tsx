@@ -59,7 +59,7 @@ import {
   Play,
   Video
 } from 'lucide-react';
-import { parseVideoSource } from '../lib/videoHelper';
+import { parseVideoSource, isGooglePhotosUrl } from '../lib/videoHelper';
 import {
   fetchAllSchools,
   fetchAllStudentsCount,
@@ -146,6 +146,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   };
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'analytics' | 'settings' | 'logs'>('overview');
+  const activeSubTabRef = useRef(activeSubTab);
+  useEffect(() => {
+    activeSubTabRef.current = activeSubTab;
+  }, [activeSubTab]);
+
+  const [isSavingVideo, setIsSavingVideo] = useState(false);
+  const [videoSaveSuccess, setVideoSaveSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
 
@@ -246,7 +253,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         }
         return allMsgs;
       });
-      setPlatformSettings(pSettings);
+      // Only update platform settings if not a silent background sync OR if user is not currently in settings tab
+      if (!silent || activeSubTabRef.current !== 'settings') {
+        setPlatformSettings(pSettings);
+      }
 
       // Auto-select first chat if none selected
       if (!selectedSchoolChatId && allSchools.length > 0) {
@@ -766,6 +776,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde des paramètres.' });
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  // Mise à jour immédiate des champs vidéo avec cache local instantané
+  const updateVideoSettingsField = (field: 'demoVideoUrl' | 'demoVideoTitle' | 'demoVideoPoster', val: string) => {
+    setPlatformSettings(prev => {
+      const updated = { ...prev, [field]: val };
+      try {
+        localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Enregistrement dédié et instantané de la vidéo de présentation (sans avoir à scroller en bas de page)
+  const handleSaveVideoOnly = async () => {
+    setIsSavingVideo(true);
+    setVideoSaveSuccess(false);
+    try {
+      const ok = await savePlatformSettings(platformSettings);
+      if (ok) {
+        setVideoSaveSuccess(true);
+        setTimeout(() => setVideoSaveSuccess(false), 3500);
+        setSettingsToast({ type: 'success', message: 'Vidéo de présentation enregistrée avec succès ! Elle est désormais active sur la page d\'accueil.' });
+        setTimeout(() => setSettingsToast(null), 5000);
+      } else {
+        setSettingsToast({ type: 'error', message: "Erreur lors de l'enregistrement de la vidéo." });
+      }
+    } catch (err) {
+      setSettingsToast({ type: 'error', message: "Erreur lors de l'enregistrement de la vidéo." });
+    } finally {
+      setIsSavingVideo(false);
     }
   };
 
@@ -2351,7 +2394,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     {/* Section 2.5: Vidéo de Présentation (Landing Page) */}
                     <div className="double-bezel-outer">
                       <div className="double-bezel-inner p-6 space-y-4 bg-white">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200/70 gap-3">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-xs">
                               <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -2361,20 +2404,46 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 Vidéo de Présentation • Vitrine Landing Page
                               </h3>
                               <p className="text-[10px] text-slate-400 font-medium">
-                                Diffusez votre vidéo de présentation sur la page d'accueil de SukuPass
+                                Diffusez votre vidéo de présentation officielle sur la page d'accueil de SukuPass
                               </p>
                             </div>
                           </div>
-                          {platformSettings.demoVideoUrl ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              Active sur la vitrine
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-semibold text-slate-400 px-2 py-0.5 bg-slate-100 rounded-md">
-                              Non définie
-                            </span>
-                          )}
+
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            {isGooglePhotosUrl(platformSettings.demoVideoUrl) ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                Google Photos Incompatible
+                              </span>
+                            ) : platformSettings.demoVideoUrl ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Active sur la vitrine
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-slate-400 px-2.5 py-1 bg-slate-100 rounded-md">
+                                Non définie
+                              </span>
+                            )}
+
+                            {/* Bouton de sauvegarde directe en en-tête */}
+                            <button
+                              type="button"
+                              onClick={handleSaveVideoOnly}
+                              disabled={isSavingVideo}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                              title="Enregistrer la vidéo immédiatement"
+                            >
+                              {isSavingVideo ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : videoSaveSuccess ? (
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                              ) : (
+                                <Save className="w-3 h-3" />
+                              )}
+                              <span>{videoSaveSuccess ? 'Enregistré !' : 'Enregistrer'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-4 pt-1">
@@ -2388,20 +2457,49 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <input
                                 type="url"
                                 value={platformSettings.demoVideoUrl || ''}
-                                onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoUrl: e.target.value }))}
-                                placeholder="Ex: https://www.youtube.com/watch?v=... ou https://.../video.mp4"
+                                onChange={e => updateVideoSettingsField('demoVideoUrl', e.target.value)}
+                                placeholder="Ex: https://www.youtube.com/watch?v=... ou https://drive.google.com/... ou https://.../video.mp4"
                                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                               />
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 font-medium pt-0.5">
                               <span className="font-bold text-slate-600">Plateformes supportées :</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">YouTube</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Fichier .MP4 / WebM</span>
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">YouTube (Recommandé)</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Google Drive</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Loom</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Vimeo</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Google Drive</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Fichier .MP4 / WebM</span>
                             </div>
                           </div>
+
+                          {/* Alerte spécifique Google Photos */}
+                          {isGooglePhotosUrl(platformSettings.demoVideoUrl) && (
+                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-2.5">
+                              <div className="flex items-center gap-2 font-black text-xs text-amber-900">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>Lien Google Photos détecté — Non intégrable directement</span>
+                              </div>
+                              <p className="text-[11px] leading-relaxed text-amber-900/90 font-medium">
+                                Google bloque automatiquement la lecture de ses photos et vidéos sur des sites web externes pour des raisons de confidentialité et de sécurité (en-tête de restriction <code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">SAMEORIGIN</code>). Votre vidéo restera invisible pour les visiteurs avec ce lien.
+                              </p>
+                              <div className="bg-white/90 rounded-xl p-3.5 border border-amber-200 space-y-2 text-[11px] text-slate-800">
+                                <p className="font-black text-amber-950 text-xs">
+                                  Comment faire fonctionner votre vidéo en 2 minutes :
+                                </p>
+                                <ol className="list-decimal list-inside space-y-1.5 font-medium">
+                                  <li>
+                                    <strong className="text-emerald-700">Option 1 (Recommandée & Gratuite) — YouTube :</strong> Téléversez votre vidéo sur YouTube, réglez la visibilité sur <strong>« Non répertoriée »</strong> (personne ne peut la trouver par recherche, seuls les visiteurs de SukuPass la verront), puis collez le lien YouTube ici.
+                                  </li>
+                                  <li>
+                                    <strong className="text-emerald-700">Option 2 — Google Drive :</strong> Déposez la vidéo sur votre Google Drive, clic droit &gt; <em>Partager</em> &gt; sélectionnez <strong>« Tous les utilisateurs disposant du lien »</strong> (Lecteur), puis collez le lien de partage ici.
+                                  </li>
+                                  <li>
+                                    <strong className="text-emerald-700">Option 3 — Fichier direct :</strong> Un fichier direct hébergé se terminant par <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-[10px]">.mp4</code>.
+                                  </li>
+                                </ol>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Video Title */}
                           <div className="space-y-1.5">
@@ -2411,7 +2509,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <input
                               type="text"
                               value={platformSettings.demoVideoTitle || ''}
-                              onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoTitle: e.target.value }))}
+                              onChange={e => updateVideoSettingsField('demoVideoTitle', e.target.value)}
                               placeholder="Ex: Découvrez SukuPass en action — Les badges scolaires en quelques clics"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                             />
@@ -2426,7 +2524,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <input
                               type="url"
                               value={platformSettings.demoVideoPoster || ''}
-                              onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoPoster: e.target.value }))}
+                              onChange={e => updateVideoSettingsField('demoVideoPoster', e.target.value)}
                               placeholder="Ex: https://.../image-miniature.jpg"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                             />
@@ -2445,12 +2543,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   </span>
                                   {parsed?.type && (
                                     <span className="text-[10px] font-mono font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">
-                                      Source détectée : {parsed.type.toUpperCase()}
+                                      Source : {parsed.type.toUpperCase()}
                                     </span>
                                   )}
                                 </div>
                                 <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 aspect-video max-w-full shadow-inner relative flex items-center justify-center">
-                                  {parsed ? (
+                                  {parsed && !parsed.isUnsupported ? (
                                     parsed.embedUrl ? (
                                       <iframe
                                         src={parsed.embedUrl}
@@ -2469,12 +2567,50 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                       />
                                     )
                                   ) : (
-                                    <p className="text-xs text-slate-400 font-medium">Format d'URL non reconnu</p>
+                                    <div className="p-6 text-center max-w-md mx-auto space-y-2">
+                                      <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
+                                      <p className="text-xs text-white font-bold">
+                                        {parsed?.warning || "Format d'URL non reconnu"}
+                                      </p>
+                                      <p className="text-[10px] text-slate-400">
+                                        Utilisez un lien YouTube ou Google Drive public pour activer le lecteur.
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                               </div>
                             );
                           })()}
+
+                          {/* Barre d'action basse dédiée pour enregistrer la vidéo */}
+                          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              Enregistrez vos modifications pour les publier instantanément sur la vitrine.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleSaveVideoOnly}
+                              disabled={isSavingVideo}
+                              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+                            >
+                              {isSavingVideo ? (
+                                <>
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  Enregistrement...
+                                </>
+                              ) : videoSaveSuccess ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                  Enregistré avec succès !
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="w-3.5 h-3.5" />
+                                  Enregistrer la Vidéo
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
