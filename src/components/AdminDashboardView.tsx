@@ -55,8 +55,11 @@ import {
   X,
   Zap,
   Lock,
-  ArrowDown
+  ArrowDown,
+  Play,
+  Video
 } from 'lucide-react';
+import { parseVideoSource } from '../lib/videoHelper';
 import { 
   fetchAllSchools, 
   fetchAllStudentsCount, 
@@ -2355,6 +2358,137 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               />
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 2.5: Vidéo de Présentation (Landing Page) */}
+                    <div className="double-bezel-outer">
+                      <div className="double-bezel-inner p-6 space-y-4 bg-white">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-xs">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                                Vidéo de Présentation • Vitrine Landing Page
+                              </h3>
+                              <p className="text-[10px] text-slate-400 font-medium">
+                                Diffusez votre vidéo de présentation sur la page d'accueil de SukuPass
+                              </p>
+                            </div>
+                          </div>
+                          {platformSettings.demoVideoUrl ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Active sur la vitrine
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-slate-400 px-2 py-0.5 bg-slate-100 rounded-md">
+                              Non définie
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-4 pt-1">
+                          {/* Video URL */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Lien de la Vidéo (URL)
+                            </label>
+                            <div className="relative">
+                              <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input
+                                type="url"
+                                value={platformSettings.demoVideoUrl || ''}
+                                onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoUrl: e.target.value }))}
+                                placeholder="Ex: https://www.youtube.com/watch?v=... ou https://.../video.mp4"
+                                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 font-medium pt-0.5">
+                              <span className="font-bold text-slate-600">Plateformes supportées :</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">YouTube</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Fichier .MP4 / WebM</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Loom</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Vimeo</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Google Drive</span>
+                            </div>
+                          </div>
+
+                          {/* Video Title */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Titre / Slogan de la Vidéo
+                            </label>
+                            <input
+                              type="text"
+                              value={platformSettings.demoVideoTitle || ''}
+                              onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoTitle: e.target.value }))}
+                              placeholder="Ex: Découvrez SukuPass en action — Les badges scolaires en quelques clics"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                            />
+                            <p className="text-[10px] text-slate-400 font-medium">Sous-titre affiché juste au-dessus du lecteur vidéo sur la vitrine</p>
+                          </div>
+
+                          {/* Video Poster Image (Optional) */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Image de Couverture / Miniature (Optionnel)
+                            </label>
+                            <input
+                              type="url"
+                              value={platformSettings.demoVideoPoster || ''}
+                              onChange={e => setPlatformSettings(prev => ({ ...prev, demoVideoPoster: e.target.value }))}
+                              placeholder="Ex: https://.../image-miniature.jpg"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                            />
+                            <p className="text-[10px] text-slate-400 font-medium">Image affichée sur le lecteur avant le démarrage de la vidéo</p>
+                          </div>
+
+                          {/* Live Video Preview in Admin */}
+                          {platformSettings.demoVideoUrl && (() => {
+                            const parsed = parseVideoSource(platformSettings.demoVideoUrl);
+                            return (
+                              <div className="pt-3 border-t border-slate-100 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                                    Aperçu direct du lecteur :
+                                  </span>
+                                  {parsed?.type && (
+                                    <span className="text-[10px] font-mono font-bold text-slate-600 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">
+                                      Source détectée : {parsed.type.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 aspect-video max-w-full shadow-inner relative flex items-center justify-center">
+                                  {parsed ? (
+                                    parsed.embedUrl ? (
+                                      <iframe
+                                        src={parsed.embedUrl}
+                                        title="Aperçu vidéo admin"
+                                        className="w-full h-full border-0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                      />
+                                    ) : (
+                                      <video
+                                        src={parsed.directUrl}
+                                        poster={platformSettings.demoVideoPoster || undefined}
+                                        controls
+                                        playsInline
+                                        className="w-full h-full object-contain"
+                                      />
+                                    )
+                                  ) : (
+                                    <p className="text-xs text-slate-400 font-medium">Format d'URL non reconnu</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

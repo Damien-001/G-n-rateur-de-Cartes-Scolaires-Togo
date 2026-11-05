@@ -2534,6 +2534,9 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
+        demoVideoUrl: data.demo_video_url !== undefined ? data.demo_video_url : DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
+        demoVideoTitle: data.demo_video_title || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
+        demoVideoPoster: data.demo_video_poster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
         updatedAt: data.updated_at
       };
       localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2655,6 +2658,9 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
       fedapay_environment: settingsToSave.fedapayEnvironment,
       payment_instructions: settingsToSave.paymentInstructions,
       support_notice: settingsToSave.supportNotice,
+      demo_video_url: settingsToSave.demoVideoUrl,
+      demo_video_title: settingsToSave.demoVideoTitle,
+      demo_video_poster: settingsToSave.demoVideoPoster,
       updated_at: timestamp
     }, { onConflict: 'id' });
   } catch (err) {

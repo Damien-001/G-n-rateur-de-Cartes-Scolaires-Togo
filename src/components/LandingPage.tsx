@@ -19,6 +19,9 @@ import {
 import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
+import { LandingVideoSection } from './LandingVideoSection';
+import { PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
+import { fetchPlatformSettings } from '../lib/db';
 
 interface LandingPageProps {
   onStartAuth: (mode: 'signup' | 'signin') => void;

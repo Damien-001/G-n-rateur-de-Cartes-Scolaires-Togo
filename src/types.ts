@@ -146,6 +146,12 @@ export interface PlatformSettings {
   // Consignes et messages d'aide
   paymentInstructions?: string;
   supportNotice?: string;
+
+  // Vidéo de présentation / Démonstration sur la Landing Page
+  demoVideoUrl?: string;
+  demoVideoTitle?: string;
+  demoVideoPoster?: string;
+
   updatedAt?: string;
 }
 
@@ -163,5 +169,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   fedapayPublicKey: '',
   fedapayEnvironment: 'sandbox',
   paymentInstructions: "Effectuez votre transfert T-Money ou Flooz. Téléversez ensuite votre capture d'écran dans le chat support pour validation immédiate par l'administrateur.",
-  supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte."
+  supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte.",
+  demoVideoUrl: '',
+  demoVideoTitle: 'Découvrez SukuPass en action — Les badges scolaires en quelques clics',
+  demoVideoPoster: ''
 };

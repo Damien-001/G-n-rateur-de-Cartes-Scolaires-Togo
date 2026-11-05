@@ -76,21 +76,27 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
   office_address       TEXT DEFAULT 'Lomé, Togo — Quartier Administratif',
   payment_instructions TEXT DEFAULT 'Effectuez votre transfert T-Money ou Flooz puis joignez la capture de votre reçu dans le chat pour activation immédiate.',
   support_notice       TEXT DEFAULT 'Support technique et commercial disponible du Lundi au Samedi de 07h30 à 18h30.',
+  demo_video_url       TEXT DEFAULT '',
+  demo_video_title     TEXT DEFAULT 'Découvrez SukuPass en action — Les badges scolaires en quelques clics',
+  demo_video_poster    TEXT DEFAULT '',
   updated_at           TIMESTAMPTZ DEFAULT now()
 );
 
 -- Sécurisation des colonnes pour platform_settings
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS tmoney_number TEXT DEFAULT '+228 90 00 00 00';
-ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS tmoney_holder TEXT DEFAULT 'CardSchool SAS (Togo)';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS tmoney_holder TEXT DEFAULT 'SukuPass SAS (Togo)';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS flooz_number TEXT DEFAULT '+228 99 00 00 00';
-ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS flooz_holder TEXT DEFAULT 'CardSchool SAS (Togo)';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS flooz_holder TEXT DEFAULT 'SukuPass SAS (Togo)';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS annual_price_cfa NUMERIC DEFAULT 30000;
-ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_email TEXT DEFAULT 'contact@cardschool.tg';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_email TEXT DEFAULT 'contact@sukupass.tg';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_phone TEXT DEFAULT '+228 90 00 00 00';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS whatsapp_number TEXT DEFAULT '+228 90 00 00 00';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS office_address TEXT DEFAULT 'Lomé, Togo — Quartier Administratif';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_instructions TEXT;
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_notice TEXT;
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_url TEXT DEFAULT '';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_title TEXT DEFAULT 'Découvrez SukuPass en action — Les badges scolaires en quelques clics';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_poster TEXT DEFAULT '';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 -- Insertion ou mise à jour de la configuration par défaut
@@ -98,11 +104,11 @@ INSERT INTO public.platform_settings (id, tmoney_number, tmoney_holder, flooz_nu
 VALUES (
   'global_config',
   '+228 90 00 00 00',
-  'CardSchool SAS (Togo)',
+  'SukuPass SAS (Togo)',
   '+228 99 00 00 00',
-  'CardSchool SAS (Togo)',
+  'SukuPass SAS (Togo)',
   30000,
-  'contact@cardschool.tg',
+  'contact@sukupass.tg',
   '+228 90 00 00 00',
   '+228 90 00 00 00',
   'Lomé, Togo — Quartier Administratif'
