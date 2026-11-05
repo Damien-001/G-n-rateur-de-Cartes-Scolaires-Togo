@@ -234,3 +234,4 @@ export const LandingVideoSection: React.FC<LandingVideoSectionProps> = ({
     </section>
   );
 };
+

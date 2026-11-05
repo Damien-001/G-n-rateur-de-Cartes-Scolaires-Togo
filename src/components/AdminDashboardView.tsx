@@ -1,42 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import {
   BarChart3,
   Sparkles,
-  Shield, 
-  Users, 
-  Building2, 
-  CreditCard, 
-  CheckCircle2, 
-  XCircle, 
-  Search, 
-  Calendar, 
-  User, 
-  PhoneCall, 
-  TrendingUp, 
-  History, 
-  Check, 
+  Shield,
+  Users,
+  Building2,
+  CreditCard,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Calendar,
+  User,
+  PhoneCall,
+  TrendingUp,
+  History,
+  Check,
   RefreshCw,
   LogOut,
   ChevronLeft,
-  ChevronRight, 
-  Key, 
-  Download, 
-  Copy, 
-  Filter, 
-  MapPin, 
-  Sliders, 
-  Plus, 
-  CheckCheck, 
-  MessageSquare, 
-  Power, 
-  PowerOff, 
-  Trash2, 
-  Eye, 
-  Send, 
-  Paperclip, 
-  Ban, 
-  ExternalLink, 
-  Smartphone, 
+  ChevronRight,
+  Key,
+  Download,
+  Copy,
+  Filter,
+  MapPin,
+  Sliders,
+  Plus,
+  CheckCheck,
+  MessageSquare,
+  Power,
+  PowerOff,
+  Trash2,
+  Eye,
+  Send,
+  Paperclip,
+  Ban,
+  ExternalLink,
+  Smartphone,
   AlertTriangle,
   Settings,
   Mail,
@@ -60,22 +60,22 @@ import {
   Video
 } from 'lucide-react';
 import { parseVideoSource } from '../lib/videoHelper';
-import { 
-  fetchAllSchools, 
-  fetchAllStudentsCount, 
-  updateSchoolSubscription, 
-  AdminSchoolDetail, 
-  saveAdminLog, 
-  fetchAllLicenseKeys, 
-  generateLicenseKey, 
-  toggleLicenseKeyStatus, 
-  deleteLicenseKey, 
-  exportSchoolsToCSV, 
-  updateSchoolCustomQuota, 
-  fetchAdminLogs, 
-  AdminLogItem, 
-  fetchChatMessages, 
-  sendChatMessage, 
+import {
+  fetchAllSchools,
+  fetchAllStudentsCount,
+  updateSchoolSubscription,
+  AdminSchoolDetail,
+  saveAdminLog,
+  fetchAllLicenseKeys,
+  generateLicenseKey,
+  toggleLicenseKeyStatus,
+  deleteLicenseKey,
+  exportSchoolsToCSV,
+  updateSchoolCustomQuota,
+  fetchAdminLogs,
+  AdminLogItem,
+  fetchChatMessages,
+  sendChatMessage,
   validatePaymentFromChat,
   fetchPlatformSettings,
   savePlatformSettings,
@@ -116,7 +116,7 @@ const playAdminChime = () => {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.36);
-  } catch {}
+  } catch { }
 };
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
@@ -140,7 +140,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       const next = !prev;
       try {
         localStorage.setItem('cardschool_admin_sidebar_open', String(next));
-      } catch {}
+      } catch { }
       return next;
     });
   };
@@ -148,7 +148,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'analytics' | 'settings' | 'logs'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
-  
+
   // Custom manual quotas state
   const [editingSchool, setEditingSchool] = useState<AdminSchoolDetail | null>(null);
   const [customQuotaVal, setCustomQuotaVal] = useState<number>(15);
@@ -270,7 +270,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       if (e.detail && Array.isArray(e.detail)) {
         setLicenseKeys(e.detail);
       } else {
-        fetchAllLicenseKeys().then(setLicenseKeys).catch(() => {});
+        fetchAllLicenseKeys().then(setLicenseKeys).catch(() => { });
       }
     };
 
@@ -296,7 +296,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             hasAttachment: !!newMsg.attachmentUrl
           });
           // Refresh schools in case a brand new school sent the message
-          fetchAllSchools().then(setSchools).catch(() => {});
+          fetchAllSchools().then(setSchools).catch(() => { });
         }
       }
     };
@@ -316,7 +316,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         });
         setUnreadNewAccountsCount(prev => prev + 1);
-        fetchAllSchools().then(setSchools).catch(() => {});
+        fetchAllSchools().then(setSchools).catch(() => { });
       }
     };
     window.addEventListener('cardschool_school_registered', handleSchoolRegistered);
@@ -334,7 +334,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     try {
       realtimeSub = supabase
         .channel('admin_live_chat_channel')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'school_info' }, (payload) => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'school_info' }, (payload) => {
           const row = payload.new as any;
           if (row && row.user_id && row.user_id !== 'admin-super-user-id') {
             playAdminChime();
@@ -346,7 +346,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             });
             setUnreadNewAccountsCount(prev => prev + 1);
-            fetchAllSchools().then(setSchools).catch(() => {});
+            fetchAllSchools().then(setSchools).catch(() => { });
           }
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_logs' }, (payload) => {
@@ -361,7 +361,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             });
             setUnreadNewAccountsCount(prev => prev + 1);
-            fetchAllSchools().then(setSchools).catch(() => {});
+            fetchAllSchools().then(setSchools).catch(() => { });
           }
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
@@ -395,12 +395,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 hasAttachment: !!incomingMsg.attachmentUrl
               });
-              fetchAllSchools().then(setSchools).catch(() => {});
+              fetchAllSchools().then(setSchools).catch(() => { });
             }
           }
         })
         .subscribe();
-    } catch {}
+    } catch { }
 
     const interval = setInterval(() => {
       if (isAppOnline()) {
@@ -412,7 +412,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             }
             return msgs;
           });
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }, 5000);
 
@@ -477,7 +477,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       (school.phone && school.phone.includes(term)) ||
       (school.managerName && school.managerName.toLowerCase().includes(term)) ||
       (school.managerEmail && school.managerEmail.toLowerCase().includes(term));
-    
+
     const matchesRegion = selectedRegion === 'Toutes les régions' || (school.region || 'Grand Lomé') === selectedRegion;
     return matchesSearch && matchesRegion;
   });
@@ -495,7 +495,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     e.preventDefault();
     try {
       const createdKey = await generateLicenseKey(
-        12, 
+        12,
         newKeyNote.trim() || undefined,
         newKeyTargetSchool.trim() || undefined
       );
@@ -503,7 +503,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setLicenseKeys(updated);
       setNewKeyNote('');
       setNewKeyTargetSchool('');
-      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => {});
+      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => { });
       alert(`Nouvelle Clé PRO générée avec succès :\n${createdKey.code}${createdKey.targetSchoolName ? ` (Pour : ${createdKey.targetSchoolName})` : ''}`);
     } catch (err) {
       console.error('handleCreateLicenseKey error:', err);
@@ -533,7 +533,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       await deleteLicenseKey(keyId);
       const updated = await fetchAllLicenseKeys();
       setLicenseKeys(updated);
-      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => {});
+      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => { });
     }
   };
 
@@ -560,7 +560,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Open direct activation modal
   const handleOpenDirectActivation = (schoolUserId: string, schoolName: string, currentPlan?: string, phone?: string) => {
     // Look for a preassigned license key for this school
-    const matchedKey = licenseKeys.find(k => 
+    const matchedKey = licenseKeys.find(k =>
       !k.isUsed && (
         (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
         (k.targetSchoolName && k.targetSchoolName.toUpperCase() === (schoolName || '').toUpperCase())
@@ -724,8 +724,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       );
       setChatMessages(prev => {
         const timeMs = new Date(newMsg.createdAt).getTime();
-        const exists = prev.some(m => 
-          m.id === newMsg.id || 
+        const exists = prev.some(m =>
+          m.id === newMsg.id ||
           (m.schoolId === newMsg.schoolId && m.senderRole === newMsg.senderRole && m.message === newMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
         );
         if (exists) return prev;
@@ -782,7 +782,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Build unified sorted conversations list
   const conversationsMap = new Map<string, { schoolId: string; schoolName: string; plan?: string; lastMessage?: ChatMessage; unvalidatedReceipt?: boolean; phone?: string; location?: string }>();
-  
+
   schools.forEach(sch => {
     const schMsgs = chatMessages.filter(m => m.schoolId === sch.userId);
     const lastMsg = schMsgs[schMsgs.length - 1];
@@ -842,7 +842,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          
+
           <button
             onClick={loadData}
             className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer active:scale-95 shadow-xs"
@@ -860,11 +860,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </button>
         </div>
       </header>
-      
+
       {/* Fixed Side Menu Navigation - Desktop Only */}
-      <aside className={`hidden md:flex ${
-        isSidebarOpen ? 'md:w-64' : 'md:w-20'
-      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
+      <aside className={`hidden md:flex ${isSidebarOpen ? 'md:w-64' : 'md:w-20'
+        } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
         {/* Top Logo Section: exact height h-[73px], edge-to-edge border-b */}
         <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
           <div className="flex items-center gap-3 min-w-0">
@@ -900,13 +899,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   <div key={item.id} className="relative group">
                     <button
                       onClick={() => setActiveSubTab(item.id as any)}
-                      className={`w-full flex items-center ${
-                        isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
-                      } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                        isActive 
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                      className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                        } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${isActive
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
+                        }`}
                     >
                       <div className="relative shrink-0 flex items-center justify-center">
                         <Icon className="w-5 h-5" />
@@ -978,9 +975,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <div className="relative group">
               <button
                 onClick={onLogout}
-                className={`w-full flex items-center ${
-                  isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
               >
                 <LogOut className="w-4 h-4 text-red-600 shrink-0" />
                 {isSidebarOpen && <span>Déconnexion</span>}
@@ -1015,7 +1011,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
       {/* Main dashboard panels scroll area */}
       <main className="flex-1 min-w-0 md:h-full overflow-y-auto bg-gray-50/50 pb-20 md:pb-8">
-        
+
         {/* Desktop / Tablet Header toolbar: exact h-[73px], edge-to-edge border-b */}
         <header className="hidden md:flex bg-white border-b border-slate-200 h-[73px] px-8 justify-between items-center sticky top-0 z-30 shadow-xs shrink-0">
           <div>
@@ -1025,7 +1021,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </h1>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Monitoring • Validation Mobile Money • Gestion Licences</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="relative">
               <button
@@ -1088,7 +1084,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     )}
 
                     {unreadSchoolMessagesCount > 0 && (
-                      <div 
+                      <div
                         onClick={() => {
                           setActiveSubTab('payments');
                           setIsNotificationDropdownOpen(false);
@@ -1237,11 +1233,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
         {/* Tab content renderer */}
         <div className="p-8 space-y-8">
-          
+
           {/* TAB 1: OVERVIEW */}
           {activeSubTab === 'overview' && (
             <div className="space-y-8 animate-fadeIn">
-                            {/* Visitor Analytics Shortcut Banner in Overview */}
+              {/* Visitor Analytics Shortcut Banner in Overview */}
               <div className="bg-gradient-to-r from-emerald-950 to-slate-900 text-white rounded-3xl p-5 shadow-sm border border-emerald-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/30">
@@ -1268,7 +1264,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               {/* Stats Widgets */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                
+
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
                     <div className="flex justify-between items-start">
@@ -1322,7 +1318,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               {/* Split layout */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
+
                 <div className="lg:col-span-7 double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-5 bg-white">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -1343,11 +1339,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <p className="text-[10px] text-gray-400 font-semibold">{school.location || 'Localisation non définie'} • {school.phone || 'Pas de numéro'}</p>
                             </div>
                             <div className="text-right pl-4">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                                school.subscriptionPlan === 'pro' 
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${school.subscriptionPlan === 'pro'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
                                   : (school.subscriptionPlan === 'suspended' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-amber-50 text-amber-800 border border-amber-100')
-                              }`}>
+                                }`}>
                                 {school.subscriptionPlan || 'free'}
                               </span>
                             </div>
@@ -1398,9 +1393,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:max-w-2xl">
                     <div className="relative w-full sm:flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input 
-                        type="text" 
-                        placeholder="Rechercher par nom, ville, téléphone..." 
+                      <input
+                        type="text"
+                        placeholder="Rechercher par nom, ville, téléphone..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white transition-all"
@@ -1470,170 +1465,169 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-xs">
                           {filteredSchools.map((school) => {
-                            const preassignedKey = licenseKeys.find(k => 
+                            const preassignedKey = licenseKeys.find(k =>
                               (k.targetSchoolId && k.targetSchoolId === school.userId) ||
                               (k.targetSchoolName && k.targetSchoolName.toUpperCase() === school.name.toUpperCase()) ||
                               (k.usedBySchoolId && k.usedBySchoolId === school.userId)
                             );
 
                             return (
-                            <tr key={school.userId} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-extrabold text-gray-900">{school.name}</p>
-                                  {school.schoolType && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                      {school.schoolType}
-                                    </span>
+                              <tr key={school.userId} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-extrabold text-gray-900">{school.name}</p>
+                                    {school.schoolType && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                        {school.schoolType}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {(school.managerName || school.managerEmail) && (
+                                    <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                                      <User className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>{school.managerName || 'Responsable'}</span>
+                                      {school.managerEmail && <span className="text-slate-400 font-normal">({school.managerEmail})</span>}
+                                    </p>
                                   )}
-                                </div>
-                                {(school.managerName || school.managerEmail) && (
-                                  <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                                    <User className="w-3 h-3 text-emerald-600 shrink-0" />
-                                    <span>{school.managerName || 'Responsable'}</span>
-                                    {school.managerEmail && <span className="text-slate-400 font-normal">({school.managerEmail})</span>}
+                                  {preassignedKey && (
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <span className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-md border ${preassignedKey.isUsed
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                          : 'bg-blue-50 text-blue-800 border-blue-200'
+                                        }`}>
+                                        <Key className="w-2.5 h-2.5 text-emerald-600" />
+                                        {preassignedKey.code}
+                                        {preassignedKey.isUsed ? ' (Active)' : ' (En attente)'}
+                                      </span>
+                                      <button
+                                        onClick={() => handleCopyCode(preassignedKey.code)}
+                                        className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
+                                        title="Copier la clé"
+                                      >
+                                        {copiedCode === preassignedKey.code ? <CheckCheck className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 font-semibold text-gray-600">
+                                  <p className="flex items-center gap-1 text-emerald-700 font-bold">
+                                    <MapPin className="w-3 h-3 shrink-0" />
+                                    {school.region || 'Grand Lomé'}
                                   </p>
-                                )}
-                                {preassignedKey && (
-                                  <div className="mt-1 flex items-center gap-1.5">
-                                    <span className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-md border ${
-                                      preassignedKey.isUsed 
-                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                                        : 'bg-blue-50 text-blue-800 border-blue-200'
-                                    }`}>
-                                      <Key className="w-2.5 h-2.5 text-emerald-600" />
-                                      {preassignedKey.code}
-                                      {preassignedKey.isUsed ? ' (Active)' : ' (En attente)'}
-                                    </span>
+                                  <p className="text-[10px] text-gray-400">{school.location || 'Localisation N/A'} • {school.phone || 'Tel N/A'}</p>
+                                </td>
+                                <td className="px-6 py-4 font-black text-emerald-850">
+                                  {school.studentCount} cartes
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-gray-700">{school.customQuota || 15} cartes</span>
                                     <button
-                                      onClick={() => handleCopyCode(preassignedKey.code)}
-                                      className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
-                                      title="Copier la clé"
+                                      onClick={() => {
+                                        setEditingSchool(school);
+                                        setCustomQuotaVal(school.customQuota || 15);
+                                      }}
+                                      className="p-1 hover:bg-gray-200 text-gray-500 rounded transition-colors cursor-pointer"
+                                      title="Modifier le quota"
                                     >
-                                      {copiedCode === preassignedKey.code ? <CheckCheck className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                      <Sliders className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 font-semibold text-gray-600">
-                                <p className="flex items-center gap-1 text-emerald-700 font-bold">
-                                  <MapPin className="w-3 h-3 shrink-0" />
-                                  {school.region || 'Grand Lomé'}
-                                </p>
-                                <p className="text-[10px] text-gray-400">{school.location || 'Localisation N/A'} • {school.phone || 'Tel N/A'}</p>
-                              </td>
-                              <td className="px-6 py-4 font-black text-emerald-850">
-                                {school.studentCount} cartes
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-gray-700">{school.customQuota || 15} cartes</span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingSchool(school);
-                                      setCustomQuotaVal(school.customQuota || 15);
-                                    }}
-                                    className="p-1 hover:bg-gray-200 text-gray-500 rounded transition-colors cursor-pointer"
-                                    title="Modifier le quota"
-                                  >
-                                    <Sliders className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                {(() => {
-                                  const isExpired = school.subscriptionPlan === 'pro' && !!school.subscriptionExpiresAt && new Date(school.subscriptionExpiresAt).getTime() < Date.now();
-                                  if (school.subscriptionPlan === 'pro') {
-                                    if (isExpired) {
+                                </td>
+                                <td className="px-6 py-4">
+                                  {(() => {
+                                    const isExpired = school.subscriptionPlan === 'pro' && !!school.subscriptionExpiresAt && new Date(school.subscriptionExpiresAt).getTime() < Date.now();
+                                    if (school.subscriptionPlan === 'pro') {
+                                      if (isExpired) {
+                                        return (
+                                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-200">
+                                            PRO Expiré
+                                          </span>
+                                        );
+                                      }
                                       return (
-                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-200">
-                                          PRO Expiré
+                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-100">
+                                          PRO (Actif)
+                                        </span>
+                                      );
+                                    }
+                                    if (school.subscriptionPlan === 'suspended') {
+                                      return (
+                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-100">
+                                          Suspendu
                                         </span>
                                       );
                                     }
                                     return (
-                                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-800 border border-emerald-100">
-                                        PRO (Actif)
+                                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                                        Gratuit
                                       </span>
                                     );
-                                  }
-                                  if (school.subscriptionPlan === 'suspended') {
-                                    return (
-                                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-100">
-                                        Suspendu
-                                      </span>
-                                    );
-                                  }
-                                  return (
-                                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
-                                      Gratuit
-                                    </span>
-                                  );
-                                })()}
-                              </td>
-                              <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                {school.subscriptionPlan === 'pro' ? (
-                                  <>
-                                    <button 
-                                      onClick={() => handleSuspendSchool(school.userId, school.name)} 
-                                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                      title="Suspendre l'accès"
-                                    >
-                                      Suspendre
-                                    </button>
-                                    <button 
-                                      onClick={() => handleResetToFree(school.userId, school.name)} 
-                                      className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                    >
-                                      Reset Gratuit
-                                    </button>
-                                  </>
-                                ) : school.subscriptionPlan === 'suspended' ? (
-                                  <>
-                                    <button 
-                                      onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)} 
-                                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1"
-                                    >
-                                      <Zap className="w-3 h-3 text-amber-300" />
-                                      Réactiver en PRO
-                                    </button>
-                                    <button 
-                                      onClick={() => handleResetToFree(school.userId, school.name)} 
-                                      className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                    >
-                                      Débloquer en Gratuit
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button 
-                                      onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)} 
-                                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1.5"
-                                      title="Valider le paiement et activer en PRO directement"
-                                    >
-                                      <Zap className="w-3 h-3 text-amber-300" />
-                                      <span>Valider Paiement & Activer PRO</span>
-                                    </button>
-                                    <button 
-                                      onClick={() => handleSuspendSchool(school.userId, school.name)} 
-                                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                                      title="Bloquer l'école"
-                                    >
-                                      Bloquer
-                                    </button>
-                                  </>
-                                )}
-                                 <button
-                                   onClick={() => handleDeleteSchool(school.userId, school.name)}
-                                   className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer inline-flex items-center ml-1"
-                                   title="Supprimer définitivement cet établissement"
-                                 >
-                                   <Trash2 className="w-3.5 h-3.5" />
-                                 </button>
-                               </td>
-                            </tr>
-                          );
-                        })}
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                  {school.subscriptionPlan === 'pro' ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleSuspendSchool(school.userId, school.name)}
+                                        className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                        title="Suspendre l'accès"
+                                      >
+                                        Suspendre
+                                      </button>
+                                      <button
+                                        onClick={() => handleResetToFree(school.userId, school.name)}
+                                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                      >
+                                        Reset Gratuit
+                                      </button>
+                                    </>
+                                  ) : school.subscriptionPlan === 'suspended' ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)}
+                                        className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1"
+                                      >
+                                        <Zap className="w-3 h-3 text-amber-300" />
+                                        Réactiver en PRO
+                                      </button>
+                                      <button
+                                        onClick={() => handleResetToFree(school.userId, school.name)}
+                                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                      >
+                                        Débloquer en Gratuit
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => handleOpenDirectActivation(school.userId, school.name, school.subscriptionPlan, school.phone)}
+                                        className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-sm inline-flex items-center gap-1.5"
+                                        title="Valider le paiement et activer en PRO directement"
+                                      >
+                                        <Zap className="w-3 h-3 text-amber-300" />
+                                        <span>Valider Paiement & Activer PRO</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleSuspendSchool(school.userId, school.name)}
+                                        className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                        title="Bloquer l'école"
+                                      >
+                                        Bloquer
+                                      </button>
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteSchool(school.userId, school.name)}
+                                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer inline-flex items-center ml-1"
+                                    title="Supprimer définitivement cet établissement"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1647,7 +1641,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {activeSubTab === 'payments' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-210px)] min-h-[580px] max-h-[780px]">
-                
+
                 {/* Left column: Schools conversations list */}
                 <div className="lg:col-span-4 double-bezel-outer h-full flex flex-col min-h-0">
                   <div className="double-bezel-inner p-4 bg-white flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -1670,21 +1664,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <button
                               key={conv.schoolId}
                               onClick={() => setSelectedSchoolChatId(conv.schoolId)}
-                              className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-1 my-1 ${
-                                isSelected 
-                                   ? 'bg-emerald-50 border border-emerald-200/80 shadow-sm' 
+                              className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-1 my-1 ${isSelected
+                                  ? 'bg-emerald-50 border border-emerald-200/80 shadow-sm'
                                   : 'hover:bg-gray-50'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center justify-between">
                                 <span className={`text-xs font-black truncate max-w-[170px] ${isSelected ? 'text-emerald-900' : 'text-gray-800'}`}>
                                   {conv.schoolName}
                                 </span>
-                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                                  conv.plan === 'pro' 
-                                    ? 'bg-emerald-100 text-emerald-800' 
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${conv.plan === 'pro'
+                                    ? 'bg-emerald-100 text-emerald-800'
                                     : (conv.plan === 'suspended' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')
-                                }`}>
+                                  }`}>
                                   {conv.plan || 'free'}
                                 </span>
                               </div>
@@ -1719,7 +1711,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         const schoolLocation = currentSchool?.location || convDetail?.location || 'Localisation non définie';
                         const schoolPhone = currentSchool?.phone || convDetail?.phone || 'Téléphone non renseigné';
                         const hasReceipt = currentSchoolMessages.some(m => m.attachmentUrl);
-                        
+
                         return (
                           <>
                             {/* Chat Header */}
@@ -1727,11 +1719,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <div>
                                 <h4 className="text-sm font-black text-gray-900 flex items-center gap-2">
                                   {schoolDisplayName}
-                                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
-                                    schoolPlan === 'pro' 
-                                      ? 'bg-emerald-600 text-white' 
+                                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${schoolPlan === 'pro'
+                                      ? 'bg-emerald-600 text-white'
                                       : (schoolPlan === 'suspended' ? 'bg-red-500 text-white' : 'bg-amber-100 text-amber-900 border border-amber-200')
-                                  }`}>
+                                    }`}>
                                     {schoolPlan === 'pro' ? 'PRO (Actif)' : (schoolPlan === 'suspended' ? 'Compte Suspendu' : 'Plan Découverte')}
                                   </span>
                                 </h4>
@@ -1759,7 +1750,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </div>
 
                             {/* Chat messages */}
-                            <div 
+                            <div
                               ref={messagesContainerRef}
                               onScroll={handleChatScroll}
                               className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 bg-[#faf9f6] relative"
@@ -1781,17 +1772,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                         <span>{new Date(m.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                                       </div>
 
-                                      <div className={`max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed ${
-                                        isSchool 
-                                          ? 'bg-white text-gray-900 border border-slate-200/80 rounded-tl-none' 
+                                      <div className={`max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed ${isSchool
+                                          ? 'bg-white text-gray-900 border border-slate-200/80 rounded-tl-none'
                                           : 'bg-emerald-600 text-white rounded-tr-none'
-                                      }`}>
+                                        }`}>
                                         {/* Image attachment / Mobile money proof */}
                                         {m.attachmentUrl && (
                                           <div className="mb-3 overflow-hidden rounded-xl border border-slate-200/80 bg-black/5">
-                                            <img 
-                                              src={m.attachmentUrl} 
-                                              alt="Preuve Mobile Money" 
+                                            <img
+                                              src={m.attachmentUrl}
+                                              alt="Preuve Mobile Money"
                                               className="max-h-60 w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                                               onClick={() => setPreviewImageUrl(m.attachmentUrl!)}
                                             />
@@ -1800,7 +1790,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                                 <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
                                                 Capture Reçu Flooz / T-Money
                                               </span>
-                                              <button 
+                                              <button
                                                 onClick={() => setPreviewImageUrl(m.attachmentUrl!)}
                                                 className="text-emerald-700 hover:underline flex items-center gap-0.5 cursor-pointer"
                                               >
@@ -1890,29 +1880,29 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       <label className="block text-[10px] font-black text-gray-500 uppercase mb-1">
                         Établissement Cible (Optionnel)
                       </label>
-                      <input 
-                        type="text" 
-                        placeholder="Ex: Lycée de Tokoin, Complexe La Grâce..." 
-                        value={newKeyTargetSchool} 
-                        onChange={e => setNewKeyTargetSchool(e.target.value)} 
-                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white" 
+                      <input
+                        type="text"
+                        placeholder="Ex: Lycée de Tokoin, Complexe La Grâce..."
+                        value={newKeyTargetSchool}
+                        onChange={e => setNewKeyTargetSchool(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white"
                       />
                     </div>
                     <div className="sm:col-span-4">
                       <label className="block text-[10px] font-black text-gray-500 uppercase mb-1">
                         Note / Référence Paiement
                       </label>
-                      <input 
-                        type="text" 
-                        placeholder="Ex: Espèces, Chèque, Promo 2026..." 
-                        value={newKeyNote} 
-                        onChange={e => setNewKeyNote(e.target.value)} 
-                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white" 
+                      <input
+                        type="text"
+                        placeholder="Ex: Espèces, Chèque, Promo 2026..."
+                        value={newKeyNote}
+                        onChange={e => setNewKeyNote(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus-brand bg-white"
                       />
                     </div>
                     <div className="sm:col-span-3 flex items-end">
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
                       >
                         <Plus className="w-4 h-4" /> Générer Clé PRO
@@ -1953,11 +1943,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <button
                           key={f.id}
                           onClick={() => setKeyFilter(f.id as any)}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            keyFilter === f.id 
-                              ? 'bg-emerald-600 text-white shadow-sm' 
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${keyFilter === f.id
+                              ? 'bg-emerald-600 text-white shadow-sm'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
+                            }`}
                         >
                           {f.label}
                         </button>
@@ -1976,13 +1965,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   ) : (
                     <div className="space-y-3">
                       {filteredLicenseKeys.map(k => (
-                        <div 
-                          key={k.id} 
-                          className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                            k.isSuspended 
-                              ? 'bg-red-50/40 border-red-200' 
+                        <div
+                          key={k.id}
+                          className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${k.isSuspended
+                              ? 'bg-red-50/40 border-red-200'
                               : (k.isUsed ? 'bg-amber-50/40 border-amber-200' : 'bg-gray-50 border-slate-200/80')
-                          }`}
+                            }`}
                         >
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -2015,7 +2003,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </div>
 
                             <p className="text-[10px] text-gray-500 font-medium">
-                              {k.isUsed 
+                              {k.isUsed
                                 ? `Utilisée par ${k.usedBySchoolName || 'un établissement'} le ${k.usedAt ? new Date(k.usedAt).toLocaleDateString() : ''}`
                                 : `Créée le ${new Date(k.createdAt).toLocaleDateString()} ${k.note ? `• ${k.note}` : ''}`
                               }
@@ -2025,10 +2013,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           <div className="flex flex-wrap items-center gap-2">
                             {/* Direct Activate for Preassigned School */}
                             {k.targetSchoolName && !k.isUsed && !k.isSuspended && (
-                              <button 
+                              <button
                                 onClick={() => {
-                                  const sch = schools.find(s => 
-                                    (k.targetSchoolId && s.userId === k.targetSchoolId) || 
+                                  const sch = schools.find(s =>
+                                    (k.targetSchoolId && s.userId === k.targetSchoolId) ||
                                     s.name.toUpperCase() === k.targetSchoolName?.toUpperCase()
                                   );
                                   handleOpenDirectActivation(
@@ -2047,8 +2035,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             )}
 
                             {/* Copy button */}
-                            <button 
-                              onClick={() => handleCopyCode(k.code)} 
+                            <button
+                              onClick={() => handleCopyCode(k.code)}
                               className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
                               title="Copier le code de licence"
                             >
@@ -2059,11 +2047,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             {/* Toggle Suspend/Activate */}
                             <button
                               onClick={() => handleToggleKeyStatus(k.id, k.code, k.isSuspended)}
-                              className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                                k.isSuspended
+                              className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${k.isSuspended
                                   ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                                   : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
-                              }`}
+                                }`}
                               title={k.isSuspended ? 'Réactiver cette clé' : 'Désactiver / Suspendre cette clé'}
                             >
                               {k.isSuspended ? <Power className="w-3.5 h-3.5" /> : <PowerOff className="w-3.5 h-3.5" />}
@@ -2088,7 +2075,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
           )}
 
-                    {/* TAB: VISITOR ANALYTICS */}
+          {/* TAB: VISITOR ANALYTICS */}
           {activeSubTab === 'analytics' && (
             <AdminVisitorAnalytics totalRegisteredSchools={schools.length} />
           )}
@@ -2098,16 +2085,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <div className="space-y-6 animate-fadeIn">
               {/* Toast feedback notification */}
               {settingsToast && (
-                <div className={`p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fadeIn ${
-                  settingsToast.type === 'success' 
-                    ? 'bg-emerald-600 text-white' 
+                <div className={`p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fadeIn ${settingsToast.type === 'success'
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-red-600 text-white'
-                }`}>
+                  }`}>
                   <div className="flex items-center gap-2.5 text-xs font-bold">
                     {settingsToast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                     <span>{settingsToast.message}</span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setSettingsToast(null)}
                     className="p-1 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                   >
@@ -2145,7 +2131,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               {/* Main Settings Form */}
               <form onSubmit={handleSavePlatformSettings} className="space-y-6">
-                
+
                 {/* Section 0: Information Paiement Direct Mobile Money */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-5 space-y-3 bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white">
@@ -2169,10 +2155,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  
+
                   {/* Left Column: Payment Numbers & Contacts Inputs */}
                   <div className="lg:col-span-7 space-y-6">
-                    
+
 
                     {/* Section 1: Mobile Money Numbers */}
                     <div className="double-bezel-outer">
@@ -2497,7 +2483,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
                   {/* Right Column: Payment Instructions & Live Preview */}
                   <div className="lg:col-span-5 space-y-6">
-                    
+
                     {/* Section 3: Custom Guidance Messages */}
                     <div className="double-bezel-outer">
                       <div className="double-bezel-inner p-6 space-y-4 bg-white">
@@ -2679,11 +2665,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-5">
             <h3 className="text-sm font-black text-gray-900">Modifier Quota d'Élèves : {editingSchool.name}</h3>
-            <input 
-              type="number" 
-              value={customQuotaVal} 
-              onChange={e => setCustomQuotaVal(parseInt(e.target.value) || 15)} 
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-sm outline-none focus:border-emerald-500" 
+            <input
+              type="number"
+              value={customQuotaVal}
+              onChange={e => setCustomQuotaVal(parseInt(e.target.value) || 15)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 font-bold text-sm outline-none focus:border-emerald-500"
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setEditingSchool(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold transition-colors cursor-pointer">Annuler</button>
@@ -2695,7 +2681,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
       {/* Modal Zoom Attachment Image */}
       {previewImageUrl && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn cursor-pointer"
           onClick={() => setPreviewImageUrl(null)}
         >
@@ -2705,7 +2691,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 <Paperclip className="w-4 h-4 text-emerald-400" />
                 Preuve de paiement Mobile Money
               </span>
-              <button 
+              <button
                 onClick={() => setPreviewImageUrl(null)}
                 className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors cursor-pointer"
               >
@@ -2884,7 +2870,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   <p className="text-[11px] text-slate-500 font-medium">Activation immédiate sans saisie de code pour l'école</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setActivatingSchool(null)}
                 className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-colors cursor-pointer"
               >
@@ -2937,11 +2923,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     key={opt.months}
                     type="button"
                     onClick={() => setActivationDuration(opt.months)}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${
-                      activationDuration === opt.months
+                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${activationDuration === opt.months
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                    }`}
+                      }`}
                   >
                     <span className="text-xs font-black">{opt.label}</span>
                     <span className={`text-[10px] font-bold mt-1 ${activationDuration === opt.months ? 'text-emerald-100' : 'text-slate-500'}`}>
@@ -3011,9 +2996,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <button
               key={item.id}
               onClick={() => setActiveSubTab(item.id as any)}
-              className={`relative flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
-                isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
-              }`}
+              className={`relative flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+                }`}
             >
               <div className={`p-1 rounded-xl transition-all relative ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
