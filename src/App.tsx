@@ -29,7 +29,9 @@ import {
   Menu,
   X,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -41,6 +43,7 @@ import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
 import { ClassDirectoryView } from './components/ClassDirectoryView';
 import { ImportExport } from './components/ImportExport';
 import { IDCard } from './components/IDCard';
+import { IDCardBack } from './components/IDCardBack';
 import { SchoolSettings } from './components/SchoolSettings';
 import { SchoolConfigSidebar } from './components/SchoolConfigSidebar';
 import { StudentCardItem } from './components/StudentCardItem';
@@ -85,6 +88,12 @@ export default function App({ session, onLogout }: AppProps) {
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const [mobileFitScreen, setMobileFitScreen] = useState<boolean>(true);
+  const [printViewStyle, setPrintViewStyle] = useState<'cards' | 'sheet'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'cards';
+    }
+    return 'sheet';
+  });
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const isSuperAdminUser = session.userId === 'admin-super-user-id' || 
     session.email?.toLowerCase().trim() === 'admin@sukupass.tg' || 
@@ -241,8 +250,13 @@ export default function App({ session, onLogout }: AppProps) {
     }
 
     setIsGeneratingPDF(true);
-    // Courte pause pour laisser React mettre à jour le bouton
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Si l'utilisateur est en vue cartes individuelles sur mobile, basculer vers la feuille A4 pour html2canvas
+    const prevViewStyle = printViewStyle;
+    if (prevViewStyle !== 'sheet') {
+      setPrintViewStyle('sheet');
+    }
+    // Courte pause pour laisser React rendre la feuille A4 dans le DOM
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Si des wrappers d'échelle mobile existent, réinitialiser temporairement à 100% (794x1123) pour que html2canvas capture en haute définition sans artefact
     const scaleWrappers = document.querySelectorAll<HTMLElement>('.a4-page-scale-wrapper');
@@ -316,6 +330,9 @@ export default function App({ session, onLogout }: AppProps) {
           (item.wrapper.firstElementChild as HTMLElement).style.transform = item.innerTransform;
         }
       });
+      if (prevViewStyle !== 'sheet') {
+        setPrintViewStyle(prevViewStyle);
+      }
       setIsGeneratingPDF(false);
     }
   };
@@ -948,7 +965,7 @@ export default function App({ session, onLogout }: AppProps) {
         {/* Content area - Independently scrollable */}
         <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-36 md:pb-8">
           {/* Top Sticky Bar */}
-          <div className="sticky top-0 z-40 bg-white shadow-xs px-6 md:h-[73px] py-3 md:py-0 flex flex-col md:flex-row md:items-center justify-between no-print border-b border-slate-200 shrink-0 space-y-3 md:space-y-0">
+          <div className="sticky top-0 z-40 bg-white shadow-xs px-4 sm:px-6 md:h-[73px] py-3 md:py-0 flex flex-col md:flex-row md:items-center justify-between no-print border-b border-slate-200 shrink-0 space-y-3 md:space-y-0">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0">
                 <div className="flex items-center gap-2">
@@ -966,6 +983,28 @@ export default function App({ session, onLogout }: AppProps) {
 
               {/* Desktop Interactive Print Options */}
               <div className="hidden lg:flex items-center gap-4">
+                {/* View Mode Toggle: Cartes vs Planche A4 */}
+                <div className="bg-gray-100 p-0.5 rounded-lg flex items-center border border-gray-200/60">
+                  <button
+                    onClick={() => setPrintViewStyle('cards')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                      printViewStyle === 'cards' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Vue Cartes</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintViewStyle('sheet')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+                      printViewStyle === 'sheet' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Feuille A4</span>
+                  </button>
+                </div>
+
                 {/* Class Filter Dropdown */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-gray-400 uppercase">Classe:</span>
@@ -1006,40 +1045,42 @@ export default function App({ session, onLogout }: AppProps) {
                   </div>
                 </div>
 
-                {/* Cards Density Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase">Densité:</span>
-                  <div className="bg-gray-100 p-0.5 rounded-lg flex">
-                    <button
-                      onClick={() => setCardsPerPage(8)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                        cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                      }`}
-                    >
-                      8
-                    </button>
-                    <button
-                      onClick={() => setCardsPerPage(10)}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                        cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                      }`}
-                    >
-                      10
-                    </button>
+                {/* Cards Density Selector (for sheet mode) */}
+                {printViewStyle === 'sheet' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Densité:</span>
+                    <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                      <button
+                        onClick={() => setCardsPerPage(8)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                          cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                      >
+                        8
+                      </button>
+                      <button
+                        onClick={() => setCardsPerPage(10)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                          cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                      >
+                        10
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <button
                 onClick={generatePDF}
-                title="Ouvre la fenêtre d'impression — choisissez 'Enregistrer en PDF' comme destination"
+                title="Télécharge le PDF officiel A4 prêt pour l'impression"
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3 sm:px-4 py-2 sm:py-2.5 shrink-0"
                 disabled={isGeneratingPDF}
               >
                 {isGeneratingPDF ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="hidden sm:inline">Ouverture...</span>
+                    <span className="hidden sm:inline">Génération...</span>
                   </>
                 ) : (
                   <>
@@ -1052,12 +1093,39 @@ export default function App({ session, onLogout }: AppProps) {
 
             {/* Mobile Print Options Sub-bar */}
             <div className="flex lg:hidden flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-              <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
-                <span className="text-[10px] font-bold text-gray-400 uppercase">Classe:</span>
+              {/* Dual View Mode Switcher: Cartes (HD) vs Planche A4 */}
+              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center shrink-0 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setPrintViewStyle('cards')}
+                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${
+                    printViewStyle === 'cards' 
+                      ? 'bg-emerald-600 text-white shadow-xs font-black' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CreditCard className="w-3 h-3" />
+                  <span>Cartes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintViewStyle('sheet')}
+                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${
+                    printViewStyle === 'sheet' 
+                      ? 'bg-emerald-600 text-white shadow-xs font-black' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className="w-3 h-3" />
+                  <span>Planche A4</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-1 min-w-[90px]">
                 <select
                   value={printClassFilter}
                   onChange={(e) => setPrintClassFilter(e.target.value)}
-                  className="w-full bg-gray-100 text-xs font-bold text-slate-800 rounded-lg px-2 py-1.5 outline-none cursor-pointer border border-transparent focus:border-emerald-500"
+                  className="w-full bg-gray-100 text-[11px] font-bold text-slate-800 rounded-lg px-2 py-1 outline-none cursor-pointer border border-transparent focus:border-emerald-500"
                 >
                   <option value="all">Toutes ({students.length})</option>
                   {allClasses.map(cls => (
@@ -1068,35 +1136,12 @@ export default function App({ session, onLogout }: AppProps) {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* Mobile Fit / 100% Zoom Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setMobileFitScreen(prev => !prev)}
-                  className={`text-[10px] font-bold px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
-                    mobileFitScreen 
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black' 
-                      : 'bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200'
-                  }`}
-                  title={mobileFitScreen ? "Feuille A4 adaptée à l'écran du téléphone (Cliquer pour zoom 100%)" : "Mode taille réelle 100% (Cliquer pour ajuster à l'écran)"}
-                >
-                  {mobileFitScreen ? (
-                    <>
-                      <Minimize2 className="w-3 h-3 text-emerald-700" />
-                      <span>Ajusté A4</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="w-3 h-3 text-gray-600" />
-                      <span>Zoom 100%</span>
-                    </>
-                  )}
-                </button>
-
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Recto / Verso selector */}
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setPrintMode('recto')}
-                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${
                       printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
@@ -1104,7 +1149,7 @@ export default function App({ session, onLogout }: AppProps) {
                   </button>
                   <button
                     onClick={() => setPrintMode('recto-verso')}
-                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${
                       printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
                     }`}
                   >
@@ -1112,30 +1157,154 @@ export default function App({ session, onLogout }: AppProps) {
                   </button>
                 </div>
 
-                <div className="bg-gray-100 p-0.5 rounded-lg flex">
+                {/* In sheet mode: Fit screen toggle */}
+                {printViewStyle === 'sheet' && (
                   <button
-                    onClick={() => setCardsPerPage(8)}
-                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
-                      cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
+                    type="button"
+                    onClick={() => setMobileFitScreen(prev => !prev)}
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      mobileFitScreen 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black' 
+                        : 'bg-gray-100 text-gray-600 border border-gray-200'
                     }`}
+                    title={mobileFitScreen ? "Feuille A4 adaptée à l'écran (Cliquer pour zoom 100%)" : "Mode taille réelle 100%"}
                   >
-                    8
+                    {mobileFitScreen ? (
+                      <>
+                        <Minimize2 className="w-3 h-3 text-emerald-700" />
+                        <span>Ajusté</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="w-3 h-3 text-gray-600" />
+                        <span>100%</span>
+                      </>
+                    )}
                   </button>
-                  <button
-                    onClick={() => setCardsPerPage(10)}
-                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
-                      cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
-                    }`}
-                  >
-                    10
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Printable layout container with responsive scaling */}
-          <div className="py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0 flex flex-col items-center justify-center overflow-x-auto max-w-full">
+          {/* Mode 1: Full-Width Individual Cards Stream (Perfect for mobile preview) */}
+          {printViewStyle === 'cards' && (
+            <div className="w-full max-w-md mx-auto px-3 sm:px-4 py-4 space-y-5 no-print">
+              <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between text-xs text-emerald-950 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-[12px] leading-tight">
+                      {studentsToPrint.length} badge{studentsToPrint.length > 1 ? 's' : ''} en affichage direct HD
+                    </p>
+                    <p className="text-[10px] text-emerald-700 font-medium">
+                      Lisibilité 100% nette sur téléphone
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPrintViewStyle('sheet')}
+                  className="text-[11px] font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs hover:bg-emerald-50 active:scale-95 cursor-pointer"
+                >
+                  Planche A4 📄
+                </button>
+              </div>
+
+              {studentsToPrint.map((student, idx) => (
+                <div
+                  key={`mobile-card-${student.id}`}
+                  className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-3 flex flex-col items-center transition-all hover:shadow-md"
+                >
+                  <div className="w-full flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-black text-[11px] flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-black text-slate-800 truncate text-xs uppercase tracking-tight">
+                          {student.lastName} {student.firstName}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-semibold">
+                          Classe: {student.className} • N° {student.matricule || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 shrink-0">
+                      {printMode === 'recto-verso' ? 'Recto & Verso' : 'Recto'}
+                    </span>
+                  </div>
+
+                  {/* Recto Card */}
+                  <div className="w-full flex justify-center overflow-x-auto py-1">
+                    <div 
+                      className="shrink-0 rounded-xl overflow-hidden shadow-xs border border-slate-200/60"
+                      style={{
+                        maxWidth: '100%',
+                        transformOrigin: 'top center',
+                      }}
+                    >
+                      <IDCard student={student} schoolInfo={schoolInfo} showCuttingMarks={false} />
+                    </div>
+                  </div>
+
+                  {/* Verso Card if Recto-Verso is enabled */}
+                  {printMode === 'recto-verso' && (
+                    <div className="w-full flex flex-col items-center mt-3 pt-3 border-t border-dashed border-slate-200">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 self-start px-1">
+                        Verso officiel
+                      </span>
+                      <div className="w-full flex justify-center overflow-x-auto py-1">
+                        <div 
+                          className="shrink-0 rounded-xl overflow-hidden shadow-xs border border-slate-200/60"
+                          style={{
+                            maxWidth: '100%',
+                            transformOrigin: 'top center',
+                          }}
+                        >
+                          <IDCardBack student={student} schoolInfo={schoolInfo} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {studentsToPrint.length === 0 && (
+                <div className="text-center py-16 px-4 bg-white rounded-2xl border border-dashed border-slate-300">
+                  <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-600">Aucun élève trouvé pour cette sélection</p>
+                  <p className="text-xs text-slate-400 mt-1">Changez le filtre de classe ou ajoutez des élèves.</p>
+                </div>
+              )}
+
+              {/* Bottom Quick Download Button in card feed */}
+              {studentsToPrint.length > 0 && (
+                <div className="pt-2 pb-6 flex justify-center">
+                  <button
+                    onClick={generatePDF}
+                    disabled={isGeneratingPDF}
+                    className="btn-primary w-full py-3.5 text-xs sm:text-sm font-bold shadow-lg flex items-center justify-center gap-2 active:scale-98"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Génération du PDF officiel...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="w-4 h-4" />
+                        <span>Télécharger le PDF A4 ({studentsToPrint.length} cartes)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mode 2: Printable A4 Sheets Layout (Scaled for phone, full for print) */}
+          <div className={`${printViewStyle === 'cards' ? 'hidden print:block' : 'block'} py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0 flex flex-col items-center justify-center overflow-x-auto max-w-full`}>
             <PrintLayout 
               students={studentsToPrint} 
               schoolInfo={schoolInfo} 
