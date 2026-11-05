@@ -240,10 +240,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             Comment ça marche
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </a>
-          <a href="#pricing" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
-            Tarifs
-            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
-          </a>
+          {platformSettings.pricingEnabled !== false && (
+            <a href="#pricing" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
+              Tarifs
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+            </a>
+          )}
           <a href="#faq" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             FAQ
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
@@ -307,7 +309,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                     { label: 'Accueil', href: '#hero', onClick: () => { scrollToTop(); setMobileMenuOpen(false); } },
                     { label: 'Fonctionnalités', href: '#features', onClick: () => setMobileMenuOpen(false) },
                     { label: 'Comment ça marche', href: '#how-it-works', onClick: () => setMobileMenuOpen(false) },
-                    { label: 'Tarifs & Abonnements', href: '#pricing', onClick: () => setMobileMenuOpen(false) },
+                    ...(platformSettings.pricingEnabled !== false ? [{ label: 'Tarifs & Abonnements', href: '#pricing', onClick: () => setMobileMenuOpen(false) }] : []),
                     { label: 'Foire Aux Questions', href: '#faq', onClick: () => setMobileMenuOpen(false) },
                   ].map((link, idx) => (
                     <a
@@ -581,7 +583,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-white">
+      {platformSettings.pricingEnabled !== false && (
+        <section id="pricing" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -696,6 +699,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           })()}
         </div>
       </section>
+      )}
 
       {/* FAQ Section */}
       <section id="faq" className="py-24 bg-gray-50/70 border-t border-gray-100">
@@ -785,7 +789,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </div>
           <div className="flex gap-6 text-sm text-gray-400 font-medium justify-center md:justify-start">
             <a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
+            {platformSettings.pricingEnabled !== false && (
+              <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
+            )}
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
           <div className="text-xs text-gray-500 text-center md:text-right font-medium">

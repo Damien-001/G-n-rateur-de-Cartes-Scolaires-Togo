@@ -227,6 +227,7 @@ export interface PlatformSettings {
   demoVideoPoster?: string;
 
   // Tarifs & Offres de la Landing Page
+  pricingEnabled?: boolean;
   pricingTitle?: string;
   pricingSubtitle?: string;
   pricingPlans?: LandingPricingPlan[];
@@ -252,6 +253,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   demoVideoUrl: '',
   demoVideoTitle: 'Découvrez SukuPass en action — Les badges scolaires en quelques clics',
   demoVideoPoster: '',
+  pricingEnabled: true,
   pricingTitle: 'Des tarifs transparents, adaptés à votre école',
   pricingSubtitle: "Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement.",
   pricingPlans: DEFAULT_PRICING_PLANS

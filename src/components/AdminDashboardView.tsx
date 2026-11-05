@@ -2308,6 +2308,28 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <div className="flex flex-wrap items-center gap-3 shrink-0">
                       <button
                         type="button"
+                        onClick={() => setPlatformSettings(prev => ({ ...prev, pricingEnabled: prev.pricingEnabled === false }))}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 ${
+                          platformSettings.pricingEnabled !== false
+                            ? 'bg-emerald-500/25 hover:bg-emerald-500/35 text-white border border-emerald-400/40'
+                            : 'bg-amber-500/30 hover:bg-amber-500/40 text-amber-200 border border-amber-400/40'
+                        }`}
+                        title={platformSettings.pricingEnabled !== false ? "Cliquer pour masquer toute la section Tarifs de la landing page" : "Cliquer pour afficher la section Tarifs sur la landing page"}
+                      >
+                        {platformSettings.pricingEnabled !== false ? (
+                          <>
+                            <Eye className="w-4 h-4 text-emerald-300" />
+                            <span>Section Visible</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4 text-amber-300" />
+                            <span>Section Masquée</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
                         onClick={handleAddPricingPlan}
                         className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
                       >
@@ -2433,20 +2455,32 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 </span>
                               )}
                               {!isEnabled ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200 text-slate-600 flex items-center gap-1">
+                                <button type="button" onClick={() => handleUpdatePricingPlan(index, { enabled: true })} className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition-colors" title="Cliquer pour afficher cette offre sur la vitrine">
                                   <EyeOff className="w-3 h-3" />
-                                  Masqué sur la vitrine
-                                </span>
+                                  <span>Masqué de la vitrine (Activer)</span>
+                                </button>
                               ) : (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 flex items-center gap-1 border border-emerald-100">
+                                <button type="button" onClick={() => handleUpdatePricingPlan(index, { enabled: false })} className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center gap-1 border border-emerald-100 cursor-pointer transition-colors" title="Cliquer pour masquer cette offre de la vitrine">
                                   <Eye className="w-3 h-3" />
-                                  Visible sur la vitrine
-                                </span>
+                                  <span>Visible sur la vitrine (Masquer)</span>
+                                </button>
                               )}
                             </div>
 
                             {/* Move Up / Down / Delete actions */}
                             <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdatePricingPlan(index, { enabled: !isEnabled })}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                  isEnabled
+                                    ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-600'
+                                    : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                                }`}
+                                title={isEnabled ? "Masquer cette formule sur la vitrine" : "Afficher cette formule sur la vitrine"}
+                              >
+                                {isEnabled ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-amber-700" />}
+                              </button>
                               <button
                                 type="button"
                                 disabled={index === 0}
@@ -2476,6 +2510,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </button>
                             </div>
                           </div>
+
+                          {!isEnabled && (
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-950 font-medium">
+                              <div className="flex items-center gap-2">
+                                <EyeOff className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>Cette offre est actuellement <strong>masquée</strong> sur la landing page.</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdatePricingPlan(index, { enabled: true })}
+                                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs shrink-0"
+                              >
+                                Rendre Visible
+                              </button>
+                            </div>
+                          )}
 
                           {/* Inputs Grid */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

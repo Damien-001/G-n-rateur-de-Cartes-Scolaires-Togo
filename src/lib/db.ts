@@ -2515,6 +2515,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   let localPricingPlans: any[] | undefined = undefined;
   let localPricingTitle = '';
   let localPricingSubtitle = '';
+  let localPricingEnabled: boolean | undefined = undefined;
   try {
     const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (raw) {
@@ -2526,6 +2527,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       if (Array.isArray(p.pricingPlans)) localPricingPlans = p.pricingPlans;
       localPricingTitle = p.pricingTitle || '';
       localPricingSubtitle = p.pricingSubtitle || '';
+      if (p.pricingEnabled !== undefined) localPricingEnabled = Boolean(p.pricingEnabled);
     }
   } catch { }
 
@@ -2569,6 +2571,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
           : (localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl),
         demoVideoTitle: data.demo_video_title || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
         demoVideoPoster: data.demo_video_poster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+        pricingEnabled: data.pricing_enabled !== undefined ? Boolean(data.pricing_enabled) : (localPricingEnabled !== undefined ? localPricingEnabled : DEFAULT_PLATFORM_SETTINGS.pricingEnabled),
         pricingTitle: data.pricing_title || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
         pricingSubtitle: data.pricing_subtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
         pricingPlans: (Array.isArray(dbPricingPlans) && dbPricingPlans.length > 0)
@@ -2728,6 +2731,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
       demo_video_url: settingsToSave.demoVideoUrl,
       demo_video_title: settingsToSave.demoVideoTitle,
       demo_video_poster: settingsToSave.demoVideoPoster,
+      pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
       pricing_title: settingsToSave.pricingTitle,
       pricing_subtitle: settingsToSave.pricingSubtitle,
       pricing_plans: settingsToSave.pricingPlans ? JSON.stringify(settingsToSave.pricingPlans) : null,
