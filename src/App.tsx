@@ -1304,14 +1304,16 @@ export default function App({ session, onLogout }: AppProps) {
           )}
 
           {/* Mode 2: Printable A4 Sheets Layout (Scaled for phone, full for print) */}
-          <div className={`${printViewStyle === 'cards' ? 'hidden print:block' : 'block'} py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0 flex flex-col items-center justify-center overflow-x-auto max-w-full`}>
-            <PrintLayout 
-              students={studentsToPrint} 
-              schoolInfo={schoolInfo} 
-              printMode={printMode}
-              cardsPerPage={cardsPerPage}
-              fitToScreen={mobileFitScreen}
-            />
+          <div className={`${printViewStyle === 'cards' ? 'hidden print:block' : 'block'} w-full overflow-x-auto py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0`}>
+            <div className="w-fit min-w-full mx-auto flex flex-col items-center">
+              <PrintLayout 
+                students={studentsToPrint} 
+                schoolInfo={schoolInfo} 
+                printMode={printMode}
+                cardsPerPage={cardsPerPage}
+                fitToScreen={mobileFitScreen}
+              />
+            </div>
           </div>
         </div>
 
