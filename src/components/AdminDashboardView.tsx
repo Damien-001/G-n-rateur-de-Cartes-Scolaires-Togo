@@ -2309,11 +2309,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPlatformSettings(prev => ({ ...prev, pricingEnabled: prev.pricingEnabled === false }))}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 ${
-                          platformSettings.pricingEnabled !== false
+                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 ${platformSettings.pricingEnabled !== false
                             ? 'bg-emerald-500/25 hover:bg-emerald-500/35 text-white border border-emerald-400/40'
                             : 'bg-amber-500/30 hover:bg-amber-500/40 text-amber-200 border border-amber-400/40'
-                        }`}
+                          }`}
                         title={platformSettings.pricingEnabled !== false ? "Cliquer pour masquer toute la section Tarifs de la landing page" : "Cliquer pour afficher la section Tarifs sur la landing page"}
                       >
                         {platformSettings.pricingEnabled !== false ? (
@@ -2472,11 +2471,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleUpdatePricingPlan(index, { enabled: !isEnabled })}
-                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                  isEnabled
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isEnabled
                                     ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-600'
                                     : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
-                                }`}
+                                  }`}
                                 title={isEnabled ? "Masquer cette formule sur la vitrine" : "Afficher cette formule sur la vitrine"}
                               >
                                 {isEnabled ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-amber-700" />}
@@ -2809,9 +2807,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <div
                               key={plan.id || pIdx}
                               className={`p-6 rounded-2xl flex flex-col justify-between relative transition-all w-full h-full ${isPopular
-                                  ? `border-2 border-emerald-600 bg-white shadow-lg shadow-emerald-950/5 ${isTwoCards ? 'md:scale-[1.01]' : 'scale-105'
-                                  }`
-                                  : 'border border-slate-200/90 bg-slate-50/70'
+                                ? `border-2 border-emerald-600 bg-white shadow-lg shadow-emerald-950/5 ${isTwoCards ? 'md:scale-[1.01]' : 'scale-105'
+                                }`
+                                : 'border border-slate-200/90 bg-slate-50/70'
                                 }`}
                             >
                               {isPopular && (
@@ -2855,8 +2853,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 type="button"
                                 disabled
                                 className={`mt-6 w-full py-2.5 rounded-xl font-black text-xs transition-all uppercase tracking-wider ${isPopular
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'border-2 border-emerald-600 text-emerald-700'
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'border-2 border-emerald-600 text-emerald-700'
                                   }`}
                               >
                                 {plan.buttonText || (plan.buttonAction === 'signup' ? 'Commencer' : 'Contacter')}
