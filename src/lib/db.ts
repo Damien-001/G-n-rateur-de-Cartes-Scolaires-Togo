@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { normalizeDateToInput } from './dateUtils';
-import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
+import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
 import {
   getStoredStudents,
@@ -2536,6 +2536,30 @@ export function sanitizeKey(k?: string): string {
   return k.trim();
 }
 
+/** Helper to validate and normalize pricing plans */
+export function sanitizePricingPlans(plans: any): LandingPricingPlan[] {
+  if (!plans) return DEFAULT_PLATFORM_SETTINGS.pricingPlans;
+  let arr: any = plans;
+  if (typeof arr === 'string') {
+    try { arr = JSON.parse(arr); } catch { return DEFAULT_PLATFORM_SETTINGS.pricingPlans; }
+  }
+  if (!Array.isArray(arr) || arr.length === 0) return DEFAULT_PLATFORM_SETTINGS.pricingPlans;
+  return arr.map((p, idx) => ({
+    id: p.id || `plan_${idx}`,
+    badge: p.badge || '',
+    name: p.name || 'Formule',
+    description: p.description || '',
+    price: p.price || '0 F CFA',
+    period: p.period !== undefined ? p.period : '',
+    features: Array.isArray(p.features) ? p.features : [],
+    buttonText: p.buttonText || "S'abonner",
+    buttonAction: p.buttonAction || 'signup',
+    buttonUrl: p.buttonUrl || '',
+    isPopular: Boolean(p.isPopular),
+    enabled: p.enabled === false || (p.enabled as any) === 'false' || (p.enabled as any) === 0 || (p.enabled as any) === '0' ? false : true
+  }));
+}
+
 /** Helper to read fedapayPublicKey from localStorage without discarding it */
 export function getLocalFedaKey(): string {
   try {
@@ -2559,6 +2583,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   let localPricingTitle = '';
   let localPricingSubtitle = '';
   let localPricingEnabled: boolean | undefined = undefined;
+  let localUpdatedAt: string | undefined = undefined;
   try {
     const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (raw) {
@@ -2567,10 +2592,15 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       localVideoTitle = p.demoVideoTitle || '';
       localVideoPoster = p.demoVideoPoster || '';
       localFedaKey = sanitizeKey(p.fedapayPublicKey);
-      if (Array.isArray(p.pricingPlans)) localPricingPlans = p.pricingPlans;
+      if (Array.isArray(p.pricingPlans)) {
+        localPricingPlans = p.pricingPlans;
+      } else if (typeof p.pricingPlans === 'string') {
+        try { localPricingPlans = JSON.parse(p.pricingPlans); } catch { }
+      }
       localPricingTitle = p.pricingTitle || '';
       localPricingSubtitle = p.pricingSubtitle || '';
       if (p.pricingEnabled !== undefined) localPricingEnabled = Boolean(p.pricingEnabled);
+      localUpdatedAt = p.updatedAt;
     }
   } catch { }
 
@@ -2590,6 +2620,15 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         try {
           dbPricingPlans = typeof data.pricing_plans === 'string' ? JSON.parse(data.pricing_plans) : data.pricing_plans;
         } catch { }
+      }
+
+      let resolvedPricingPlans = sanitizePricingPlans(dbPricingPlans);
+      if (localPricingPlans && localUpdatedAt && data.updated_at) {
+        if (new Date(localUpdatedAt).getTime() > new Date(data.updated_at).getTime()) {
+          resolvedPricingPlans = sanitizePricingPlans(localPricingPlans);
+        }
+      } else if (!dbPricingPlans || dbPricingPlans.length === 0) {
+        resolvedPricingPlans = sanitizePricingPlans(localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans);
       }
 
       const merged: PlatformSettings = {
@@ -2617,9 +2656,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         pricingEnabled: data.pricing_enabled !== undefined ? Boolean(data.pricing_enabled) : (localPricingEnabled !== undefined ? localPricingEnabled : DEFAULT_PLATFORM_SETTINGS.pricingEnabled),
         pricingTitle: data.pricing_title || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
         pricingSubtitle: data.pricing_subtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-        pricingPlans: (Array.isArray(dbPricingPlans) && dbPricingPlans.length > 0)
-          ? dbPricingPlans
-          : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
+        pricingPlans: resolvedPricingPlans,
         updatedAt: data.updated_at
       };
       localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2650,9 +2687,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
           demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
           pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
           pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-          pricingPlans: (Array.isArray(parsed.pricingPlans) && parsed.pricingPlans.length > 0)
-            ? parsed.pricingPlans
-            : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
+          pricingPlans: sanitizePricingPlans(parsed.pricingPlans || localPricingPlans),
           fedapayPublicKey: dbKey || localFedaKey,
           updatedAt: systemRow.updated_at
         };
@@ -2687,9 +2722,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
             demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
             pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
             pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-            pricingPlans: (Array.isArray(parsed.pricingPlans) && parsed.pricingPlans.length > 0)
-              ? parsed.pricingPlans
-              : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
+            pricingPlans: sanitizePricingPlans(parsed.pricingPlans || localPricingPlans),
             fedapayPublicKey: dbKey || localFedaKey,
             updatedAt: logs[0].created_at
           };
@@ -2711,6 +2744,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       return {
         ...DEFAULT_PLATFORM_SETTINGS,
         ...parsed,
+        pricingPlans: sanitizePricingPlans(parsed.pricingPlans),
         fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey)
       };
     }
@@ -2724,8 +2758,10 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 /** Save platform settings updated by super-admin (Writes to LocalStorage & all Supabase tiers) */
 export async function savePlatformSettings(newSettings: PlatformSettings): Promise<boolean> {
   const timestamp = new Date().toISOString();
+  const sanitizedPlans = sanitizePricingPlans(newSettings.pricingPlans);
   const settingsToSave: PlatformSettings = {
     ...newSettings,
+    pricingPlans: sanitizedPlans,
     updatedAt: timestamp
   };
 
@@ -2789,7 +2825,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
           pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
           pricing_title: settingsToSave.pricingTitle,
           pricing_subtitle: settingsToSave.pricingSubtitle,
-          pricing_plans: settingsToSave.pricingPlans ? JSON.stringify(settingsToSave.pricingPlans) : null,
+          pricing_plans: settingsToSave.pricingPlans || null,
           updated_at: timestamp
         }, { onConflict: 'id' });
 
@@ -2811,6 +2847,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
             fedapay_environment: settingsToSave.fedapayEnvironment,
             payment_instructions: settingsToSave.paymentInstructions,
             support_notice: settingsToSave.supportNotice,
+            pricing_plans: settingsToSave.pricingPlans || null,
             updated_at: timestamp
           }, { onConflict: 'id' });
         }

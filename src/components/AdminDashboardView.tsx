@@ -86,6 +86,7 @@ import {
   fetchPlatformSettings,
   savePlatformSettings,
   PLATFORM_SETTINGS_STORAGE_KEY,
+  sanitizePricingPlans,
   createSchoolByAdmin,
   deleteSchoolByAdmin,
   activateSchoolDirectly,
@@ -223,7 +224,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [activityLogs, setActivityLogs] = useState<AdminLog[]>([]);
 
   // Platform & Payment Settings state
-  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(DEFAULT_PLATFORM_SETTINGS);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            return {
+              ...DEFAULT_PLATFORM_SETTINGS,
+              ...parsed,
+              pricingPlans: sanitizePricingPlans(parsed.pricingPlans)
+            };
+          }
+        }
+      } catch { }
+    }
+    return DEFAULT_PLATFORM_SETTINGS;
+  });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsToast, setSettingsToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -263,7 +281,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       });
       // Only update platform settings if not a silent background sync OR if user is not currently in settings tab
       if (!silent || (activeSubTabRef.current !== 'settings' && activeSubTabRef.current !== 'pricing')) {
-        setPlatformSettings(pSettings);
+        setPlatformSettings({
+          ...pSettings,
+          pricingPlans: sanitizePricingPlans(pSettings.pricingPlans)
+        });
       }
 
       // Auto-select first chat if none selected
@@ -875,21 +896,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   };
 
   // Pricing plans helpers for Landing Page
-  const currentPricingPlans: LandingPricingPlan[] = (platformSettings.pricingPlans && platformSettings.pricingPlans.length > 0)
-    ? platformSettings.pricingPlans
-    : DEFAULT_PRICING_PLANS;
+  const currentPricingPlans: LandingPricingPlan[] = sanitizePricingPlans(platformSettings.pricingPlans);
 
   const handleTogglePricingSection = () => {
-    setPlatformSettings(prev => {
-      const nextVal = prev.pricingEnabled === false;
-      const updated = { ...prev, pricingEnabled: nextVal };
-      savePlatformSettings(updated);
-      return updated;
-    });
+    const nextVal = platformSettings.pricingEnabled === false;
+    const updated = { ...platformSettings, pricingEnabled: nextVal };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
     playAdminChime();
     setSettingsToast({
       type: 'success',
-      message: platformSettings.pricingEnabled === false
+      message: nextVal
         ? 'Section Tarifs activée et visible sur la vitrine instantanément !'
         : 'Section Tarifs masquée de la vitrine instantanément !'
     });
@@ -915,79 +932,88 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       isPopular: false,
       enabled: true
     };
-    setPlatformSettings(prev => {
-      const updatedList = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS), newPlan];
-      const updated = { ...prev, pricingPlans: updatedList };
-      savePlatformSettings(updated);
-      return updated;
-    });
+    const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+    const updatedList = [...basePlans, newPlan];
+    const updated = { ...platformSettings, pricingPlans: updatedList };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
+    playAdminChime();
     setSettingsToast({ type: 'success', message: 'Nouvelle formule ajoutée et active instantanément !' });
     setTimeout(() => setSettingsToast(null), 3000);
   };
 
   const handleUpdatePricingPlan = (index: number, updatedFields: Partial<LandingPricingPlan>) => {
-    setPlatformSettings(prev => {
-      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-      list[index] = { ...list[index], ...updatedFields };
-      const updated = { ...prev, pricingPlans: list };
-      savePlatformSettings(updated);
-      return updated;
-    });
+    const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+    const list = basePlans.map((p, i) => i === index ? { ...p, ...updatedFields } : { ...p });
+    const updated = { ...platformSettings, pricingPlans: list };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
+
+    if (updatedFields.enabled !== undefined) {
+      playAdminChime();
+      setSettingsToast({
+        type: 'success',
+        message: updatedFields.enabled
+          ? 'Formule réactivée et visible sur la vitrine instantanément !'
+          : 'Formule masquée de la vitrine instantanément !'
+      });
+      setTimeout(() => setSettingsToast(null), 3000);
+    }
   };
 
   const handleRemovePricingPlan = (index: number) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette formule de tarif ?")) {
-      setPlatformSettings(prev => {
-        const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-        list.splice(index, 1);
-        const updated = { ...prev, pricingPlans: list };
-        savePlatformSettings(updated);
-        return updated;
-      });
+      const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+      const list = basePlans.filter((_, i) => i !== index);
+      const updated = { ...platformSettings, pricingPlans: list };
+      setPlatformSettings(updated);
+      savePlatformSettings(updated);
+      playAdminChime();
       setSettingsToast({ type: 'success', message: 'Formule supprimée instantanément.' });
       setTimeout(() => setSettingsToast(null), 3000);
     }
   };
 
   const handleMovePricingPlan = (index: number, direction: 'up' | 'down') => {
-    setPlatformSettings(prev => {
-      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= list.length) return prev;
-      const temp = list[index];
-      list[index] = list[targetIndex];
-      list[targetIndex] = temp;
-      const updated = { ...prev, pricingPlans: list };
-      savePlatformSettings(updated);
-      return updated;
-    });
+    const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= basePlans.length) return;
+    const list = [...basePlans];
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+    const updated = { ...platformSettings, pricingPlans: list };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
   };
 
   const handleAddFeatureToPlan = (planIndex: number, featText: string) => {
     if (!featText.trim()) return;
-    setPlatformSettings(prev => {
-      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-      const plan = list[planIndex];
-      list[planIndex] = {
+    const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+    const list = basePlans.map((plan, i) => {
+      if (i !== planIndex) return plan;
+      return {
         ...plan,
         features: [...plan.features, featText.trim()]
       };
-      const updated = { ...prev, pricingPlans: list };
-      savePlatformSettings(updated);
-      return updated;
     });
+    const updated = { ...platformSettings, pricingPlans: list };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
   };
 
   const handleRemoveFeatureFromPlan = (planIndex: number, featIndex: number) => {
-    setPlatformSettings(prev => {
-      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-      const plan = list[planIndex];
-      const newFeats = plan.features.filter((_, idx) => idx !== featIndex);
-      list[planIndex] = { ...plan, features: newFeats };
-      const updated = { ...prev, pricingPlans: list };
-      savePlatformSettings(updated);
-      return updated;
+    const basePlans = sanitizePricingPlans(platformSettings.pricingPlans);
+    const list = basePlans.map((plan, i) => {
+      if (i !== planIndex) return plan;
+      return {
+        ...plan,
+        features: plan.features.filter((_, idx) => idx !== featIndex)
+      };
     });
+    const updated = { ...platformSettings, pricingPlans: list };
+    setPlatformSettings(updated);
+    savePlatformSettings(updated);
   };
 
   const handleResetPricingPlans = () => {
@@ -1000,6 +1026,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       };
       setPlatformSettings(updated);
       savePlatformSettings(updated);
+      playAdminChime();
       setSettingsToast({ type: 'success', message: 'Offres tarifaires d\'origine restaurées instantanément !' });
       setTimeout(() => setSettingsToast(null), 3000);
     }
@@ -1014,7 +1041,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
     setTimeout(() => setSettingsToast(null), 4000);
 
-    savePlatformSettings(platformSettings).then(ok => {
+    const settingsToSave: PlatformSettings = {
+      ...platformSettings,
+      pricingPlans: currentPricingPlans
+    };
+
+    savePlatformSettings(settingsToSave).then(ok => {
       if (!ok) {
         setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde de la tarification.' });
       }
@@ -2334,7 +2366,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB: PRICING PLANS / TARIFICATION LANDING PAGE */}
           {activeSubTab === 'pricing' && (() => {
             const plans = currentPricingPlans;
-            const activePlansCount = plans.filter(p => p.enabled !== false).length;
+            const activePlansCount = plans.filter(p => p.enabled !== false && (p.enabled as any) !== 'false' && (p.enabled as any) !== 0 && (p.enabled as any) !== '0').length;
             const isTwoCards = activePlansCount === 2;
 
             return (
@@ -2506,7 +2538,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
 
                   {plans.map((plan, index) => {
-                    const isEnabled = plan.enabled !== false;
+                    const isEnabled = plan.enabled !== false && (plan.enabled as any) !== 'false' && (plan.enabled as any) !== 0 && (plan.enabled as any) !== '0';
                     const isPopular = Boolean(plan.isPopular);
 
                     return (
@@ -2515,7 +2547,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         className={`double-bezel-outer transition-all ${isPopular ? 'ring-2 ring-emerald-500/50' : ''
                           }`}
                       >
-                        <div className={`double-bezel-inner p-6 space-y-5 bg-white ${!isEnabled ? 'opacity-70 bg-slate-50/60' : ''
+                        <div className={`double-bezel-inner p-6 space-y-5 bg-white ${!isEnabled ? 'opacity-80 bg-slate-50/80 border border-dashed border-amber-300' : ''
                           }`}>
                           {/* Card Top Toolbar */}
                           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
@@ -2538,13 +2570,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 </span>
                               )}
                               {!isEnabled ? (
-                                <button type="button" onClick={() => handleUpdatePricingPlan(index, { enabled: true })} className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition-colors" title="Cliquer pour afficher cette offre sur la vitrine">
-                                  <EyeOff className="w-3 h-3" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePricingPlan(index, { enabled: true })}
+                                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                                  title="Cliquer pour afficher cette formule sur la vitrine"
+                                >
+                                  <EyeOff className="w-3 h-3 text-amber-700" />
                                   <span>Masqué de la vitrine (Activer)</span>
                                 </button>
                               ) : (
-                                <button type="button" onClick={() => handleUpdatePricingPlan(index, { enabled: false })} className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center gap-1 border border-emerald-100 cursor-pointer transition-colors" title="Cliquer pour masquer cette offre de la vitrine">
-                                  <Eye className="w-3 h-3" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePricingPlan(index, { enabled: false })}
+                                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center gap-1 border border-emerald-200 cursor-pointer transition-colors"
+                                  title="Cliquer pour masquer cette formule de la vitrine"
+                                >
+                                  <Eye className="w-3 h-3 text-emerald-600" />
                                   <span>Visible sur la vitrine (Masquer)</span>
                                 </button>
                               )}
@@ -2556,10 +2598,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 type="button"
                                 onClick={() => handleUpdatePricingPlan(index, { enabled: !isEnabled })}
                                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isEnabled
-                                    ? 'hover:bg-slate-100 text-slate-600 hover:text-amber-600'
-                                    : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                                    ? 'hover:bg-slate-100 text-emerald-600 hover:text-amber-600'
+                                    : 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300'
                                   }`}
-                                title={isEnabled ? "Masquer cette formule sur la vitrine" : "Afficher cette formule sur la vitrine"}
+                                title={isEnabled ? "Cliquer pour masquer cette formule sur la vitrine" : "Cliquer pour afficher cette formule sur la vitrine"}
                               >
                                 {isEnabled ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-amber-700" />}
                               </button>
@@ -2884,7 +2926,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               ? "grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch"
                               : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto items-stretch"
                       }>
-                        {plans.filter(p => p.enabled !== false).map((plan, pIdx) => {
+                        {plans.filter(p => p.enabled !== false && (p.enabled as any) !== 'false' && (p.enabled as any) !== 0 && (p.enabled as any) !== '0').map((plan, pIdx) => {
                           const isPopular = Boolean(plan.isPopular);
 
                           return (

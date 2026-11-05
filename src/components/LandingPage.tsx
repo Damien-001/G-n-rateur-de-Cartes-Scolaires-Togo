@@ -21,7 +21,7 @@ import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
 import { LandingVideoSection } from './LandingVideoSection';
 import { PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS } from '../types';
-import { fetchPlatformSettings, PLATFORM_SETTINGS_STORAGE_KEY } from '../lib/db';
+import { fetchPlatformSettings, PLATFORM_SETTINGS_STORAGE_KEY, sanitizePricingPlans } from '../lib/db';
 
 interface LandingPageProps {
   onStartAuth: (mode: 'signup' | 'signin') => void;
@@ -57,22 +57,66 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(DEFAULT_PLATFORM_SETTINGS);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            return {
+              ...DEFAULT_PLATFORM_SETTINGS,
+              ...parsed,
+              pricingPlans: sanitizePricingPlans(parsed.pricingPlans)
+            };
+          }
+        }
+      } catch { }
+    }
+    return DEFAULT_PLATFORM_SETTINGS;
+  });
 
   useEffect(() => {
     fetchPlatformSettings().then(settings => {
-      if (settings) setPlatformSettings(settings);
+      if (settings) {
+        setPlatformSettings({
+          ...settings,
+          pricingPlans: sanitizePricingPlans(settings.pricingPlans)
+        });
+      }
     });
 
     const handleSettingsUpdate = (e: any) => {
       if (e.detail) {
-        setPlatformSettings(e.detail);
+        setPlatformSettings({
+          ...DEFAULT_PLATFORM_SETTINGS,
+          ...e.detail,
+          pricingPlans: sanitizePricingPlans(e.detail.pricingPlans)
+        });
       }
     };
     const handleStorage = (e: StorageEvent) => {
       if (e.key === PLATFORM_SETTINGS_STORAGE_KEY || e.key === 'cartes_togo_platform_settings') {
+        if (e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed && typeof parsed === 'object') {
+              setPlatformSettings({
+                ...DEFAULT_PLATFORM_SETTINGS,
+                ...parsed,
+                pricingPlans: sanitizePricingPlans(parsed.pricingPlans)
+              });
+              return;
+            }
+          } catch { }
+        }
         fetchPlatformSettings().then(settings => {
-          if (settings) setPlatformSettings(settings);
+          if (settings) {
+            setPlatformSettings({
+              ...settings,
+              pricingPlans: sanitizePricingPlans(settings.pricingPlans)
+            });
+          }
         });
       }
     };
@@ -605,10 +649,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
 
           {(() => {
-            const rawPlans = (platformSettings.pricingPlans && platformSettings.pricingPlans.length > 0)
-              ? platformSettings.pricingPlans
-              : DEFAULT_PRICING_PLANS;
-            const activePlans = rawPlans.filter(p => p.enabled !== false);
+            const validPlans = sanitizePricingPlans(platformSettings.pricingPlans);
+            const activePlans = validPlans.filter(p => p.enabled !== false && (p.enabled as any) !== 'false' && (p.enabled as any) !== 0 && (p.enabled as any) !== '0');
             const isTwoCards = activePlans.length === 2;
             const isOneCard = activePlans.length === 1;
 
