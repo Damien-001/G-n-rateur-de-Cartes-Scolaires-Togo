@@ -2460,6 +2460,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <RotateCcw className="w-3.5 h-3.5" />
                         Par défaut
                       </button>
+                      <a
+                        href="/#pricing"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        title="Ouvrir la landing page (section tarifs) dans un nouvel onglet"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Voir la Vitrine</span>
+                      </a>
                       <button
                         type="button"
                         onClick={handleSavePricingOnly}

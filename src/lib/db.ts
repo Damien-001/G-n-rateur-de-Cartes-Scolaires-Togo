@@ -2781,93 +2781,46 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     }));
   }
 
-  // 3. Synchronisation distante en arrière-plan sans bloquer
-  const persistRemote = async () => {
-    // Save to Supabase school_info system entry
-    const p1 = (async () => {
-      try {
-        await supabase.from('school_info').upsert({
-          user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
-          name: 'CONFIGURATION SYSTEME SUKUPASS',
-          logo_url: null,
-          signature_url: null,
-          stamp_url: null,
-          card_colors: settingsToSave as any,
-          updated_at: timestamp
-        }, { onConflict: 'user_id' });
-      } catch (err) {
-        console.warn('savePlatformSettings Supabase school_info system row error:', err);
-      }
-    })();
+  // 3. Synchronisation distante
+  try {
+    const { error } = await supabase.from('platform_settings').upsert({
+      id: 'global_config',
+      tmoney_number: settingsToSave.tmoneyNumber || '',
+      tmoney_holder: settingsToSave.tmoneyHolder || '',
+      flooz_number: settingsToSave.floozNumber || '',
+      flooz_holder: settingsToSave.floozHolder || '',
+      annual_price_cfa: settingsToSave.annualPriceCFA || 30000,
+      support_email: settingsToSave.supportEmail || '',
+      support_phone: settingsToSave.supportPhone || '',
+      whatsapp_number: settingsToSave.whatsappNumber || '',
+      office_address: settingsToSave.officeAddress || '',
+      payment_instructions: settingsToSave.paymentInstructions || '',
+      support_notice: settingsToSave.supportNotice || '',
+      demo_video_url: settingsToSave.demoVideoUrl || '',
+      demo_video_title: settingsToSave.demoVideoTitle || '',
+      demo_video_poster: settingsToSave.demoVideoPoster || '',
+      pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
+      pricing_title: settingsToSave.pricingTitle || '',
+      pricing_subtitle: settingsToSave.pricingSubtitle || '',
+      pricing_plans: sanitizedPlans,
+      updated_at: timestamp
+    }, { onConflict: 'id' });
 
-    // Try Supabase platform_settings table
-    const p2 = (async () => {
-      try {
-        const { error: fullError } = await supabase.from('platform_settings').upsert({
-          id: 'global_config',
-          tmoney_number: settingsToSave.tmoneyNumber,
-          tmoney_holder: settingsToSave.tmoneyHolder,
-          flooz_number: settingsToSave.floozNumber,
-          flooz_holder: settingsToSave.floozHolder,
-          annual_price_cfa: settingsToSave.annualPriceCFA,
-          support_email: settingsToSave.supportEmail,
-          support_phone: settingsToSave.supportPhone,
-          whatsapp_number: settingsToSave.whatsappNumber,
-          office_address: settingsToSave.officeAddress,
-          fedapay_enabled: settingsToSave.fedapayEnabled,
-          fedapay_public_key: settingsToSave.fedapayPublicKey,
-          fedapay_environment: settingsToSave.fedapayEnvironment,
-          payment_instructions: settingsToSave.paymentInstructions,
-          support_notice: settingsToSave.supportNotice,
-          demo_video_url: settingsToSave.demoVideoUrl,
-          demo_video_title: settingsToSave.demoVideoTitle,
-          demo_video_poster: settingsToSave.demoVideoPoster,
-          pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
-          pricing_title: settingsToSave.pricingTitle,
-          pricing_subtitle: settingsToSave.pricingSubtitle,
-          pricing_plans: settingsToSave.pricingPlans || null,
-          updated_at: timestamp
-        }, { onConflict: 'id' });
+    if (error) {
+      console.error('savePlatformSettings Supabase platform_settings error:', error);
+    }
 
-        if (fullError) {
-          console.warn('savePlatformSettings Supabase full upsert warning, retrying base columns:', fullError);
-          await supabase.from('platform_settings').upsert({
-            id: 'global_config',
-            tmoney_number: settingsToSave.tmoneyNumber,
-            tmoney_holder: settingsToSave.tmoneyHolder,
-            flooz_number: settingsToSave.floozNumber,
-            flooz_holder: settingsToSave.floozHolder,
-            annual_price_cfa: settingsToSave.annualPriceCFA,
-            support_email: settingsToSave.supportEmail,
-            support_phone: settingsToSave.supportPhone,
-            whatsapp_number: settingsToSave.whatsappNumber,
-            office_address: settingsToSave.officeAddress,
-            fedapay_enabled: settingsToSave.fedapayEnabled,
-            fedapay_public_key: settingsToSave.fedapayPublicKey,
-            fedapay_environment: settingsToSave.fedapayEnvironment,
-            payment_instructions: settingsToSave.paymentInstructions,
-            support_notice: settingsToSave.supportNotice,
-            pricing_plans: settingsToSave.pricingPlans || null,
-            updated_at: timestamp
-          }, { onConflict: 'id' });
-        }
-      } catch (err) {
-        console.warn('savePlatformSettings Supabase platform_settings table error:', err);
-      }
-    })();
-
-    // Save to Supabase admin_logs
-    const p3 = saveAdminLog(
-      PLATFORM_SETTINGS_SYSTEM_USER_ID,
+    // Save audit log entry
+    saveAdminLog(
+      'SYSTEM_GLOBAL',
+      'Configuration Système',
       'SYNC_PLATFORM_SETTINGS',
-      JSON.stringify(settingsToSave),
-      'Configuration Plateforme'
+      JSON.stringify(settingsToSave)
     ).catch(() => {});
 
-    await Promise.allSettled([p1, p2, p3]);
-  };
-
-  persistRemote().catch(err => console.warn('Background sync error in savePlatformSettings:', err));
-
-  return true;
+    return !error;
+  } catch (err) {
+    console.warn('savePlatformSettings Supabase unexpected error:', err);
+    return false;
+  }
 }
