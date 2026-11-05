@@ -2389,122 +2389,96 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 )}
 
                 {/* Header banner */}
-                <div className="p-6 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-3xl shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div className="space-y-2">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[11px] font-black uppercase tracking-wider backdrop-blur-xs">
-                        <Tag className="w-3.5 h-3.5 text-amber-300" />
-                        <span>Vitrine Publique & Landing Page</span>
-                      </div>
-                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                        Tarification & Offres d'Abonnement
+                <div className="p-5 sm:p-6 bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+                        Tarification Vitrine
                       </h2>
-                      <p className="text-xs sm:text-sm text-emerald-100/90 font-medium max-w-2xl leading-relaxed">
-                        Configurez les formules tarifaires, prix, avantages et boutons d'action visibles par les visiteurs sur la landing page. Toutes les modifications sont publiées instantanément.
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-2 pt-2">
-                        <span className="px-3 py-1 bg-white/15 rounded-xl text-xs font-bold text-white">
-                          {plans.length} formules configurées
-                        </span>
-                        <span className="px-3 py-1 bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 rounded-xl text-xs font-bold">
-                          {activePlansCount} active{activePlansCount > 1 ? 's' : ''} sur la vitrine
-                        </span>
-                        {isTwoCards && (
-                          <span className="px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Mode 2 Tarifs Actif : Justification et centrage automatique appliqués
-                          </span>
-                        )}
-                      </div>
+                      <span className="px-2.5 py-0.5 bg-white/10 text-emerald-200 rounded-full text-xs font-medium border border-white/10">
+                        {activePlansCount} sur {plans.length} actives
+                      </span>
                     </div>
+                  </div>
 
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleTogglePricingSection}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 ${platformSettings.pricingEnabled !== false
-                            ? 'bg-emerald-500/25 hover:bg-emerald-500/35 text-white border border-emerald-400/40'
-                            : 'bg-amber-500/30 hover:bg-amber-500/40 text-amber-200 border border-amber-400/40'
-                          }`}
-                        title={platformSettings.pricingEnabled !== false ? "Cliquer pour masquer toute la section Tarifs de la landing page" : "Cliquer pour afficher la section Tarifs sur la landing page"}
-                      >
-                        {platformSettings.pricingEnabled !== false ? (
-                          <>
-                            <Eye className="w-4 h-4 text-emerald-300" />
-                            <span>Section Visible</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-4 h-4 text-amber-300" />
-                            <span>Section Masquée</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAddPricingPlan}
-                        className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
-                      >
-                        <Plus className="w-4 h-4 text-emerald-700" />
-                        Ajouter une Offre
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResetPricingPlans}
-                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                        title="Restaurer les 3 offres initiales"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Par défaut
-                      </button>
-                      <a
-                        href="/#pricing"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                        title="Ouvrir la landing page (section tarifs) dans un nouvel onglet"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Voir la Vitrine</span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={handleSavePricingOnly}
-                        disabled={isSavingSettings}
-                        className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-amber-400/20 flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-                      >
-                        {isSavingSettings ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            Enregistrement...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4" />
-                            Enregistrer les Tarifs
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleTogglePricingSection}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        platformSettings.pricingEnabled !== false
+                          ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                          : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/30'
+                      }`}
+                      title="Activer ou masquer la section sur la vitrine"
+                    >
+                      {platformSettings.pricingEnabled !== false ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      <span>{platformSettings.pricingEnabled !== false ? 'Section Visible' : 'Section Masquée'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleAddPricingPlan}
+                      className="px-3.5 py-2 bg-white hover:bg-emerald-50 text-emerald-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Ajouter une formule</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleResetPricingPlans}
+                      className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs transition-all cursor-pointer active:scale-95"
+                      title="Restaurer les 3 offres initiales"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+
+                    <a
+                      href="/#pricing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="Ouvrir la landing page (section tarifs) dans un nouvel onglet"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Voir la Vitrine</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={handleSavePricingOnly}
+                      disabled={isSavingSettings}
+                      className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 shadow-sm"
+                    >
+                      {isSavingSettings ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sauvegarde...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Enregistrer</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
                 {/* Section Title & Subtitle Customizer */}
                 <div className="double-bezel-outer">
-                  <div className="double-bezel-inner p-6 space-y-4 bg-white">
-                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200/70">
+                  <div className="double-bezel-inner p-5 space-y-3 bg-white">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200/70">
                       <Sliders className="w-4 h-4 text-emerald-600" />
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                        En-tête de la Section « Offres & Abonnements » sur la Landing Page
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        En-tête de la section
                       </h3>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                           Titre Principal
                         </label>
                         <input
@@ -2512,11 +2486,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           value={platformSettings.pricingTitle || ''}
                           onChange={e => setPlatformSettings(prev => ({ ...prev, pricingTitle: e.target.value }))}
                           placeholder="Ex: Des tarifs transparents, adaptés à votre école"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                           Sous-titre / Accroche
                         </label>
                         <input
@@ -2524,7 +2498,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           value={platformSettings.pricingSubtitle || ''}
                           onChange={e => setPlatformSettings(prev => ({ ...prev, pricingSubtitle: e.target.value }))}
                           placeholder="Ex: Pas de frais cachés. Choisissez l'abonnement..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-800 focus:border-emerald-500 bg-slate-50/50"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-800 focus:border-emerald-500 bg-slate-50/50"
                         />
                       </div>
                     </div>
@@ -2533,18 +2507,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
                 {/* Plans List Editor */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                        Cartes Tarifaires ({plans.length})
-                      </h3>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      {isTwoCards
-                        ? "✨ 2 cartes actives : la vitrine applique automatiquement une justification et un équilibrage parfaits."
-                        : "Astuce : désactivez ou supprimez une offre pour passer à 2 tarifs bien justifiés."}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                      Formules Tarifaires ({plans.length})
+                    </h3>
                   </div>
 
                   {plans.map((plan, index) => {
@@ -2579,42 +2546,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   Recommandé
                                 </span>
                               )}
-                              {!isEnabled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePricingPlan(index, { enabled: true })}
-                                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-                                  title="Cliquer pour afficher cette formule sur la vitrine"
-                                >
-                                  <EyeOff className="w-3 h-3 text-amber-700" />
-                                  <span>Masqué de la vitrine (Activer)</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdatePricingPlan(index, { enabled: false })}
-                                  className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center gap-1 border border-emerald-200 cursor-pointer transition-colors"
-                                  title="Cliquer pour masquer cette formule de la vitrine"
-                                >
-                                  <Eye className="w-3 h-3 text-emerald-600" />
-                                  <span>Visible sur la vitrine (Masquer)</span>
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Move Up / Down / Delete actions */}
-                            <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleUpdatePricingPlan(index, { enabled: !isEnabled })}
-                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isEnabled
-                                    ? 'hover:bg-slate-100 text-emerald-600 hover:text-amber-600'
-                                    : 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300'
-                                  }`}
-                                title={isEnabled ? "Cliquer pour masquer cette formule sur la vitrine" : "Cliquer pour afficher cette formule sur la vitrine"}
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs ${
+                                  isEnabled
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                    : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                }`}
+                                title={isEnabled ? "Cliquer pour masquer de la vitrine" : "Cliquer pour afficher sur la vitrine"}
                               >
-                                {isEnabled ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-amber-700" />}
+                                {isEnabled ? <Eye className="w-3 h-3 text-emerald-600" /> : <EyeOff className="w-3 h-3 text-amber-700" />}
+                                <span>{isEnabled ? 'Visible' : 'Masqué'}</span>
                               </button>
+                            </div>
+
+                            {/* Move Up / Down / Delete actions */}
+                            <div className="flex items-center gap-1">
                               <button
                                 type="button"
                                 disabled={index === 0}
@@ -2633,7 +2581,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               >
                                 <ChevronDown className="w-4 h-4" />
                               </button>
-                              <div className="w-px h-4 bg-slate-200 mx-1" />
+                              <div className="w-px h-4 bg-slate-200 mx-0.5" />
                               <button
                                 type="button"
                                 onClick={() => handleRemovePricingPlan(index)}
@@ -2644,22 +2592,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </button>
                             </div>
                           </div>
-
-                          {!isEnabled && (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-950 font-medium">
-                              <div className="flex items-center gap-2">
-                                <EyeOff className="w-4 h-4 text-amber-600 shrink-0" />
-                                <span>Cette offre est actuellement <strong>masquée</strong> sur la landing page.</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdatePricingPlan(index, { enabled: true })}
-                                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs shrink-0"
-                              >
-                                Rendre Visible
-                              </button>
-                            </div>
-                          )}
 
                           {/* Inputs Grid */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2901,13 +2833,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         </h3>
                       </div>
                       <div className="flex items-center gap-2">
-                        {isTwoCards && (
-                          <span className="text-[10px] font-black uppercase px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
-                            Justification 2 Cartes Active
-                          </span>
-                        )}
-                        <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 bg-slate-200 text-slate-700 rounded-full">
-                          Rendu Visiteur Réel
+                        <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full">
+                          Rendu Visiteur
                         </span>
                       </div>
                     </div>
@@ -2999,15 +2926,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           );
                         })}
                       </div>
-
-                      {isTwoCards && (
-                        <div className="p-3.5 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center justify-center gap-2 text-center text-xs font-bold text-emerald-800">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>
-                            Justification parfaite : Les 2 cartes sont alignées côte-à-côte avec des largeurs équilibrées, une hauteur uniforme et des boutons parfaitement alignés sur la ligne de base.
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -3017,7 +2935,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                     <Info className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>
-                      Enregistrez pour synchroniser immédiatement la grille tarifaire avec la vitrine publique.
+                      Synchronisation instantanée avec la vitrine publique.
                     </span>
                   </div>
 
