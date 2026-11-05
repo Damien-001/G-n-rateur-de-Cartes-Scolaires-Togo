@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Papa from 'papaparse';
-import { 
+import {
   Trash2,
   Search,
   GraduationCap,
   LayoutGrid,
   Printer,
-  Upload, 
+  Upload,
   ChevronRight,
   ChevronLeft,
   FileDown,
@@ -69,8 +69,8 @@ export default function App({ session, onLogout }: AppProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(() => ({
     ...DEFAULT_SCHOOL_INFO,
-    name: session.schoolName 
-      ? session.schoolName.toUpperCase() 
+    name: session.schoolName
+      ? session.schoolName.toUpperCase()
       : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : ''),
     schoolType: session.schoolType || 'Lycée',
     location: session.location || '',
@@ -101,8 +101,8 @@ export default function App({ session, onLogout }: AppProps) {
   } | null>(null);
   const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
-  const isSuperAdminUser = session.userId === 'admin-super-user-id' || 
-    session.email?.toLowerCase().trim() === 'admin@sukupass.tg' || 
+  const isSuperAdminUser = session.userId === 'admin-super-user-id' ||
+    session.email?.toLowerCase().trim() === 'admin@sukupass.tg' ||
     session.email?.toLowerCase().trim() === 'admin@cardschool.tg';
   const [isAdminView, setIsAdminView] = useState(isSuperAdminUser);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
@@ -119,7 +119,7 @@ export default function App({ session, onLogout }: AppProps) {
       const next = !prev;
       try {
         localStorage.setItem('cardschool_school_sidebar_open', String(next));
-      } catch {}
+      } catch { }
       return next;
     });
   };
@@ -156,7 +156,7 @@ export default function App({ session, onLogout }: AppProps) {
       date_expiration: formatDateDisplay(s.expirationDate),
     }));
     const csv = Papa.unparse(dataToExport, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      columns: ['nom', 'prenom', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
       delimiter: ';',
     });
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -200,7 +200,7 @@ export default function App({ session, onLogout }: AppProps) {
     ];
 
     const csv = Papa.unparse(sample, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      columns: ['nom', 'prenom', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
       delimiter: ';',
     });
 
@@ -311,11 +311,16 @@ export default function App({ session, onLogout }: AppProps) {
       ]);
 
       const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
-      // 1.5 sur mobile pour éviter de saturer la mémoire canvas d'iOS Safari, 2 sur desktop
-      const renderScale = isMobileDevice ? 1.5 : 2;
+      // 1.2 sur mobile (ultra-rapide, 3x moins de calculs et de mémoire), 1.6 sur desktop
+      const renderScale = isMobileDevice ? 1.2 : 1.6;
 
       // A4 en mm: 210 × 297
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ 
+        orientation: 'portrait', 
+        unit: 'mm', 
+        format: 'a4',
+        compress: true 
+      });
       const A4_W_MM = 210;
       const A4_H_MM = 297;
 
@@ -328,12 +333,13 @@ export default function App({ session, onLogout }: AppProps) {
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
-          imageTimeout: 8000,
+          imageTimeout: 2500,
+          removeContainer: true,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.90);
+        const imgData = canvas.toDataURL('image/jpeg', 0.82);
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+        pdf.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM, undefined, 'FAST');
       }
 
       const cleanSchoolName = (schoolInfo.name || 'sukupass')
@@ -399,12 +405,12 @@ export default function App({ session, onLogout }: AppProps) {
       setLoading(true);
       setLoadingTimeout(false);
       const startTime = performance.now();
-      
+
       // Timeout de 15 secondes pour connexions lentes
       loadingTimer.current = setTimeout(() => {
         setLoadingTimeout(true);
       }, 15000);
-      
+
       try {
         // Charger school_info et students en PARALLÈLE (élimine la cascade réseau)
         const [fetchedSchool, fetchedStudents] = await Promise.all([
@@ -414,7 +420,7 @@ export default function App({ session, onLogout }: AppProps) {
         if (fetchedSchool) {
           if (!fetchedSchool.name && (session.schoolName || session.fullName)) {
             fetchedSchool.name = (session.schoolName || session.fullName).toUpperCase();
-            saveSchoolInfo(fetchedSchool, session.userId).catch(() => {});
+            saveSchoolInfo(fetchedSchool, session.userId).catch(() => { });
           }
           setSchoolInfo(fetchedSchool);
           registerSchoolRecord({
@@ -423,15 +429,15 @@ export default function App({ session, onLogout }: AppProps) {
             managerName: session.fullName,
             managerEmail: session.email,
             updatedAt: new Date().toISOString(),
-          }).catch(() => {});
+          }).catch(() => { });
           saveAdminLog(
             session.userId,
             'Activité Compte Établissement',
             `Connexion active : ${session.fullName || session.email} (${session.email})`,
             fetchedSchool.name || session.fullName || 'Établissement'
-          ).catch(() => {});
+          ).catch(() => { });
         } else {
-          const fallbackName = session.schoolName 
+          const fallbackName = session.schoolName
             ? session.schoolName.toUpperCase()
             : (session.fullName ? `COMPLEXE SCOLAIRE ${session.fullName.toUpperCase()}` : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : 'ÉTABLISSEMENT DU TOGO'));
 
@@ -444,25 +450,25 @@ export default function App({ session, onLogout }: AppProps) {
             subscriptionPlan: 'free',
           };
           setSchoolInfo(initialInfo);
-          saveSchoolInfo(initialInfo, session.userId).catch(() => {});
+          saveSchoolInfo(initialInfo, session.userId).catch(() => { });
           registerSchoolRecord({
             ...initialInfo,
             userId: session.userId,
             managerName: session.fullName,
             managerEmail: session.email,
             updatedAt: new Date().toISOString(),
-          }).catch(() => {});
+          }).catch(() => { });
           saveAdminLog(
             session.userId,
             'Activité Compte Établissement',
             `Compte initialisé : ${session.fullName || session.email} (${session.email})`,
             initialInfo.name
-          ).catch(() => {});
+          ).catch(() => { });
         }
-        
+
         // Affecter les étudiants chargés en parallèle
         setStudents(fetchedStudents);
-        
+
         const endTime = performance.now();
         console.log(`🚀 Chargement total en ${(endTime - startTime).toFixed(0)}ms`);
       } catch (error) {
@@ -476,9 +482,9 @@ export default function App({ session, onLogout }: AppProps) {
         setLoadingTimeout(false);
       }
     };
-    
+
     loadData();
-    
+
     return () => {
       if (loadingTimer.current) clearTimeout(loadingTimer.current);
     };
@@ -501,7 +507,7 @@ export default function App({ session, onLogout }: AppProps) {
       } else {
         fetchSchoolInfo(session.userId).then(s => {
           if (s) setSchoolInfo(s);
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
 
@@ -515,7 +521,7 @@ export default function App({ session, onLogout }: AppProps) {
       }
       fetchSchoolInfo(session.userId).then(s => {
         if (s) setSchoolInfo(s);
-      }).catch(() => {});
+      }).catch(() => { });
     };
 
     window.addEventListener('cardschool_subscription_updated', handleSubscriptionChange);
@@ -564,12 +570,12 @@ export default function App({ session, onLogout }: AppProps) {
   const handleAddStudent = useCallback(async (student: Student) => {
     console.log('🚀 Début handleAddStudent avec:', student);
     console.log('👤 Session userId:', session.userId);
-    
+
     try {
       console.log('💾 Appel upsertStudent...');
       const saved = await upsertStudent(student, session.userId);
       console.log('✅ Étudiant sauvegardé:', saved);
-      
+
       const isEdit = students.some(s => s.id === saved.id);
       setStudents(prev => {
         if (isEdit) {
@@ -578,19 +584,19 @@ export default function App({ session, onLogout }: AppProps) {
           return [...prev, saved];
         }
       });
-      
+
       saveAdminLog(
         session.userId,
         isEdit ? 'Modification Élève' : 'Ajout Élève',
         `${saved.firstName} ${saved.lastName} (${saved.className})`,
         schoolInfo.name
       );
-      
+
       // Fermer le formulaire seulement en cas de succès
       setIsFormOpen(false);
       setEditingStudent(undefined);
       console.log('✅ Formulaire fermé avec succès');
-      
+
     } catch (err) {
       console.error('❌ Erreur sauvegarde élève:', err);
       // Ne pas fermer le formulaire en cas d'erreur
@@ -719,7 +725,7 @@ export default function App({ session, onLogout }: AppProps) {
   }, [onLogout]);
 
   const toggleSelect = useCallback((id: string) => {
-    setSelectedStudents(prev => 
+    setSelectedStudents(prev =>
       prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
     );
   }, []);
@@ -782,7 +788,7 @@ export default function App({ session, onLogout }: AppProps) {
           <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
         </div>
       }>
-        <AdminDashboardView 
+        <AdminDashboardView
           session={session}
           onLogout={handleLogout}
           onSwitchToSchoolView={() => setIsAdminView(false)}
@@ -836,9 +842,8 @@ export default function App({ session, onLogout }: AppProps) {
         </header>
 
         {/* Global Sidebar - Fixed on desktop */}
-        <aside className={`hidden md:flex ${
-          isSidebarOpen ? 'md:w-64' : 'md:w-20'
-        } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
+        <aside className={`hidden md:flex ${isSidebarOpen ? 'md:w-64' : 'md:w-20'
+          } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
           {/* School Logo Section: exact height h-[73px], edge-to-edge border-b */}
           <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
             <div className="flex items-center gap-3 min-w-0">
@@ -862,9 +867,8 @@ export default function App({ session, onLogout }: AppProps) {
                 <div className="relative group">
                   <button
                     onClick={() => setIsAdminView(true)}
-                    className={`w-full flex items-center ${
-                      isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                    } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
+                    className={`w-full flex items-center ${isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                      } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
                   >
                     <Shield className="w-4 h-4 shrink-0" />
                     {isSidebarOpen && <span>Console Admin</span>}
@@ -893,13 +897,11 @@ export default function App({ session, onLogout }: AppProps) {
                     <div key={item.id} className="relative group">
                       <button
                         onClick={() => setActiveTab(item.id as any)}
-                        className={`w-full flex items-center ${
-                          isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
-                        } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                          isActive 
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                        className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                          } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${isActive
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-5 h-5 shrink-0" />
                         {isSidebarOpen && <span className="truncate">{item.label}</span>}
@@ -920,9 +922,8 @@ export default function App({ session, onLogout }: AppProps) {
               <div className="relative group pt-1">
                 <button
                   onClick={() => setIsVerificationOpen(true)}
-                  className={`w-full flex items-center ${
-                    isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                  } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
+                  className={`w-full flex items-center ${isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                    } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                   {isSidebarOpen && <span>Vérifier une carte</span>}
@@ -977,9 +978,8 @@ export default function App({ session, onLogout }: AppProps) {
               <div className="relative group">
                 <button
                   onClick={handleLogout}
-                  className={`w-full flex items-center ${
-                    isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                  } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+                  className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                    } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
                 >
                   <LogOut className="w-4 h-4 text-red-600 shrink-0" />
                   {isSidebarOpen && <span>Déconnexion</span>}
@@ -1037,18 +1037,16 @@ export default function App({ session, onLogout }: AppProps) {
                 <div className="bg-gray-100 p-0.5 rounded-lg flex items-center border border-gray-200/60">
                   <button
                     onClick={() => setPrintViewStyle('cards')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      printViewStyle === 'cards' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${printViewStyle === 'cards' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-gray-500 hover:text-gray-900'
+                      }`}
                   >
                     <CreditCard className="w-3.5 h-3.5" />
                     <span>Vue Cartes</span>
                   </button>
                   <button
                     onClick={() => setPrintViewStyle('sheet')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      printViewStyle === 'sheet' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${printViewStyle === 'sheet' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                      }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Feuille A4</span>
@@ -1078,17 +1076,15 @@ export default function App({ session, onLogout }: AppProps) {
                   <div className="bg-gray-100 p-0.5 rounded-lg flex">
                     <button
                       onClick={() => setPrintMode('recto')}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                        printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                      }`}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                        }`}
                     >
                       Recto Seul
                     </button>
                     <button
                       onClick={() => setPrintMode('recto-verso')}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                        printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                      }`}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                        }`}
                     >
                       Recto/Verso
                     </button>
@@ -1102,17 +1098,15 @@ export default function App({ session, onLogout }: AppProps) {
                     <div className="bg-gray-100 p-0.5 rounded-lg flex">
                       <button
                         onClick={() => setCardsPerPage(8)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                          cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                        }`}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${cardsPerPage === 8 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                          }`}
                       >
                         8
                       </button>
                       <button
                         onClick={() => setCardsPerPage(10)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                          cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                        }`}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${cardsPerPage === 10 ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                          }`}
                       >
                         10
                       </button>
@@ -1158,11 +1152,10 @@ export default function App({ session, onLogout }: AppProps) {
                 <button
                   type="button"
                   onClick={() => setPrintViewStyle('cards')}
-                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${
-                    printViewStyle === 'cards' 
-                      ? 'bg-emerald-600 text-white shadow-xs font-black' 
+                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${printViewStyle === 'cards'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <CreditCard className="w-3 h-3" />
                   <span>Cartes</span>
@@ -1170,11 +1163,10 @@ export default function App({ session, onLogout }: AppProps) {
                 <button
                   type="button"
                   onClick={() => setPrintViewStyle('sheet')}
-                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${
-                    printViewStyle === 'sheet' 
-                      ? 'bg-emerald-600 text-white shadow-xs font-black' 
+                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${printViewStyle === 'sheet'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <FileText className="w-3 h-3" />
                   <span>Planche A4</span>
@@ -1201,17 +1193,15 @@ export default function App({ session, onLogout }: AppProps) {
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setPrintMode('recto')}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${
-                      printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
-                    }`}
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
+                      }`}
                   >
                     Recto
                   </button>
                   <button
                     onClick={() => setPrintMode('recto-verso')}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${
-                      printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
-                    }`}
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
+                      }`}
                   >
                     R/V
                   </button>
@@ -1222,11 +1212,10 @@ export default function App({ session, onLogout }: AppProps) {
                   <button
                     type="button"
                     onClick={() => setMobileFitScreen(prev => !prev)}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
-                      mobileFitScreen 
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black' 
+                    className={`text-[10px] font-bold px-1.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${mobileFitScreen
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black'
                         : 'bg-gray-100 text-gray-600 border border-gray-200'
-                    }`}
+                      }`}
                     title={mobileFitScreen ? "Feuille A4 adaptée à l'écran (Cliquer pour zoom 100%)" : "Mode taille réelle 100%"}
                   >
                     {mobileFitScreen ? (
@@ -1307,7 +1296,7 @@ export default function App({ session, onLogout }: AppProps) {
 
                   {/* Recto Card */}
                   <div className="w-full flex justify-center overflow-x-auto py-1">
-                    <div 
+                    <div
                       className="shrink-0 rounded-xl overflow-hidden shadow-xs border border-slate-200/60"
                       style={{
                         maxWidth: '100%',
@@ -1325,7 +1314,7 @@ export default function App({ session, onLogout }: AppProps) {
                         Verso officiel
                       </span>
                       <div className="w-full flex justify-center overflow-x-auto py-1">
-                        <div 
+                        <div
                           className="shrink-0 rounded-xl overflow-hidden shadow-xs border border-slate-200/60"
                           style={{
                             maxWidth: '100%',
@@ -1376,9 +1365,9 @@ export default function App({ session, onLogout }: AppProps) {
           {/* Mode 2: Printable A4 Sheets Layout (Scaled for phone, full for print) */}
           <div className={`${printViewStyle === 'cards' ? 'hidden print:block' : 'block'} w-full overflow-x-auto py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0`}>
             <div className="w-fit min-w-full mx-auto flex flex-col items-center">
-              <PrintLayout 
-                students={studentsToPrint} 
-                schoolInfo={schoolInfo} 
+              <PrintLayout
+                students={studentsToPrint}
+                schoolInfo={schoolInfo}
                 printMode={printMode}
                 cardsPerPage={cardsPerPage}
                 fitToScreen={mobileFitScreen}
@@ -1402,9 +1391,8 @@ export default function App({ session, onLogout }: AppProps) {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
-                  isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
-                }`}
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+                  }`}
               >
                 <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
                   <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1498,12 +1486,12 @@ export default function App({ session, onLogout }: AppProps) {
                 </p>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div 
+                <div
                   className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
-                  style={{ 
-                    width: pdfProgress && pdfProgress.total > 0 
-                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%` 
-                      : '20%' 
+                  style={{
+                    width: pdfProgress && pdfProgress.total > 0
+                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%`
+                      : '20%'
                   }}
                 />
               </div>
@@ -1559,9 +1547,8 @@ export default function App({ session, onLogout }: AppProps) {
       </header>
 
       {/* Global Navigation Sidebar - Desktop Only */}
-      <aside className={`hidden md:flex ${
-        isSidebarOpen ? 'md:w-64' : 'md:w-20'
-      } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
+      <aside className={`hidden md:flex ${isSidebarOpen ? 'md:w-64' : 'md:w-20'
+        } md:h-full bg-[#f8faf6] text-slate-700 flex-col shrink-0 no-print border-r border-slate-200 shadow-sm transition-[width] duration-300 ease-in-out overflow-x-hidden`}>
         {/* School Logo Section: exact height h-[73px], edge-to-edge border-b */}
         <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
           <div className="flex items-center gap-3 min-w-0">
@@ -1586,9 +1573,8 @@ export default function App({ session, onLogout }: AppProps) {
               <div className="relative group">
                 <button
                   onClick={() => setIsAdminView(true)}
-                  className={`w-full flex items-center ${
-                    isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                  } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
+                  className={`w-full flex items-center ${isSidebarOpen ? 'justify-center gap-2 px-4 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                    } bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md transition-all active:scale-[0.98]`}
                   title={!isSidebarOpen ? "Console d'administration" : undefined}
                 >
                   <Shield className="w-4 h-4 shrink-0" />
@@ -1619,13 +1605,11 @@ export default function App({ session, onLogout }: AppProps) {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id as any)}
-                      className={`w-full flex items-center ${
-                        isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
-                      } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
-                        isActive 
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                      className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-3' : 'justify-center w-12 h-12 mx-auto'
+                        } rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${isActive
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
                       {isSidebarOpen && <span className="truncate">{item.label}</span>}
@@ -1647,9 +1631,8 @@ export default function App({ session, onLogout }: AppProps) {
             <div className="relative group pt-1">
               <button
                 onClick={() => setIsVerificationOpen(true)}
-                className={`w-full flex items-center ${
-                  isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
+                className={`w-full flex items-center ${isSidebarOpen ? 'gap-2.5 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-sm active:scale-95`}
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                 {isSidebarOpen && <span>Vérifier une carte</span>}
@@ -1706,9 +1689,8 @@ export default function App({ session, onLogout }: AppProps) {
             <div className="relative group">
               <button
                 onClick={handleLogout}
-                className={`w-full flex items-center ${
-                  isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
-                } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
+                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3.5 py-2.5' : 'justify-center w-12 h-12 mx-auto'
+                  } rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer`}
               >
                 <LogOut className="w-4 h-4 text-red-600 shrink-0" />
                 {isSidebarOpen && <span>Déconnexion</span>}
@@ -1758,9 +1740,8 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
-              isEffectivePro ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${isEffectivePro ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
               {isEffectivePro ? '⭐ Plan PRO Actif' : 'Plan Découverte'}
             </span>
 
@@ -1794,7 +1775,7 @@ export default function App({ session, onLogout }: AppProps) {
 
         {/* Tab switcher render */}
         {activeTab === 'design' ? (
-          <CardDesignView 
+          <CardDesignView
             schoolInfo={schoolInfo}
             studentsCount={students.length}
             onSaveSchoolInfo={async (newInfo) => {
@@ -1803,7 +1784,7 @@ export default function App({ session, onLogout }: AppProps) {
             }}
           />
         ) : activeTab === 'settings' ? (
-          <SchoolSettingsView 
+          <SchoolSettingsView
             session={session}
             schoolInfo={schoolInfo}
             studentsCount={students.length}
@@ -1816,7 +1797,7 @@ export default function App({ session, onLogout }: AppProps) {
             onOpenChat={() => setIsChatOpen(true)}
           />
         ) : activeTab === 'billing' ? (
-          <SchoolSettingsView 
+          <SchoolSettingsView
             session={session}
             schoolInfo={schoolInfo}
             studentsCount={students.length}
@@ -1830,7 +1811,7 @@ export default function App({ session, onLogout }: AppProps) {
           />
         ) : (
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-            
+
             {/* Suspended Alert Banner */}
             {isAccountSuspended && (
               <div className="mb-6 p-4 bg-red-600 text-white rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
@@ -1880,8 +1861,8 @@ export default function App({ session, onLogout }: AppProps) {
                   )}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
-                  {studentViewMode === 'classes' 
-                    ? 'Répertoire des effectifs, suivi de la prise de photos et impression directe par classe.' 
+                  {studentViewMode === 'classes'
+                    ? 'Répertoire des effectifs, suivi de la prise de photos et impression directe par classe.'
                     : 'Configurez le visuel des cartes et gérez la liste nominative de vos élèves.'}
                 </p>
               </div>
@@ -1892,11 +1873,10 @@ export default function App({ session, onLogout }: AppProps) {
                   <button
                     type="button"
                     onClick={() => setStudentViewMode('cards')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      studentViewMode === 'cards'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${studentViewMode === 'cards'
                         ? 'bg-white text-emerald-850 shadow-xs font-black'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                     title="Affichage individuel sous forme de cartes d'identité"
                   >
                     <LayoutGrid className="w-3.5 h-3.5" />
@@ -1906,26 +1886,24 @@ export default function App({ session, onLogout }: AppProps) {
                   <button
                     type="button"
                     onClick={() => setStudentViewMode('classes')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      studentViewMode === 'classes'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${studentViewMode === 'classes'
                         ? 'bg-white text-emerald-850 shadow-xs font-black'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                     title="Affichage synthétique par classe et registre d'élèves"
                   >
                     <GraduationCap className="w-3.5 h-3.5" />
                     <span>Vue par Classe</span>
                     {allClasses.length > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                        studentViewMode === 'classes' ? 'bg-emerald-100 text-emerald-850' : 'bg-slate-200 text-slate-600'
-                      }`}>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${studentViewMode === 'classes' ? 'bg-emerald-100 text-emerald-850' : 'bg-slate-200 text-slate-600'
+                        }`}>
                         {allClasses.length}
                       </span>
                     )}
                   </button>
                 </div>
 
-                <button 
+                <button
                   onClick={handleOpenAddStudent}
                   className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 btn-primary active:scale-95 text-xs sm:text-sm cursor-pointer shadow-md shrink-0"
                 >
@@ -1958,221 +1936,218 @@ export default function App({ session, onLogout }: AppProps) {
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Sidebar / Config */}
-              <div className="lg:col-span-4 space-y-6">
-                <SchoolConfigSidebar
-                  schoolInfo={schoolInfo}
-                  setSchoolInfo={setSchoolInfo}
-                  setIsSchoolSettingsOpen={setIsSchoolSettingsOpen}
-                  students={students}
-                  onImport={handleImport}
-                  allClasses={allClasses}
-                  currentClassFilter={studentClassFilter}
-                  isEffectivePro={isEffectivePro}
-                  effectiveQuota={effectiveQuota}
-                />
-              </div>
-
-              {/* Main Content / List */}
-              <div className="lg:col-span-8 space-y-6">
-                {/* Barre de recherche et filtres */}
-                <div className="double-bezel-outer">
-                  <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-3 justify-between items-center bg-white">
-                    <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input 
-                        type="text" 
-                        placeholder="Rechercher un élève par nom, prénom ou matricule..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-xs font-semibold"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-                      <span className="text-xs font-bold text-gray-400 uppercase shrink-0">
-                        {filteredStudents.length} affiché{filteredStudents.length > 1 ? 's' : ''}
-                      </span>
-                      <button
-                        onClick={handleSelectAll}
-                        disabled={filteredStudents.length === 0}
-                        className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-2xs cursor-pointer whitespace-nowrap"
-                      >
-                        {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
-                          ? 'Désélectionner'
-                          : 'Tout sélectionner'}
-                      </button>
-                    </div>
-                  </div>
+                {/* Sidebar / Config */}
+                <div className="lg:col-span-4 space-y-6">
+                  <SchoolConfigSidebar
+                    schoolInfo={schoolInfo}
+                    setSchoolInfo={setSchoolInfo}
+                    setIsSchoolSettingsOpen={setIsSchoolSettingsOpen}
+                    students={students}
+                    onImport={handleImport}
+                    allClasses={allClasses}
+                    currentClassFilter={studentClassFilter}
+                    isEffectivePro={isEffectivePro}
+                    effectiveQuota={effectiveQuota}
+                  />
                 </div>
 
-                {/* Class Quick-Navigation Tabs & Actions Toolbar */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/80 p-2 rounded-2xl border border-slate-200/80 shadow-2xs">
-                  {/* Left: Scrollable Class Pills */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none flex-1 min-w-0">
-                    <button
-                      onClick={() => setStudentClassFilter('all')}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        studentClassFilter === 'all'
-                          ? 'bg-emerald-600 text-white shadow-sm font-black'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}
-                    >
-                      Toutes les classes ({students.length})
-                    </button>
-                    {allClasses.map(cls => {
-                      const count = students.filter(s => s.className === cls).length;
-                      const isActive = studentClassFilter === cls;
-                      return (
+                {/* Main Content / List */}
+                <div className="lg:col-span-8 space-y-6">
+                  {/* Barre de recherche et filtres */}
+                  <div className="double-bezel-outer">
+                    <div className="double-bezel-inner p-4 flex flex-col sm:flex-row gap-3 justify-between items-center bg-white">
+                      <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Rechercher un élève par nom, prénom ou matricule..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-55 focus:bg-white focus-brand outline-none transition-all text-xs font-semibold"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+                        <span className="text-xs font-bold text-gray-400 uppercase shrink-0">
+                          {filteredStudents.length} affiché{filteredStudents.length > 1 ? 's' : ''}
+                        </span>
                         <button
-                          key={cls}
-                          onClick={() => setStudentClassFilter(cls)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                            isActive
-                              ? 'bg-emerald-600 text-white shadow-sm font-black'
-                              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-                          }`}
+                          onClick={handleSelectAll}
+                          disabled={filteredStudents.length === 0}
+                          className="text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 hover:border-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white shadow-2xs cursor-pointer whitespace-nowrap"
                         >
-                          <GraduationCap className="w-3.5 h-3.5 opacity-70" />
-                          <span>{cls}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                            isActive ? 'bg-emerald-700/60 text-white' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {count}
-                          </span>
+                          {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0
+                            ? 'Désélectionner'
+                            : 'Tout sélectionner'}
                         </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => handleOpenImportModal()}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-850 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shrink-0 cursor-pointer"
-                      title="Ajouter ou importer une nouvelle classe"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>+ Nouvelle classe</span>
-                    </button>
-                  </div>
-
-                  {/* Right side: Total classes count */}
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600 shrink-0">
-                    <Users className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{allClasses.length} classe{allClasses.length > 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-
-                {/* Specific Class Header Banner with direct actions */}
-                {studentClassFilter !== 'all' && (
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                        <GraduationCap className="w-5 h-5" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-black text-slate-900">
-                            Classe : {studentClassFilter}
-                          </h3>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-850 border border-emerald-200">
-                            {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''}
-                          </span>
+                    </div>
+                  </div>
+
+                  {/* Class Quick-Navigation Tabs & Actions Toolbar */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/80 p-2 rounded-2xl border border-slate-200/80 shadow-2xs">
+                    {/* Left: Scrollable Class Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none flex-1 min-w-0">
+                      <button
+                        onClick={() => setStudentClassFilter('all')}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${studentClassFilter === 'all'
+                            ? 'bg-emerald-600 text-white shadow-sm font-black'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                      >
+                        Toutes les classes ({students.length})
+                      </button>
+                      {allClasses.map(cls => {
+                        const count = students.filter(s => s.className === cls).length;
+                        const isActive = studentClassFilter === cls;
+                        return (
+                          <button
+                            key={cls}
+                            onClick={() => setStudentClassFilter(cls)}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${isActive
+                                ? 'bg-emerald-600 text-white shadow-sm font-black'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 opacity-70" />
+                            <span>{cls}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isActive ? 'bg-emerald-700/60 text-white' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => handleOpenImportModal()}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-850 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shrink-0 cursor-pointer"
+                        title="Ajouter ou importer une nouvelle classe"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>+ Nouvelle classe</span>
+                      </button>
+                    </div>
+
+                    {/* Right side: Total classes count */}
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600 shrink-0">
+                      <Users className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{allClasses.length} classe{allClasses.length > 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+
+                  {/* Specific Class Header Banner with direct actions */}
+                  {studentClassFilter !== 'all' && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <GraduationCap className="w-5 h-5" />
                         </div>
-                        <p className="text-[11px] text-slate-500 font-medium">
-                          Gestion ciblée et impression pour la classe {studentClassFilter}
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-slate-900">
+                              Classe : {studentClassFilter}
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-850 border border-emerald-200">
+                              {filteredStudents.length} élève{filteredStudents.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Gestion ciblée et impression pour la classe {studentClassFilter}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setPrintClassFilter(studentClassFilter);
-                          setActiveTab('print');
-                        }}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
-                        title={`Imprimer les cartes de la classe ${studentClassFilter}`}
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>Imprimer {studentClassFilter}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setPrintClassFilter(studentClassFilter);
+                            setActiveTab('print');
+                          }}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                          title={`Imprimer les cartes de la classe ${studentClassFilter}`}
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Imprimer {studentClassFilter}</span>
+                        </button>
 
-                      <button
-                        onClick={() => handleOpenImportModal(studentClassFilter)}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
-                        title={`Importer des élèves dans la classe ${studentClassFilter}`}
-                      >
-                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Importer dans cette classe</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Barre d'action contextuelle — suppression massive */}
-                {selectedStudents.length > 0 && (
-                  <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                        <button
+                          onClick={() => handleOpenImportModal(studentClassFilter)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                          title={`Importer des élèves dans la classe ${studentClassFilter}`}
+                        >
+                          <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Importer dans cette classe</span>
+                        </button>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-red-800">
-                          {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
-                        </p>
-                        <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setSelectedStudents([])}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                      >
-                        Annuler
-                      </button>
-                      <button
-                        onClick={handleBulkDelete}
-                        className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Supprimer la sélection
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {filteredStudents.map((student) => (
-                    <StudentCardItem
-                      key={student.id}
-                      student={student}
-                      isSelected={selectedStudents.includes(student.id)}
-                      onToggleSelect={toggleSelect}
-                      onEdit={handleEditStudent}
-                      onDelete={handleDeleteStudent}
-                    />
-                  ))}
-
-                  {filteredStudents.length === 0 && (
-                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-200/60 shadow-sm">
-                      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-800 opacity-80 mb-4 border border-emerald-100">
-                        <Users className="w-8 h-8" />
-                      </div>
-                      <p className="font-bold text-gray-800">Aucun élève trouvé</p>
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs text-center leading-relaxed font-semibold">
-                        {searchTerm || studentClassFilter !== 'all' 
-                          ? 'Aucun résultat ne correspond aux filtres de recherche sélectionnés.' 
-                          : 'Commencez par ajouter un élève manuellement ou importez une liste au format CSV.'}
-                      </p>
-                      <button 
-                        onClick={handleOpenAddStudent}
-                        className="mt-6 btn-primary cursor-pointer active:scale-95"
-                      >
-                        <Plus className="w-4 h-4" /> Ajouter un élève
-                      </button>
                     </div>
                   )}
+
+                  {/* Barre d'action contextuelle — suppression massive */}
+                  {selectedStudents.length > 0 && (
+                    <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-3 shadow-sm animate-pulse-once">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-red-800">
+                            {selectedStudents.length} élève{selectedStudents.length > 1 ? 's' : ''} sélectionné{selectedStudents.length > 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-red-500">Choisissez une action ci-dessous</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedStudents([])}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          onClick={handleBulkDelete}
+                          className="flex items-center gap-2 text-sm font-bold px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-md shadow-red-200 active:scale-95 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Supprimer la sélection
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {filteredStudents.map((student) => (
+                      <StudentCardItem
+                        key={student.id}
+                        student={student}
+                        isSelected={selectedStudents.includes(student.id)}
+                        onToggleSelect={toggleSelect}
+                        onEdit={handleEditStudent}
+                        onDelete={handleDeleteStudent}
+                      />
+                    ))}
+
+                    {filteredStudents.length === 0 && (
+                      <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border border-gray-200/60 shadow-sm">
+                        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-800 opacity-80 mb-4 border border-emerald-100">
+                          <Users className="w-8 h-8" />
+                        </div>
+                        <p className="font-bold text-gray-800">Aucun élève trouvé</p>
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs text-center leading-relaxed font-semibold">
+                          {searchTerm || studentClassFilter !== 'all'
+                            ? 'Aucun résultat ne correspond aux filtres de recherche sélectionnés.'
+                            : 'Commencez par ajouter un élève manuellement ou importez une liste au format CSV.'}
+                        </p>
+                        <button
+                          onClick={handleOpenAddStudent}
+                          className="mt-6 btn-primary cursor-pointer active:scale-95"
+                        >
+                          <Plus className="w-4 h-4" /> Ajouter un élève
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
             )}
           </div>
         )}
@@ -2193,9 +2168,8 @@ export default function App({ session, onLogout }: AppProps) {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${
-                isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
-              }`}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer active:scale-95 ${isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-400 font-medium hover:text-slate-600'
+                }`}
             >
               <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2209,7 +2183,7 @@ export default function App({ session, onLogout }: AppProps) {
       {/* Modals & Drawers avec Suspense */}
       <React.Suspense fallback={null}>
         {isFormOpen && (
-          <StudentForm 
+          <StudentForm
             student={editingStudent}
             schoolInfo={schoolInfo}
             onSubmit={handleAddStudent}
@@ -2326,12 +2300,12 @@ export default function App({ session, onLogout }: AppProps) {
                 </p>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div 
+                <div
                   className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
-                  style={{ 
-                    width: pdfProgress && pdfProgress.total > 0 
-                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%` 
-                      : '20%' 
+                  style={{
+                    width: pdfProgress && pdfProgress.total > 0
+                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%`
+                      : '20%'
                   }}
                 />
               </div>
@@ -2342,8 +2316,8 @@ export default function App({ session, onLogout }: AppProps) {
       </React.Suspense>
 
       {/* Offline Status & Sync Banner */}
-      <OfflineStatusBanner 
-        userId={session.userId} 
+      <OfflineStatusBanner
+        userId={session.userId}
         onSyncComplete={handleSyncComplete}
       />
     </div>
