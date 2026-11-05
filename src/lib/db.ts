@@ -1282,13 +1282,15 @@ export async function saveAdminLog(
   }
 
   // 3. Sauvegarde Supabase admin_logs en arrière-plan sans bloquer
-  supabase.from('admin_logs').insert({
-    school_id: schoolUserId,
-    school_name: schoolName,
-    action: action,
-    details: details,
-    created_at: timestamp
-  }).then(() => {}).catch(err => console.warn('saveAdminLog Supabase background error:', err));
+  Promise.resolve(
+    supabase.from('admin_logs').insert({
+      school_id: schoolUserId,
+      school_name: schoolName,
+      action: action,
+      details: details,
+      created_at: timestamp
+    })
+  ).catch(err => console.warn('saveAdminLog Supabase background error:', err));
 }
 
 /** Fetches real admin logs from Supabase with fallback to real local activity logs */

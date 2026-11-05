@@ -777,7 +777,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       schoolName,
       senderRole: 'admin',
       message: replyMsg,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      status: 'sent'
     };
     setChatMessages(prev => [...prev, optimisticMsg]);
     setTimeout(() => scrollToChatBottom(true), 20);
