@@ -186,7 +186,6 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (isSending) return;
     if (!inputText.trim() && !selectedImage) return;
 
     const messageText = inputText.trim() || (selectedImage ? '📎 Preuve de paiement Mobile Money transmise' : '');
@@ -195,7 +194,21 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
     setInputText('');
     setSelectedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setIsSending(true);
+
+    // Message optimiste affiché instantanément dans le chat (0ms)
+    const optimisticId = `temp_${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: optimisticId,
+      schoolId: session.userId,
+      schoolName: schoolInfo.name || session.schoolName || 'Mon Établissement',
+      senderRole: 'school',
+      message: messageText,
+      attachmentUrl: imageToSend,
+      createdAt: new Date().toISOString(),
+      status: 'sent'
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(() => scrollToChatBottom(true), 20);
 
     try {
       const sent = await sendChatMessage(
@@ -206,21 +219,10 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
         imageToSend
       );
 
-      setMessages(prev => {
-        const timeMs = new Date(sent.createdAt).getTime();
-        const exists = prev.some(m => 
-          m.id === sent.id || 
-          (m.schoolId === sent.schoolId && m.senderRole === sent.senderRole && m.message === sent.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
-        );
-        if (exists) return prev;
-        return [...prev, sent];
-      });
+      setMessages(prev => prev.map(m => m.id === optimisticId ? sent : m));
       setTimeout(() => scrollToChatBottom(true), 60);
     } catch (err) {
       console.error('Error sending message:', err);
-      alert('Erreur lors de l\'envoi du message.');
-    } finally {
-      setIsSending(false);
     }
   };
 

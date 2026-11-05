@@ -1119,35 +1119,7 @@ export async function updateSchoolSubscription(
   const timestamp = new Date().toISOString();
   const cleanName = (schoolName || 'Établissement').trim();
 
-  // 1. Mettre à jour Supabase school_info (Upsert garanti)
-  try {
-    const { data: currentData } = await supabase
-      .from('school_info')
-      .select('*')
-      .eq('user_id', schoolUserId)
-      .maybeSingle();
-
-    const currentColors = currentData?.card_colors ? currentData.card_colors : DEFAULT_CARD_COLORS;
-    const updatedRow = {
-      user_id: schoolUserId,
-      name: currentData?.name || cleanName.toUpperCase(),
-      logo_url: currentData?.logo_url || null,
-      signature_url: currentData?.signature_url || null,
-      stamp_url: currentData?.stamp_url || null,
-      card_colors: {
-        ...(typeof currentColors === 'object' ? currentColors : {}),
-        subscriptionPlan: plan,
-        subscriptionExpiresAt: expiresAt
-      },
-      updated_at: timestamp
-    };
-
-    await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
-  } catch (err) {
-    console.warn('updateSchoolSubscription Supabase error:', err);
-  }
-
-  // 2. Mettre à jour le registre persistant local
+  // 1. Mettre à jour le registre persistant local immédiatement (0ms)
   try {
     const registered = getRegisteredSchoolsRegistry();
     const existing = registered.find(s => s.userId === schoolUserId);
@@ -1159,7 +1131,7 @@ export async function updateSchoolSubscription(
     }
   } catch { }
 
-  // 3. Mettre à jour la clé cartes_togo_school_*
+  // 2. Mettre à jour la clé cartes_togo_school_* immédiatement (0ms)
   try {
     const localKey = 'cartes_togo_school_' + schoolUserId;
     const localRaw = localStorage.getItem(localKey);
@@ -1172,66 +1144,98 @@ export async function updateSchoolSubscription(
     }
   } catch { }
 
-  // 4. Synchroniser avec les clés de licence (si le compte est suspendu ou réactivé)
-  try {
-    const keys = await fetchAllLicenseKeys();
-    let hasKeyChanges = false;
-    for (const k of keys) {
-      if (
-        (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
-        (k.usedBySchoolId && k.usedBySchoolId === schoolUserId) ||
-        (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName.toUpperCase())
-      ) {
-        if (plan === 'suspended') {
-          if (!k.isSuspended) {
-            k.isSuspended = true;
-            hasKeyChanges = true;
-          }
-        } else if (plan === 'pro') {
-          if (k.isSuspended) {
-            k.isSuspended = false;
-            hasKeyChanges = true;
-          }
-          if (!k.isUsed) {
-            k.isUsed = true;
-            k.usedAt = timestamp;
-            k.usedBySchoolId = schoolUserId;
-            k.usedBySchoolName = cleanName;
-            hasKeyChanges = true;
-          }
-        } else if (plan === 'free') {
-          if (k.isUsed) {
-            k.isUsed = false;
-            hasKeyChanges = true;
-          }
-        }
-      }
-    }
-    if (hasKeyChanges) {
-      await saveAllLicenseKeys(keys);
-    }
-  } catch { }
-
-  // 5. Journaliser l'action
-  const actionLabel = plan === 'pro'
-    ? 'Abonnement PRO Activé'
-    : (plan === 'suspended' ? 'Compte Suspendu' : 'Abonnement Réinitialisé Gratuit');
-  const details = plan === 'pro'
-    ? `Plan PRO 1 An validé (Expire le: ${expiresAt || 'Non défini'})`
-    : (plan === 'suspended' ? 'Accès et impression suspendus par l\'administrateur' : 'Retour au Plan Découverte Gratuit');
-
-  await saveAdminLog(
-    schoolUserId,
-    actionLabel,
-    details,
-    cleanName
-  ).catch(() => { });
-
-  // 6. Émettre les événements globaux
+  // 3. Émettre les événements globaux immédiatement (0ms) pour une réactivité instantanée
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt } }));
     window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan, expiresAt } }));
   }
+
+  // 4. Synchronisation Supabase et journal en arrière-plan sans bloquer l'UI
+  const backgroundSync = async () => {
+    try {
+      const { data: currentData } = await supabase
+        .from('school_info')
+        .select('*')
+        .eq('user_id', schoolUserId)
+        .maybeSingle();
+
+      const currentColors = currentData?.card_colors ? currentData.card_colors : DEFAULT_CARD_COLORS;
+      const updatedRow = {
+        user_id: schoolUserId,
+        name: currentData?.name || cleanName.toUpperCase(),
+        logo_url: currentData?.logo_url || null,
+        signature_url: currentData?.signature_url || null,
+        stamp_url: currentData?.stamp_url || null,
+        card_colors: {
+          ...(typeof currentColors === 'object' ? currentColors : {}),
+          subscriptionPlan: plan,
+          subscriptionExpiresAt: expiresAt
+        },
+        updated_at: timestamp
+      };
+
+      await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+    } catch (err) {
+      console.warn('updateSchoolSubscription Supabase error:', err);
+    }
+
+    // Synchroniser avec les clés de licence (si le compte est suspendu ou réactivé)
+    try {
+      const keys = await fetchAllLicenseKeys();
+      let hasKeyChanges = false;
+      for (const k of keys) {
+        if (
+          (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
+          (k.usedBySchoolId && k.usedBySchoolId === schoolUserId) ||
+          (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName.toUpperCase())
+        ) {
+          if (plan === 'suspended') {
+            if (!k.isSuspended) {
+              k.isSuspended = true;
+              hasKeyChanges = true;
+            }
+          } else if (plan === 'pro') {
+            if (k.isSuspended) {
+              k.isSuspended = false;
+              hasKeyChanges = true;
+            }
+            if (!k.isUsed) {
+              k.isUsed = true;
+              k.usedAt = timestamp;
+              k.usedBySchoolId = schoolUserId;
+              k.usedBySchoolName = cleanName;
+              hasKeyChanges = true;
+            }
+          } else if (plan === 'free') {
+            if (k.isUsed) {
+              k.isUsed = false;
+              hasKeyChanges = true;
+            }
+          }
+        }
+      }
+      if (hasKeyChanges) {
+        await saveAllLicenseKeys(keys);
+      }
+    } catch { }
+
+    // Journaliser l'action
+    const actionLabel = plan === 'pro'
+      ? 'Abonnement PRO Activé'
+      : (plan === 'suspended' ? 'Compte Suspendu' : 'Abonnement Réinitialisé Gratuit');
+    const details = plan === 'pro'
+      ? `Plan PRO 1 An validé (Expire le: ${expiresAt || 'Non défini'})`
+      : (plan === 'suspended' ? 'Accès et impression suspendus par l\'administrateur' : 'Retour au Plan Découverte Gratuit');
+
+    await saveAdminLog(
+      schoolUserId,
+      actionLabel,
+      details,
+      cleanName
+    ).catch(() => { });
+  };
+
+  backgroundSync().catch(err => console.warn('Background sync error in updateSchoolSubscription:', err));
 
   return true;
 }
@@ -1262,7 +1266,7 @@ export async function saveAdminLog(
     createdAt: timestamp
   };
 
-  // 1. Sauvegarde locale immédiate
+  // 1. Sauvegarde locale immédiate (0ms)
   try {
     const localLogsStr = localStorage.getItem(AUDIT_LOGS_STORAGE_KEY);
     const localLogs: AdminLogItem[] = localLogsStr ? JSON.parse(localLogsStr) : [];
@@ -1272,23 +1276,19 @@ export async function saveAdminLog(
     console.warn('saveAdminLog local error:', err);
   }
 
-  // 2. Sauvegarde Supabase admin_logs
-  try {
-    await supabase.from('admin_logs').insert({
-      school_id: schoolUserId,
-      school_name: schoolName,
-      action: action,
-      details: details,
-      created_at: timestamp
-    });
-  } catch { }
-
-  // (audit_logs table removed — admin_logs is the single source of truth)
-
-  // 4. Émettre un événement pour rafraîchissement temps-réel de l'interface admin
+  // 2. Émettre un événement pour rafraîchissement temps-réel instantané (0ms)
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_audit_log_added', { detail: newLogItem }));
   }
+
+  // 3. Sauvegarde Supabase admin_logs en arrière-plan sans bloquer
+  supabase.from('admin_logs').insert({
+    school_id: schoolUserId,
+    school_name: schoolName,
+    action: action,
+    details: details,
+    created_at: timestamp
+  }).then(() => {}).catch(err => console.warn('saveAdminLog Supabase background error:', err));
 }
 
 /** Fetches real admin logs from Supabase with fallback to real local activity logs */
@@ -1345,36 +1345,72 @@ export async function updateSchoolCustomQuota(
   newQuota: number,
   schoolName?: string
 ): Promise<boolean> {
+  const cleanName = schoolName || 'Établissement';
+  const timestamp = new Date().toISOString();
+
+  // 1. Mettre à jour le registre local immédiatement (0ms)
   try {
-    const { data: currentData, error: fetchError } = await supabase
-      .from('school_info')
-      .select('*')
-      .eq('user_id', schoolUserId)
-      .single();
+    const registered = getRegisteredSchoolsRegistry();
+    const existing = registered.find(s => s.userId === schoolUserId);
+    if (existing) {
+      existing.customQuota = newQuota;
+      existing.updatedAt = timestamp;
+      saveRegisteredSchoolRegistry(existing);
+    }
+  } catch { }
 
-    if (fetchError || !currentData) return false;
+  // 2. Mettre à jour la clé cartes_togo_school_* immédiatement (0ms)
+  try {
+    const localKey = 'cartes_togo_school_' + schoolUserId;
+    const localRaw = localStorage.getItem(localKey);
+    if (localRaw) {
+      const parsed = JSON.parse(localRaw);
+      parsed.customQuota = newQuota;
+      parsed.updatedAt = timestamp;
+      localStorage.setItem(localKey, JSON.stringify(parsed));
+    }
+  } catch { }
 
-    const currentColors = currentData.card_colors ?? DEFAULT_CARD_COLORS;
-    const updatedRow = {
-      ...currentData,
-      card_colors: {
-        ...currentColors,
-        customQuota: newQuota
-      },
-      updated_at: new Date().toISOString()
-    };
-
-    const { error: updateError } = await supabase
-      .from('school_info')
-      .upsert(updatedRow, { onConflict: 'user_id' });
-
-    if (updateError) throw updateError;
-    await saveAdminLog(schoolUserId, 'Quota Mis à Jour', `Nouveau quota attribué : ${newQuota} cartes`, schoolName || currentData.name);
-    return true;
-  } catch (e: any) {
-    console.error('updateSchoolCustomQuota error:', e.message);
-    return false;
+  // 3. Émettre l'événement temps-réel immédiatement (0ms)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', {
+      detail: { userId: schoolUserId, customQuota: newQuota }
+    }));
   }
+
+  // 4. Synchronisation Supabase en arrière-plan sans bloquer
+  const syncRemote = async () => {
+    try {
+      const { data: currentData } = await supabase
+        .from('school_info')
+        .select('*')
+        .eq('user_id', schoolUserId)
+        .maybeSingle();
+
+      const currentColors = currentData?.card_colors ?? DEFAULT_CARD_COLORS;
+      const updatedRow = {
+        user_id: schoolUserId,
+        name: currentData?.name || cleanName.toUpperCase(),
+        logo_url: currentData?.logo_url || null,
+        signature_url: currentData?.signature_url || null,
+        stamp_url: currentData?.stamp_url || null,
+        card_colors: {
+          ...(typeof currentColors === 'object' ? currentColors : {}),
+          customQuota: newQuota
+        },
+        updated_at: timestamp
+      };
+
+      await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+      await saveAdminLog(schoolUserId, 'Quota Mis à Jour', `Nouveau quota attribué : ${newQuota} cartes`, cleanName);
+    } catch (e: any) {
+      console.warn('updateSchoolCustomQuota background sync error:', e);
+    }
+  };
+
+  syncRemote().catch(err => console.warn('Background sync error in updateSchoolCustomQuota:', err));
+
+  return true;
 }
 
 // ─── License Keys & CSV Export Helpers ─────────────────────────────────────────
@@ -1405,7 +1441,7 @@ export function getLocalLicenseKeys(): LicenseKey[] {
 export async function saveAllLicenseKeys(keys: LicenseKey[]): Promise<boolean> {
   const timestamp = new Date().toISOString();
 
-  // 1. LocalStorage (both keys for absolute persistence)
+  // 1. LocalStorage immédiat (0ms) (both keys for absolute persistence)
   try {
     const jsonStr = JSON.stringify(keys);
     localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, jsonStr);
@@ -1414,59 +1450,65 @@ export async function saveAllLicenseKeys(keys: LicenseKey[]): Promise<boolean> {
     console.warn('saveAllLicenseKeys localStorage error:', err);
   }
 
-  // 2. Primary: Dedicated Supabase `license_keys` table
-  try {
-    const rows = keys.map(k => ({
-      code: k.code,
-      duration_days: (k.durationMonths || 12) * 30,
-      is_used: Boolean(k.isUsed),
-      used_by_school_id: k.usedBySchoolId || null,
-      used_by_school_name: k.usedBySchoolName || null,
-      used_at: k.usedAt || null,
-      created_at: k.createdAt || timestamp,
-      note: k.note || null,
-      target_school_name: k.targetSchoolName || null,
-      is_suspended: Boolean(k.isSuspended)
-    }));
-
-    await supabase.from('license_keys').upsert(rows, { onConflict: 'code' });
-  } catch (err) {
-    console.warn('saveAllLicenseKeys Supabase license_keys table error:', err);
-  }
-
-  // 3. Fallback: Supabase school_info system entry (Guaranteed to exist in DB)
-  try {
-    await supabase.from('school_info').upsert({
-      user_id: LICENSE_KEYS_SYSTEM_USER_ID,
-      name: 'SYSTEM_LICENSE_KEYS_REGISTRY',
-      logo_url: null,
-      signature_url: null,
-      stamp_url: null,
-      card_colors: { licenseKeys: keys } as any,
-      updated_at: timestamp
-    }, { onConflict: 'user_id' });
-  } catch (err) {
-    console.warn('saveAllLicenseKeys Supabase school_info system row error:', err);
-  }
-
-  // 4. Fallback: Supabase admin_logs with raw JSON payload
-  try {
-    await saveAdminLog(
-      LICENSE_KEYS_SYSTEM_USER_ID,
-      'SYNC_LICENSE_KEYS',
-      JSON.stringify(keys),
-      'Registre de Licences'
-    );
-  } catch (err) {
-    console.warn('saveAllLicenseKeys Supabase admin_logs error:', err);
-  }
-
-  // 5. Dispatch global window event for live refresh across open components & tabs
+  // 2. Dispatch global window event immédiatement (0ms) pour réactivité instantanée
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_licenses_updated', {
       detail: keys
     }));
   }
+
+  // 3. Persistance distante Supabase en arrière-plan sans bloquer
+  const persistRemote = async () => {
+    // Primary: Dedicated Supabase `license_keys` table
+    const p1 = (async () => {
+      try {
+        const rows = keys.map(k => ({
+          code: k.code,
+          duration_days: (k.durationMonths || 12) * 30,
+          is_used: Boolean(k.isUsed),
+          used_by_school_id: k.usedBySchoolId || null,
+          used_by_school_name: k.usedBySchoolName || null,
+          used_at: k.usedAt || null,
+          created_at: k.createdAt || timestamp,
+          note: k.note || null,
+          target_school_name: k.targetSchoolName || null,
+          is_suspended: Boolean(k.isSuspended)
+        }));
+        await supabase.from('license_keys').upsert(rows, { onConflict: 'code' });
+      } catch (err) {
+        console.warn('saveAllLicenseKeys Supabase license_keys table error:', err);
+      }
+    })();
+
+    // Fallback: Supabase school_info system entry
+    const p2 = (async () => {
+      try {
+        await supabase.from('school_info').upsert({
+          user_id: LICENSE_KEYS_SYSTEM_USER_ID,
+          name: 'SYSTEM_LICENSE_KEYS_REGISTRY',
+          logo_url: null,
+          signature_url: null,
+          stamp_url: null,
+          card_colors: { licenseKeys: keys } as any,
+          updated_at: timestamp
+        }, { onConflict: 'user_id' });
+      } catch (err) {
+        console.warn('saveAllLicenseKeys Supabase school_info system row error:', err);
+      }
+    })();
+
+    // Fallback: Supabase admin_logs with raw JSON payload
+    const p3 = saveAdminLog(
+      LICENSE_KEYS_SYSTEM_USER_ID,
+      'SYNC_LICENSE_KEYS',
+      JSON.stringify(keys),
+      'Registre de Licences'
+    ).catch(() => {});
+
+    await Promise.allSettled([p1, p2, p3]);
+  };
+
+  persistRemote().catch(err => console.warn('Background sync error in saveAllLicenseKeys:', err));
 
   return true;
 }
@@ -2317,7 +2359,7 @@ export async function sendChatMessage(
     } catch { }
   }
 
-  let finalMsg: ChatMessage = {
+  const finalMsg: ChatMessage = {
     id: msgId,
     schoolId,
     schoolName: cleanSchoolName,
@@ -2328,29 +2370,7 @@ export async function sendChatMessage(
     status: 'sent'
   };
 
-  // 1. Supabase chat_messages table persistence
-  try {
-    const { data, error } = await supabase.from('chat_messages').insert({
-      id: msgId,
-      school_id: schoolId,
-      school_name: cleanSchoolName,
-      sender: senderRole,
-      sender_role: senderRole,
-      sender_name: senderRole === 'admin' ? 'Administration Centrale SAS' : cleanSchoolName,
-      message: cleanMessage,
-      attachment_url: processedAttachment || null,
-      created_at: timestamp,
-      status: 'sent'
-    }).select().single();
-
-    if (!error && data && data.id) {
-      finalMsg.id = data.id.toString();
-    }
-  } catch (supabaseErr) {
-    console.warn('sendChatMessage Supabase chat_messages error:', supabaseErr);
-  }
-
-  // 2. Local storage persistence (deduplicated)
+  // 1. Sauvegarde locale immédiate (0ms) avec déduplication
   try {
     const stored = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
     const messages: ChatMessage[] = stored ? JSON.parse(stored) : [];
@@ -2368,22 +2388,43 @@ export async function sendChatMessage(
     console.warn('sendChatMessage local error:', err);
   }
 
-  // 3. Supabase audit log for visibility
-  try {
-    const actionLabel = senderRole === 'school'
-      ? (attachmentUrl ? 'Preuve Paiement Reçue' : 'Message Établissement Reçu')
-      : 'Réponse Administrateur Chat';
-
-    const logDetails = `${cleanSchoolName} : ${cleanMessage.substring(0, 100)}${attachmentUrl ? ' [Capture jointe]' : ''}`;
-    await saveAdminLog(schoolId, actionLabel, logDetails, cleanSchoolName);
-  } catch { }
-
-  // 4. Live dispatch for cross-component & cross-tab real-time sync
+  // 2. Émission live instantanée (0ms) pour rafraîchissement immédiat de l'UI
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_chat_message_received', {
       detail: finalMsg
     }));
   }
+
+  // 3. Persistance Supabase distante en arrière-plan sans bloquer
+  const persistRemote = async () => {
+    try {
+      await supabase.from('chat_messages').insert({
+        id: msgId,
+        school_id: schoolId,
+        school_name: cleanSchoolName,
+        sender: senderRole,
+        sender_role: senderRole,
+        sender_name: senderRole === 'admin' ? 'Administration Centrale SAS' : cleanSchoolName,
+        message: cleanMessage,
+        attachment_url: processedAttachment || null,
+        created_at: timestamp,
+        status: 'sent'
+      });
+    } catch (supabaseErr) {
+      console.warn('sendChatMessage Supabase chat_messages error:', supabaseErr);
+    }
+
+    try {
+      const actionLabel = senderRole === 'school'
+        ? (attachmentUrl ? 'Preuve Paiement Reçue' : 'Message Établissement Reçu')
+        : 'Réponse Administrateur Chat';
+
+      const logDetails = `${cleanSchoolName} : ${cleanMessage.substring(0, 100)}${attachmentUrl ? ' [Capture jointe]' : ''}`;
+      await saveAdminLog(schoolId, actionLabel, logDetails, cleanSchoolName);
+    } catch { }
+  };
+
+  persistRemote().catch(err => console.warn('Background sync error in sendChatMessage:', err));
 
   return finalMsg;
 }
@@ -2686,7 +2727,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     updatedAt: timestamp
   };
 
-  // 1. Save to Local Storage (both keys for maximum safety)
+  // 1. Sauvegarde locale immédiate (0ms)
   try {
     const jsonStr = JSON.stringify(settingsToSave);
     localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, jsonStr);
@@ -2695,92 +2736,99 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     console.warn('savePlatformSettings localStorage error:', err);
   }
 
-  // 2. Save to Supabase school_info system entry (Guaranteed to exist in DB & persists full JSON)
-  try {
-    await supabase.from('school_info').upsert({
-      user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
-      name: 'CONFIGURATION SYSTEME SUKUPASS',
-      logo_url: null,
-      signature_url: null,
-      stamp_url: null,
-      card_colors: settingsToSave as any,
-      updated_at: timestamp
-    }, { onConflict: 'user_id' });
-  } catch (err) {
-    console.warn('savePlatformSettings Supabase school_info system row error:', err);
-  }
-
-  // 3. Try Supabase platform_settings table (with fallback if schema does not yet have demo_video columns)
-  try {
-    const { error: fullError } = await supabase.from('platform_settings').upsert({
-      id: 'global_config',
-      tmoney_number: settingsToSave.tmoneyNumber,
-      tmoney_holder: settingsToSave.tmoneyHolder,
-      flooz_number: settingsToSave.floozNumber,
-      flooz_holder: settingsToSave.floozHolder,
-      annual_price_cfa: settingsToSave.annualPriceCFA,
-      support_email: settingsToSave.supportEmail,
-      support_phone: settingsToSave.supportPhone,
-      whatsapp_number: settingsToSave.whatsappNumber,
-      office_address: settingsToSave.officeAddress,
-      fedapay_enabled: settingsToSave.fedapayEnabled,
-      fedapay_public_key: settingsToSave.fedapayPublicKey,
-      fedapay_environment: settingsToSave.fedapayEnvironment,
-      payment_instructions: settingsToSave.paymentInstructions,
-      support_notice: settingsToSave.supportNotice,
-      demo_video_url: settingsToSave.demoVideoUrl,
-      demo_video_title: settingsToSave.demoVideoTitle,
-      demo_video_poster: settingsToSave.demoVideoPoster,
-      pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
-      pricing_title: settingsToSave.pricingTitle,
-      pricing_subtitle: settingsToSave.pricingSubtitle,
-      pricing_plans: settingsToSave.pricingPlans ? JSON.stringify(settingsToSave.pricingPlans) : null,
-      updated_at: timestamp
-    }, { onConflict: 'id' });
-
-    if (fullError) {
-      console.warn('savePlatformSettings Supabase full upsert warning, retrying base columns:', fullError);
-      await supabase.from('platform_settings').upsert({
-        id: 'global_config',
-        tmoney_number: settingsToSave.tmoneyNumber,
-        tmoney_holder: settingsToSave.tmoneyHolder,
-        flooz_number: settingsToSave.floozNumber,
-        flooz_holder: settingsToSave.floozHolder,
-        annual_price_cfa: settingsToSave.annualPriceCFA,
-        support_email: settingsToSave.supportEmail,
-        support_phone: settingsToSave.supportPhone,
-        whatsapp_number: settingsToSave.whatsappNumber,
-        office_address: settingsToSave.officeAddress,
-        fedapay_enabled: settingsToSave.fedapayEnabled,
-        fedapay_public_key: settingsToSave.fedapayPublicKey,
-        fedapay_environment: settingsToSave.fedapayEnvironment,
-        payment_instructions: settingsToSave.paymentInstructions,
-        support_notice: settingsToSave.supportNotice,
-        updated_at: timestamp
-      }, { onConflict: 'id' });
-    }
-  } catch (err) {
-    console.warn('savePlatformSettings Supabase platform_settings table error:', err);
-  }
-
-  // 4. Save to Supabase admin_logs with raw JSON payload
-  try {
-    await saveAdminLog(
-      PLATFORM_SETTINGS_SYSTEM_USER_ID,
-      'SYNC_PLATFORM_SETTINGS',
-      JSON.stringify(settingsToSave),
-      'Configuration Plateforme'
-    );
-  } catch (err) {
-    console.warn('savePlatformSettings Supabase admin_logs error:', err);
-  }
-
-  // 5. Dispatch global window event for live refresh across open components & tabs
+  // 2. Émission live instantanée (0ms) pour actualisation immédiate de la Landing Page et de l'Admin
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', {
       detail: settingsToSave
     }));
   }
+
+  // 3. Synchronisation distante en arrière-plan sans bloquer
+  const persistRemote = async () => {
+    // Save to Supabase school_info system entry
+    const p1 = (async () => {
+      try {
+        await supabase.from('school_info').upsert({
+          user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
+          name: 'CONFIGURATION SYSTEME SUKUPASS',
+          logo_url: null,
+          signature_url: null,
+          stamp_url: null,
+          card_colors: settingsToSave as any,
+          updated_at: timestamp
+        }, { onConflict: 'user_id' });
+      } catch (err) {
+        console.warn('savePlatformSettings Supabase school_info system row error:', err);
+      }
+    })();
+
+    // Try Supabase platform_settings table
+    const p2 = (async () => {
+      try {
+        const { error: fullError } = await supabase.from('platform_settings').upsert({
+          id: 'global_config',
+          tmoney_number: settingsToSave.tmoneyNumber,
+          tmoney_holder: settingsToSave.tmoneyHolder,
+          flooz_number: settingsToSave.floozNumber,
+          flooz_holder: settingsToSave.floozHolder,
+          annual_price_cfa: settingsToSave.annualPriceCFA,
+          support_email: settingsToSave.supportEmail,
+          support_phone: settingsToSave.supportPhone,
+          whatsapp_number: settingsToSave.whatsappNumber,
+          office_address: settingsToSave.officeAddress,
+          fedapay_enabled: settingsToSave.fedapayEnabled,
+          fedapay_public_key: settingsToSave.fedapayPublicKey,
+          fedapay_environment: settingsToSave.fedapayEnvironment,
+          payment_instructions: settingsToSave.paymentInstructions,
+          support_notice: settingsToSave.supportNotice,
+          demo_video_url: settingsToSave.demoVideoUrl,
+          demo_video_title: settingsToSave.demoVideoTitle,
+          demo_video_poster: settingsToSave.demoVideoPoster,
+          pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
+          pricing_title: settingsToSave.pricingTitle,
+          pricing_subtitle: settingsToSave.pricingSubtitle,
+          pricing_plans: settingsToSave.pricingPlans ? JSON.stringify(settingsToSave.pricingPlans) : null,
+          updated_at: timestamp
+        }, { onConflict: 'id' });
+
+        if (fullError) {
+          console.warn('savePlatformSettings Supabase full upsert warning, retrying base columns:', fullError);
+          await supabase.from('platform_settings').upsert({
+            id: 'global_config',
+            tmoney_number: settingsToSave.tmoneyNumber,
+            tmoney_holder: settingsToSave.tmoneyHolder,
+            flooz_number: settingsToSave.floozNumber,
+            flooz_holder: settingsToSave.floozHolder,
+            annual_price_cfa: settingsToSave.annualPriceCFA,
+            support_email: settingsToSave.supportEmail,
+            support_phone: settingsToSave.supportPhone,
+            whatsapp_number: settingsToSave.whatsappNumber,
+            office_address: settingsToSave.officeAddress,
+            fedapay_enabled: settingsToSave.fedapayEnabled,
+            fedapay_public_key: settingsToSave.fedapayPublicKey,
+            fedapay_environment: settingsToSave.fedapayEnvironment,
+            payment_instructions: settingsToSave.paymentInstructions,
+            support_notice: settingsToSave.supportNotice,
+            updated_at: timestamp
+          }, { onConflict: 'id' });
+        }
+      } catch (err) {
+        console.warn('savePlatformSettings Supabase platform_settings table error:', err);
+      }
+    })();
+
+    // Save to Supabase admin_logs
+    const p3 = saveAdminLog(
+      PLATFORM_SETTINGS_SYSTEM_USER_ID,
+      'SYNC_PLATFORM_SETTINGS',
+      JSON.stringify(settingsToSave),
+      'Configuration Plateforme'
+    ).catch(() => {});
+
+    await Promise.allSettled([p1, p2, p3]);
+  };
+
+  persistRemote().catch(err => console.warn('Background sync error in savePlatformSettings:', err));
 
   return true;
 }

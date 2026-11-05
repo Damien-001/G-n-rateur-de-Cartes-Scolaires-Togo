@@ -568,74 +568,85 @@ export default function App({ session, onLogout }: AppProps) {
 
   // ── CRUD Élèves ─────────────────────────────────────────────────────────────
   const handleAddStudent = useCallback(async (student: Student) => {
-    console.log('🚀 Début handleAddStudent avec:', student);
-    console.log('👤 Session userId:', session.userId);
+    // ID optimiste immédiat si nouvel élève
+    const tempStudent: Student = {
+      ...student,
+      id: student.id || `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    };
+    const isEdit = students.some(s => s.id === tempStudent.id);
 
+    // 1. Optimistic UI update immédiate (0ms)
+    setStudents(prev => {
+      if (isEdit) {
+        return prev.map(s => s.id === tempStudent.id ? tempStudent : s);
+      } else {
+        return [tempStudent, ...prev];
+      }
+    });
+
+    // Fermer le formulaire immédiatement (0ms) pour une expérience instantanée
+    setIsFormOpen(false);
+    setEditingStudent(undefined);
+
+    // 2. Persistance et synchronisation en arrière-plan
     try {
-      console.log('💾 Appel upsertStudent...');
-      const saved = await upsertStudent(student, session.userId);
-      console.log('✅ Étudiant sauvegardé:', saved);
-
-      const isEdit = students.some(s => s.id === saved.id);
-      setStudents(prev => {
-        if (isEdit) {
-          return prev.map(s => s.id === saved.id ? saved : s);
-        } else {
-          return [...prev, saved];
-        }
-      });
+      const saved = await upsertStudent(tempStudent, session.userId);
+      if (saved.id !== tempStudent.id) {
+        setStudents(prev => prev.map(s => s.id === tempStudent.id ? saved : s));
+      }
 
       saveAdminLog(
         session.userId,
         isEdit ? 'Modification Élève' : 'Ajout Élève',
         `${saved.firstName} ${saved.lastName} (${saved.className})`,
         schoolInfo.name
-      );
-
-      // Fermer le formulaire seulement en cas de succès
-      setIsFormOpen(false);
-      setEditingStudent(undefined);
-      console.log('✅ Formulaire fermé avec succès');
-
+      ).catch(() => {});
     } catch (err) {
       console.error('❌ Erreur sauvegarde élève:', err);
-      // Ne pas fermer le formulaire en cas d'erreur
-      // L'erreur sera affichée dans le formulaire
-      throw err; // Relancer l'erreur pour que le formulaire puisse l'afficher
     }
-  }, [session.userId]);
+  }, [session.userId, students, schoolInfo.name]);
 
   const handleDeleteStudent = useCallback(async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) return;
+    // Optimistic UI update immédiate (0ms) : l'élève disparaît sans attendre
+    setStudents(prev => prev.filter(s => s.id !== id));
+    setSelectedStudents(prev => prev.filter(sid => sid !== id));
+
     try {
       await deleteStudent(id, session.userId);
-      setStudents(prev => prev.filter(s => s.id !== id));
-      setSelectedStudents(prev => prev.filter(sid => sid !== id));
       saveAdminLog(
         session.userId,
         'Suppression Élève',
         'Un élève a été retiré de la liste',
         schoolInfo.name
-      );
+      ).catch(() => {});
     } catch (err) {
       console.error('Erreur suppression:', err);
-      alert('Erreur lors de la suppression.');
     }
-  }, [session.userId]);
+  }, [session.userId, schoolInfo.name]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedStudents.length === 0) return;
     const n = selectedStudents.length;
     if (!confirm(`Êtes-vous sûr de vouloir supprimer ${n} élève${n > 1 ? 's' : ''} ? Cette action est irréversible.`)) return;
+    const toDeleteIds = [...selectedStudents];
+
+    // Optimistic UI update immédiate (0ms)
+    setStudents(prev => prev.filter(s => !toDeleteIds.includes(s.id)));
+    setSelectedStudents([]);
+
     try {
-      await deleteStudents(selectedStudents, session.userId);
-      setStudents(prev => prev.filter(s => !selectedStudents.includes(s.id)));
-      setSelectedStudents([]);
+      await deleteStudents(toDeleteIds, session.userId);
+      saveAdminLog(
+        session.userId,
+        'Suppression Groupée Élèves',
+        `${toDeleteIds.length} élèves retirés de la liste`,
+        schoolInfo.name
+      ).catch(() => {});
     } catch (err) {
       console.error('Erreur suppression massive:', err);
-      alert('Erreur lors de la suppression en masse.');
     }
-  }, [selectedStudents, session.userId]);
+  }, [selectedStudents, session.userId, schoolInfo.name]);
 
   const allClasses = React.useMemo(() => {
     const set = new Set<string>();

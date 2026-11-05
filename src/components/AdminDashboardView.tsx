@@ -533,25 +533,38 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const handleToggleKeyStatus = async (keyId: string, currentCode: string, isSuspended?: boolean) => {
     const actionName = isSuspended ? 'réactiver' : 'désactiver / suspendre';
     if (window.confirm(`Voulez-vous vraiment ${actionName} la clé ${currentCode} ?\n\nCela mettra également à jour le statut de l'école associée en temps réel.`)) {
-      setIsLoading(true);
-      try {
-        await toggleLicenseKeyStatus(keyId);
-        await loadData();
-      } catch (err) {
+      // Optimistic update immédiate (0ms)
+      setLicenseKeys(prev => prev.map(k => (k.id === keyId || k.code === currentCode) ? { ...k, isSuspended: !isSuspended } : k));
+      setSettingsToast({
+        type: 'success',
+        message: isSuspended ? `Clé ${currentCode} réactivée instantanément.` : `Clé ${currentCode} suspendue instantanément.`
+      });
+      setTimeout(() => setSettingsToast(null), 3500);
+
+      toggleLicenseKeyStatus(keyId).then(() => {
+        loadData();
+      }).catch(err => {
         console.error('handleToggleKeyStatus error:', err);
-      } finally {
-        setIsLoading(false);
-      }
+        loadData();
+      });
     }
   };
 
   // Delete license key
   const handleDeleteKey = async (keyId: string, currentCode: string) => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer DÉFINITIVEMENT la clé de licence ${currentCode} ?`)) {
-      await deleteLicenseKey(keyId);
-      const updated = await fetchAllLicenseKeys();
-      setLicenseKeys(updated);
-      fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => { });
+      // Optimistic removal immédiate (0ms)
+      setLicenseKeys(prev => prev.filter(k => k.id !== keyId && k.code !== currentCode));
+      setSettingsToast({ type: 'success', message: `Clé ${currentCode} supprimée instantanément.` });
+      setTimeout(() => setSettingsToast(null), 3000);
+
+      deleteLicenseKey(keyId).then(() => {
+        fetchAllLicenseKeys().then(updated => setLicenseKeys(updated)).catch(() => { });
+        fetchAdminLogs().then(logs => setActivityLogs(logs)).catch(() => { });
+      }).catch(err => {
+        console.error('handleDeleteKey error:', err);
+        loadData();
+      });
     }
   };
 
@@ -565,14 +578,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Save custom quota
   const handleSaveCustomQuota = async () => {
     if (!editingSchool) return;
-    const success = await updateSchoolCustomQuota(editingSchool.userId, customQuotaVal, editingSchool.name);
-    if (success) {
-      alert(`Le quota de "${editingSchool.name}" a été mis à jour à ${customQuotaVal} cartes.`);
-      setEditingSchool(null);
+    const targetSchool = editingSchool;
+    const targetQuota = customQuotaVal;
+    // Optimistic UI update immédiate (0ms)
+    setSchools(prev => prev.map(s => s.userId === targetSchool.userId ? { ...s, customQuota: targetQuota } : s));
+    setEditingSchool(null);
+    setSettingsToast({
+      type: 'success',
+      message: `Quota de "${targetSchool.name}" mis à jour à ${targetQuota} cartes instantanément !`
+    });
+    setTimeout(() => setSettingsToast(null), 3500);
+
+    updateSchoolCustomQuota(targetSchool.userId, targetQuota, targetSchool.name).then(success => {
+      if (!success) loadData();
+    }).catch(err => {
+      console.error('handleSaveCustomQuota error:', err);
       loadData();
-    } else {
-      alert("Erreur lors de la mise à jour du quota.");
-    }
+    });
   };
 
   // Open direct activation modal
@@ -597,25 +619,27 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Process 1-click direct activation
   const handleConfirmDirectActivation = async () => {
     if (!activatingSchool) return;
-    setIsProcessingDirectActivation(true);
-    try {
-      const res = await activateSchoolDirectly(activatingSchool.userId, activatingSchool.name, activationDuration);
-      if (res.success) {
-        setSettingsToast({
-          type: 'success',
-          message: res.message
-        });
-        setActivatingSchool(null);
-        await loadData();
-      } else {
+    const target = activatingSchool;
+    const duration = activationDuration;
+    // Optimistic UI update immédiate (0ms)
+    setSchools(prev => prev.map(s => s.userId === target.userId ? { ...s, plan: 'pro', isPro: true } : s));
+    setActivatingSchool(null);
+    playAdminChime();
+    setSettingsToast({
+      type: 'success',
+      message: `Établissement "${target.name}" activé en PRO pour ${duration} mois instantanément !`
+    });
+    setTimeout(() => setSettingsToast(null), 4000);
+
+    activateSchoolDirectly(target.userId, target.name, duration).then(res => {
+      if (!res.success) {
         alert(res.message || "Erreur lors de l'activation directe.");
       }
-    } catch (err: any) {
+      loadData();
+    }).catch(err => {
       console.error('handleConfirmDirectActivation error:', err);
-      alert("Erreur inattendue lors de l'activation.");
-    } finally {
-      setIsProcessingDirectActivation(false);
-    }
+      loadData();
+    });
   };
 
   // Upgrade trial schools to Pro subscription plan
@@ -626,42 +650,54 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Suspend a school account
   const handleSuspendSchool = async (schoolUserId: string, schoolName: string) => {
     if (window.confirm(`Voulez-vous suspendre l'accès de l'établissement "${schoolName}" pour impayé ou litige ? L'ajout et l'impression d'élèves seront bloqués.`)) {
-      const success = await updateSchoolSubscription(schoolUserId, 'suspended', '', schoolName);
-      if (success) {
-        alert(`Le compte de "${schoolName}" a été suspendu.`);
-        loadData();
-      } else {
-        alert("Erreur lors de la suspension.");
-      }
+      // Optimistic UI update immédiate (0ms)
+      setSchools(prev => prev.map(s => s.userId === schoolUserId ? { ...s, plan: 'suspended', isPro: false } : s));
+      setSettingsToast({
+        type: 'success',
+        message: `Compte de "${schoolName}" suspendu avec succès.`
+      });
+      setTimeout(() => setSettingsToast(null), 3500);
+
+      updateSchoolSubscription(schoolUserId, 'suspended', '', schoolName).then(success => {
+        if (!success) loadData();
+      }).catch(() => loadData());
     }
   };
 
   // Downgrade or Reset subscription to Free trial plan
   const handleResetToFree = async (schoolUserId: string, schoolName: string) => {
     if (window.confirm(`Confirmez-vous le retour au Plan Découverte (Gratuit) pour l'établissement "${schoolName}" ?`)) {
-      const success = await updateSchoolSubscription(schoolUserId, 'free', '', schoolName);
-      if (success) {
-        alert(`L'abonnement a été réinitialisé au Plan Gratuit pour "${schoolName}".`);
-        loadData();
-      } else {
-        alert("Erreur lors de la mise à jour de l'abonnement.");
-      }
+      // Optimistic UI update immédiate (0ms)
+      setSchools(prev => prev.map(s => s.userId === schoolUserId ? { ...s, plan: 'free', isPro: false } : s));
+      setSettingsToast({
+        type: 'success',
+        message: `Abonnement réinitialisé au Plan Gratuit pour "${schoolName}".`
+      });
+      setTimeout(() => setSettingsToast(null), 3500);
+
+      updateSchoolSubscription(schoolUserId, 'free', '', schoolName).then(success => {
+        if (!success) loadData();
+      }).catch(() => loadData());
     }
   };
 
   // Delete School Handler
   const handleDeleteSchool = async (schoolUserId: string, schoolName: string) => {
     if (window.confirm(`⚠️ ATTENTION SUPPRESSION DÉFINITIVE :\n\nVoulez-vous supprimer définitivement l'établissement "${schoolName}" ?\n\nToutes ses cartes d'élèves, ses clés de licence, ses messages et ses journaux associés seront effacés.`)) {
-      setIsLoading(true);
-      try {
-        await deleteSchoolByAdmin(schoolUserId, schoolName);
-        setSchools(prev => prev.filter(s => s.userId !== schoolUserId));
-        await loadData();
-      } catch (err) {
+      // Optimistic removal immédiate (0ms)
+      setSchools(prev => prev.filter(s => s.userId !== schoolUserId));
+      setSettingsToast({
+        type: 'success',
+        message: `Établissement "${schoolName}" supprimé.`
+      });
+      setTimeout(() => setSettingsToast(null), 3000);
+
+      deleteSchoolByAdmin(schoolUserId, schoolName).then(() => {
+        loadData();
+      }).catch(err => {
         console.error('handleDeleteSchool error:', err);
-      } finally {
-        setIsLoading(false);
-      }
+        loadData();
+      });
     }
   };
 
@@ -733,6 +769,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     const convDetail = sortedConversations.find(c => c.schoolId === selectedSchoolChatId);
     const schoolName = targetSchool?.name || convDetail?.schoolName || 'Établissement';
 
+    // Optimistic message affiché immédiatement (0ms)
+    const optimisticId = `temp_${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: optimisticId,
+      schoolId: selectedSchoolChatId,
+      schoolName,
+      senderRole: 'admin',
+      message: replyMsg,
+      createdAt: new Date().toISOString()
+    };
+    setChatMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(() => scrollToChatBottom(true), 20);
+
     try {
       const newMsg = await sendChatMessage(
         selectedSchoolChatId,
@@ -740,15 +789,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         'admin',
         replyMsg
       );
-      setChatMessages(prev => {
-        const timeMs = new Date(newMsg.createdAt).getTime();
-        const exists = prev.some(m =>
-          m.id === newMsg.id ||
-          (m.schoolId === newMsg.schoolId && m.senderRole === newMsg.senderRole && m.message === newMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
-        );
-        if (exists) return prev;
-        return [...prev, newMsg];
-      });
+      setChatMessages(prev => prev.map(m => m.id === optimisticId ? newMsg : m));
       setTimeout(() => scrollToChatBottom(true), 60);
     } catch (err) {
       console.error('Error sending reply:', err);
@@ -758,71 +799,77 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Validate payment from chat directly
   const handleValidateChatPayment = async (schoolId: string, schoolName: string) => {
     if (window.confirm(`Confirmez-vous la validation du paiement Mobile Money et l'activation PRO 1 An pour "${schoolName}" ?`)) {
-      const ok = await validatePaymentFromChat(schoolId, schoolName);
-      if (ok) {
-        alert(`Paiement validé avec succès ! ${schoolName} est désormais PRO et un message de confirmation a été transmis dans le chat.`);
-        loadData();
-      } else {
-        alert("Erreur lors de la validation du paiement.");
-      }
+      // Optimistic UI update immédiate (0ms)
+      setSchools(prev => prev.map(s => s.userId === schoolId ? { ...s, plan: 'pro', isPro: true } : s));
+      setChatMessages(prev => prev.map(m => m.schoolId === schoolId && m.attachmentUrl ? { ...m, status: 'validated' } : m));
+      playAdminChime();
+      setSettingsToast({
+        type: 'success',
+        message: `Paiement validé instantanément ! ${schoolName} est désormais PRO 1 An.`
+      });
+      setTimeout(() => setSettingsToast(null), 4000);
+
+      validatePaymentFromChat(schoolId, schoolName).then(ok => {
+        if (ok) {
+          loadData();
+        } else {
+          alert("Erreur lors de la validation du paiement.");
+          loadData();
+        }
+      }).catch(() => loadData());
     }
   };
 
-  // Save Platform & Payment Settings
+  // Save Platform & Payment Settings (Instant & non-blocking)
   const handleSavePlatformSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingSettings(true);
-    try {
-      const ok = await savePlatformSettings(platformSettings);
-      if (ok) {
-        setSettingsToast({ type: 'success', message: 'Paramètres de paiement et contacts mis à jour avec succès !' });
-        setTimeout(() => setSettingsToast(null), 4000);
-      } else {
+    playAdminChime();
+    setSettingsToast({ type: 'success', message: 'Paramètres de paiement et contacts mis à jour instantanément !' });
+    setTimeout(() => setSettingsToast(null), 4000);
+
+    savePlatformSettings(platformSettings).then(ok => {
+      if (!ok) {
         setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde.' });
       }
-    } catch (err) {
+    }).catch(err => {
       setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde des paramètres.' });
-    } finally {
+    }).finally(() => {
       setIsSavingSettings(false);
-    }
+    });
   };
 
   // Mise à jour immédiate des champs vidéo avec cache local instantané
   const updateVideoSettingsField = (field: 'demoVideoUrl' | 'demoVideoTitle' | 'demoVideoPoster', val: string) => {
     setPlatformSettings(prev => {
       const updated = { ...prev, [field]: val };
-      try {
-        localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(updated));
-        localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(updated));
-      } catch { }
+      savePlatformSettings(updated);
       return updated;
     });
   };
 
-  // Enregistrement dédié et instantané de la vidéo de présentation (sans avoir à scroller en bas de page)
+  // Enregistrement dédié et instantané de la vidéo de présentation
   const handleSaveVideoOnly = async () => {
     setIsSavingVideo(true);
-    setVideoSaveSuccess(false);
-    try {
-      const ok = await savePlatformSettings(platformSettings);
-      if (ok) {
-        setVideoSaveSuccess(true);
-        setTimeout(() => setVideoSaveSuccess(false), 3500);
-        setSettingsToast({ type: 'success', message: 'Vidéo de présentation enregistrée avec succès ! Elle est désormais active sur la page d\'accueil.' });
-        setTimeout(() => setSettingsToast(null), 5000);
-      } else {
-        setSettingsToast({ type: 'error', message: "Erreur lors de l'enregistrement de la vidéo." });
-      }
-    } catch (err) {
-      setSettingsToast({ type: 'error', message: "Erreur lors de l'enregistrement de la vidéo." });
-    } finally {
+    setVideoSaveSuccess(true);
+    playAdminChime();
+    setSettingsToast({ type: 'success', message: 'Vidéo de présentation enregistrée avec succès ! Elle est désormais active sur la page d\'accueil.' });
+    setTimeout(() => {
+      setVideoSaveSuccess(false);
+      setSettingsToast(null);
+    }, 4500);
+
+    savePlatformSettings(platformSettings).finally(() => {
       setIsSavingVideo(false);
-    }
+    });
   };
 
   const handleResetDefaultSettings = () => {
     if (window.confirm("Voulez-vous restaurer les numéros de paiement et coordonnées par défaut ?")) {
       setPlatformSettings(DEFAULT_PLATFORM_SETTINGS);
+      savePlatformSettings(DEFAULT_PLATFORM_SETTINGS);
+      setSettingsToast({ type: 'success', message: 'Paramètres réinitialisés avec succès !' });
+      setTimeout(() => setSettingsToast(null), 3000);
     }
   };
 
@@ -830,6 +877,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const currentPricingPlans: LandingPricingPlan[] = (platformSettings.pricingPlans && platformSettings.pricingPlans.length > 0)
     ? platformSettings.pricingPlans
     : DEFAULT_PRICING_PLANS;
+
+  const handleTogglePricingSection = () => {
+    setPlatformSettings(prev => {
+      const nextVal = prev.pricingEnabled === false;
+      const updated = { ...prev, pricingEnabled: nextVal };
+      savePlatformSettings(updated);
+      return updated;
+    });
+    playAdminChime();
+    setSettingsToast({
+      type: 'success',
+      message: platformSettings.pricingEnabled === false
+        ? 'Section Tarifs activée et visible sur la vitrine instantanément !'
+        : 'Section Tarifs masquée de la vitrine instantanément !'
+    });
+    setTimeout(() => setSettingsToast(null), 3500);
+  };
 
   const handleAddPricingPlan = () => {
     const newPlan: LandingPricingPlan = {
@@ -850,17 +914,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       isPopular: false,
       enabled: true
     };
-    setPlatformSettings(prev => ({
-      ...prev,
-      pricingPlans: [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS), newPlan]
-    }));
+    setPlatformSettings(prev => {
+      const updatedList = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS), newPlan];
+      const updated = { ...prev, pricingPlans: updatedList };
+      savePlatformSettings(updated);
+      return updated;
+    });
+    setSettingsToast({ type: 'success', message: 'Nouvelle formule ajoutée et active instantanément !' });
+    setTimeout(() => setSettingsToast(null), 3000);
   };
 
-  const handleUpdatePricingPlan = (index: number, updated: Partial<LandingPricingPlan>) => {
+  const handleUpdatePricingPlan = (index: number, updatedFields: Partial<LandingPricingPlan>) => {
     setPlatformSettings(prev => {
       const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
-      list[index] = { ...list[index], ...updated };
-      return { ...prev, pricingPlans: list };
+      list[index] = { ...list[index], ...updatedFields };
+      const updated = { ...prev, pricingPlans: list };
+      savePlatformSettings(updated);
+      return updated;
     });
   };
 
@@ -869,8 +939,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setPlatformSettings(prev => {
         const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
         list.splice(index, 1);
-        return { ...prev, pricingPlans: list };
+        const updated = { ...prev, pricingPlans: list };
+        savePlatformSettings(updated);
+        return updated;
       });
+      setSettingsToast({ type: 'success', message: 'Formule supprimée instantanément.' });
+      setTimeout(() => setSettingsToast(null), 3000);
     }
   };
 
@@ -882,7 +956,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       const temp = list[index];
       list[index] = list[targetIndex];
       list[targetIndex] = temp;
-      return { ...prev, pricingPlans: list };
+      const updated = { ...prev, pricingPlans: list };
+      savePlatformSettings(updated);
+      return updated;
     });
   };
 
@@ -895,7 +971,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         ...plan,
         features: [...plan.features, featText.trim()]
       };
-      return { ...prev, pricingPlans: list };
+      const updated = { ...prev, pricingPlans: list };
+      savePlatformSettings(updated);
+      return updated;
     });
   };
 
@@ -905,40 +983,45 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       const plan = list[planIndex];
       const newFeats = plan.features.filter((_, idx) => idx !== featIndex);
       list[planIndex] = { ...plan, features: newFeats };
-      return { ...prev, pricingPlans: list };
+      const updated = { ...prev, pricingPlans: list };
+      savePlatformSettings(updated);
+      return updated;
     });
   };
 
   const handleResetPricingPlans = () => {
     if (window.confirm("Voulez-vous restaurer les 3 offres tarifaires d'origine de la vitrine ?")) {
-      setPlatformSettings(prev => ({
-        ...prev,
+      const updated = {
+        ...platformSettings,
         pricingTitle: DEFAULT_PLATFORM_SETTINGS.pricingTitle,
         pricingSubtitle: DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
         pricingPlans: DEFAULT_PRICING_PLANS
-      }));
+      };
+      setPlatformSettings(updated);
+      savePlatformSettings(updated);
+      setSettingsToast({ type: 'success', message: 'Offres tarifaires d\'origine restaurées instantanément !' });
+      setTimeout(() => setSettingsToast(null), 3000);
     }
   };
 
   const handleSavePricingOnly = async () => {
     setIsSavingSettings(true);
-    try {
-      const ok = await savePlatformSettings(platformSettings);
-      if (ok) {
-        playAdminChime();
-        setSettingsToast({
-          type: 'success',
-          message: 'Tarification de la landing page enregistrée avec succès ! La vitrine est actualisée.'
-        });
-        setTimeout(() => setSettingsToast(null), 5000);
-      } else {
+    playAdminChime();
+    setSettingsToast({
+      type: 'success',
+      message: 'Tarification enregistrée avec succès ! La vitrine est actualisée instantanément.'
+    });
+    setTimeout(() => setSettingsToast(null), 4000);
+
+    savePlatformSettings(platformSettings).then(ok => {
+      if (!ok) {
         setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde de la tarification.' });
       }
-    } catch (err) {
+    }).catch(err => {
       setSettingsToast({ type: 'error', message: 'Erreur réseau lors de la sauvegarde.' });
-    } finally {
+    }).finally(() => {
       setIsSavingSettings(false);
-    }
+    });
   };
 
   // Group chat messages by school
@@ -2308,7 +2391,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <div className="flex flex-wrap items-center gap-3 shrink-0">
                       <button
                         type="button"
-                        onClick={() => setPlatformSettings(prev => ({ ...prev, pricingEnabled: prev.pricingEnabled === false }))}
+                        onClick={handleTogglePricingSection}
                         className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 ${platformSettings.pricingEnabled !== false
                             ? 'bg-emerald-500/25 hover:bg-emerald-500/35 text-white border border-emerald-400/40'
                             : 'bg-amber-500/30 hover:bg-amber-500/40 text-amber-200 border border-amber-400/40'
