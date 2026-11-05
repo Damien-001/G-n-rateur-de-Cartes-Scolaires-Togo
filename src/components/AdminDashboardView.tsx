@@ -57,7 +57,13 @@ import {
   Lock,
   ArrowDown,
   Play,
-  Video
+  Video,
+  Tag,
+  ChevronUp,
+  ChevronDown,
+  Star,
+  EyeOff,
+  PlusCircle
 } from 'lucide-react';
 import { parseVideoSource, isGooglePhotosUrl } from '../lib/videoHelper';
 import {
@@ -89,7 +95,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
-import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
+import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS } from '../types';
 import { AdminVisitorAnalytics } from './AdminVisitorAnalytics';
 
 interface AdminDashboardViewProps {
@@ -146,7 +152,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
   };
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'analytics' | 'settings' | 'logs'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'pricing' | 'analytics' | 'settings' | 'logs'>('overview');
   const activeSubTabRef = useRef(activeSubTab);
   useEffect(() => {
     activeSubTabRef.current = activeSubTab;
@@ -156,6 +162,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [videoSaveSuccess, setVideoSaveSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('Toutes les régions');
+  const [newFeatureInputs, setNewFeatureInputs] = useState<Record<number, string>>({});
 
   // Custom manual quotas state
   const [editingSchool, setEditingSchool] = useState<AdminSchoolDetail | null>(null);
@@ -255,7 +262,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         return allMsgs;
       });
       // Only update platform settings if not a silent background sync OR if user is not currently in settings tab
-      if (!silent || activeSubTabRef.current !== 'settings') {
+      if (!silent || (activeSubTabRef.current !== 'settings' && activeSubTabRef.current !== 'pricing')) {
         setPlatformSettings(pSettings);
       }
 
@@ -787,7 +794,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       try {
         localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(updated));
         localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(updated));
-      } catch {}
+      } catch { }
       return updated;
     });
   };
@@ -816,6 +823,121 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const handleResetDefaultSettings = () => {
     if (window.confirm("Voulez-vous restaurer les numéros de paiement et coordonnées par défaut ?")) {
       setPlatformSettings(DEFAULT_PLATFORM_SETTINGS);
+    }
+  };
+
+  // Pricing plans helpers for Landing Page
+  const currentPricingPlans: LandingPricingPlan[] = (platformSettings.pricingPlans && platformSettings.pricingPlans.length > 0)
+    ? platformSettings.pricingPlans
+    : DEFAULT_PRICING_PLANS;
+
+  const handleAddPricingPlan = () => {
+    const newPlan: LandingPricingPlan = {
+      id: 'plan_' + Date.now(),
+      badge: 'Sur-mesure',
+      name: 'Nouvelle Formule',
+      description: 'Description claire et engageante pour cette offre scolaire.',
+      price: `${(platformSettings.annualPriceCFA || 30000).toLocaleString()} F CFA`,
+      period: '/ an',
+      features: [
+        'Cartes élèves illimitées',
+        'Fonds et logos personnalisés',
+        'Support technique prioritaire'
+      ],
+      buttonText: "S'abonner maintenant",
+      buttonAction: 'signup',
+      buttonUrl: '',
+      isPopular: false,
+      enabled: true
+    };
+    setPlatformSettings(prev => ({
+      ...prev,
+      pricingPlans: [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS), newPlan]
+    }));
+  };
+
+  const handleUpdatePricingPlan = (index: number, updated: Partial<LandingPricingPlan>) => {
+    setPlatformSettings(prev => {
+      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
+      list[index] = { ...list[index], ...updated };
+      return { ...prev, pricingPlans: list };
+    });
+  };
+
+  const handleRemovePricingPlan = (index: number) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette formule de tarif ?")) {
+      setPlatformSettings(prev => {
+        const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
+        list.splice(index, 1);
+        return { ...prev, pricingPlans: list };
+      });
+    }
+  };
+
+  const handleMovePricingPlan = (index: number, direction: 'up' | 'down') => {
+    setPlatformSettings(prev => {
+      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+      return { ...prev, pricingPlans: list };
+    });
+  };
+
+  const handleAddFeatureToPlan = (planIndex: number, featText: string) => {
+    if (!featText.trim()) return;
+    setPlatformSettings(prev => {
+      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
+      const plan = list[planIndex];
+      list[planIndex] = {
+        ...plan,
+        features: [...plan.features, featText.trim()]
+      };
+      return { ...prev, pricingPlans: list };
+    });
+  };
+
+  const handleRemoveFeatureFromPlan = (planIndex: number, featIndex: number) => {
+    setPlatformSettings(prev => {
+      const list = [...((prev.pricingPlans && prev.pricingPlans.length > 0) ? prev.pricingPlans : DEFAULT_PRICING_PLANS)];
+      const plan = list[planIndex];
+      const newFeats = plan.features.filter((_, idx) => idx !== featIndex);
+      list[planIndex] = { ...plan, features: newFeats };
+      return { ...prev, pricingPlans: list };
+    });
+  };
+
+  const handleResetPricingPlans = () => {
+    if (window.confirm("Voulez-vous restaurer les 3 offres tarifaires d'origine de la vitrine ?")) {
+      setPlatformSettings(prev => ({
+        ...prev,
+        pricingTitle: DEFAULT_PLATFORM_SETTINGS.pricingTitle,
+        pricingSubtitle: DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
+        pricingPlans: DEFAULT_PRICING_PLANS
+      }));
+    }
+  };
+
+  const handleSavePricingOnly = async () => {
+    setIsSavingSettings(true);
+    try {
+      const ok = await savePlatformSettings(platformSettings);
+      if (ok) {
+        playAdminChime();
+        setSettingsToast({
+          type: 'success',
+          message: 'Tarification de la landing page enregistrée avec succès ! La vitrine est actualisée.'
+        });
+        setTimeout(() => setSettingsToast(null), 5000);
+      } else {
+        setSettingsToast({ type: 'error', message: 'Erreur lors de la sauvegarde de la tarification.' });
+      }
+    } catch (err) {
+      setSettingsToast({ type: 'error', message: 'Erreur réseau lors de la sauvegarde.' });
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -933,6 +1055,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 { id: 'schools', label: 'Écoles Partenaires', icon: Building2 },
                 { id: 'payments', label: 'Chat & Preuves Paiement', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
                 { id: 'licenses', label: 'Clés de Licence PRO', icon: Key },
+                { id: 'pricing', label: 'Tarifs Vitrine', icon: Tag },
                 { id: 'analytics', label: 'Statistiques Visiteurs', icon: BarChart3 },
                 { id: 'settings', label: 'Paramètres & Contacts', icon: Settings },
                 { id: 'logs', label: "Journal d'Activité", icon: History },
@@ -1384,8 +1507,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </div>
                             <div className="text-right pl-4">
                               <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${school.subscriptionPlan === 'pro'
-                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
-                                  : (school.subscriptionPlan === 'suspended' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-amber-50 text-amber-800 border border-amber-100')
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
+                                : (school.subscriptionPlan === 'suspended' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-amber-50 text-amber-800 border border-amber-100')
                                 }`}>
                                 {school.subscriptionPlan || 'free'}
                               </span>
@@ -1536,8 +1659,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   {preassignedKey && (
                                     <div className="mt-1 flex items-center gap-1.5">
                                       <span className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-md border ${preassignedKey.isUsed
-                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                          : 'bg-blue-50 text-blue-800 border-blue-200'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-blue-50 text-blue-800 border-blue-200'
                                         }`}>
                                         <Key className="w-2.5 h-2.5 text-emerald-600" />
                                         {preassignedKey.code}
@@ -1709,8 +1832,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               key={conv.schoolId}
                               onClick={() => setSelectedSchoolChatId(conv.schoolId)}
                               className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-1 my-1 ${isSelected
-                                  ? 'bg-emerald-50 border border-emerald-200/80 shadow-sm'
-                                  : 'hover:bg-gray-50'
+                                ? 'bg-emerald-50 border border-emerald-200/80 shadow-sm'
+                                : 'hover:bg-gray-50'
                                 }`}
                             >
                               <div className="flex items-center justify-between">
@@ -1718,8 +1841,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   {conv.schoolName}
                                 </span>
                                 <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${conv.plan === 'pro'
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : (conv.plan === 'suspended' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : (conv.plan === 'suspended' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')
                                   }`}>
                                   {conv.plan || 'free'}
                                 </span>
@@ -1764,8 +1887,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 <h4 className="text-sm font-black text-gray-900 flex items-center gap-2">
                                   {schoolDisplayName}
                                   <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${schoolPlan === 'pro'
-                                      ? 'bg-emerald-600 text-white'
-                                      : (schoolPlan === 'suspended' ? 'bg-red-500 text-white' : 'bg-amber-100 text-amber-900 border border-amber-200')
+                                    ? 'bg-emerald-600 text-white'
+                                    : (schoolPlan === 'suspended' ? 'bg-red-500 text-white' : 'bg-amber-100 text-amber-900 border border-amber-200')
                                     }`}>
                                     {schoolPlan === 'pro' ? 'PRO (Actif)' : (schoolPlan === 'suspended' ? 'Compte Suspendu' : 'Plan Découverte')}
                                   </span>
@@ -1817,8 +1940,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                       </div>
 
                                       <div className={`max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed ${isSchool
-                                          ? 'bg-white text-gray-900 border border-slate-200/80 rounded-tl-none'
-                                          : 'bg-emerald-600 text-white rounded-tr-none'
+                                        ? 'bg-white text-gray-900 border border-slate-200/80 rounded-tl-none'
+                                        : 'bg-emerald-600 text-white rounded-tr-none'
                                         }`}>
                                         {/* Image attachment / Mobile money proof */}
                                         {m.attachmentUrl && (
@@ -1988,8 +2111,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           key={f.id}
                           onClick={() => setKeyFilter(f.id as any)}
                           className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${keyFilter === f.id
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                         >
                           {f.label}
@@ -2012,8 +2135,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <div
                           key={k.id}
                           className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${k.isSuspended
-                              ? 'bg-red-50/40 border-red-200'
-                              : (k.isUsed ? 'bg-amber-50/40 border-amber-200' : 'bg-gray-50 border-slate-200/80')
+                            ? 'bg-red-50/40 border-red-200'
+                            : (k.isUsed ? 'bg-amber-50/40 border-amber-200' : 'bg-gray-50 border-slate-200/80')
                             }`}
                         >
                           <div className="space-y-1">
@@ -2092,8 +2215,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <button
                               onClick={() => handleToggleKeyStatus(k.id, k.code, k.isSuspended)}
                               className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${k.isSuspended
-                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
                                 }`}
                               title={k.isSuspended ? 'Réactiver cette clé' : 'Désactiver / Suspendre cette clé'}
                             >
@@ -2124,14 +2247,636 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <AdminVisitorAnalytics totalRegisteredSchools={schools.length} />
           )}
 
+          {/* TAB: PRICING PLANS / TARIFICATION LANDING PAGE */}
+          {activeSubTab === 'pricing' && (() => {
+            const plans = currentPricingPlans;
+            const activePlansCount = plans.filter(p => p.enabled !== false).length;
+            const isTwoCards = activePlansCount === 2;
+
+            return (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Toast feedback notification */}
+                {settingsToast && (
+                  <div className={`p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fadeIn ${settingsToast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                    }`}>
+                    <div className="flex items-center gap-2.5 text-xs font-bold">
+                      {settingsToast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                      <span>{settingsToast.message}</span>
+                    </div>
+                    <button
+                      onClick={() => setSettingsToast(null)}
+                      className="p-1 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Header banner */}
+                <div className="p-6 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-3xl shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-[11px] font-black uppercase tracking-wider backdrop-blur-xs">
+                        <Tag className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Vitrine Publique & Landing Page</span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                        Tarification & Offres d'Abonnement
+                      </h2>
+                      <p className="text-xs sm:text-sm text-emerald-100/90 font-medium max-w-2xl leading-relaxed">
+                        Configurez les formules tarifaires, prix, avantages et boutons d'action visibles par les visiteurs sur la landing page. Toutes les modifications sont publiées instantanément.
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-2">
+                        <span className="px-3 py-1 bg-white/15 rounded-xl text-xs font-bold text-white">
+                          {plans.length} formules configurées
+                        </span>
+                        <span className="px-3 py-1 bg-emerald-400/20 text-emerald-200 border border-emerald-400/30 rounded-xl text-xs font-bold">
+                          {activePlansCount} active{activePlansCount > 1 ? 's' : ''} sur la vitrine
+                        </span>
+                        {isTwoCards && (
+                          <span className="px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Mode 2 Tarifs Actif : Justification et centrage automatique appliqués
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleAddPricingPlan}
+                        className="px-4 py-2.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Plus className="w-4 h-4 text-emerald-700" />
+                        Ajouter une Offre
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResetPricingPlans}
+                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        title="Restaurer les 3 offres initiales"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Par défaut
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSavePricingOnly}
+                        disabled={isSavingSettings}
+                        className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-amber-400/20 flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        {isSavingSettings ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Enregistrement...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Enregistrer les Tarifs
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section Title & Subtitle Customizer */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-6 space-y-4 bg-white">
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200/70">
+                      <Sliders className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        En-tête de la Section « Offres & Abonnements » sur la Landing Page
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          Titre Principal
+                        </label>
+                        <input
+                          type="text"
+                          value={platformSettings.pricingTitle || ''}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, pricingTitle: e.target.value }))}
+                          placeholder="Ex: Des tarifs transparents, adaptés à votre école"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          Sous-titre / Accroche
+                        </label>
+                        <input
+                          type="text"
+                          value={platformSettings.pricingSubtitle || ''}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, pricingSubtitle: e.target.value }))}
+                          placeholder="Ex: Pas de frais cachés. Choisissez l'abonnement..."
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-800 focus:border-emerald-500 bg-slate-50/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plans List Editor */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                        Cartes Tarifaires ({plans.length})
+                      </h3>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {isTwoCards
+                        ? "✨ 2 cartes actives : la vitrine applique automatiquement une justification et un équilibrage parfaits."
+                        : "Astuce : désactivez ou supprimez une offre pour passer à 2 tarifs bien justifiés."}
+                    </span>
+                  </div>
+
+                  {plans.map((plan, index) => {
+                    const isEnabled = plan.enabled !== false;
+                    const isPopular = Boolean(plan.isPopular);
+
+                    return (
+                      <div
+                        key={plan.id || index}
+                        className={`double-bezel-outer transition-all ${isPopular ? 'ring-2 ring-emerald-500/50' : ''
+                          }`}
+                      >
+                        <div className={`double-bezel-inner p-6 space-y-5 bg-white ${!isEnabled ? 'opacity-70 bg-slate-50/60' : ''
+                          }`}>
+                          {/* Card Top Toolbar */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-black">
+                                #{index + 1}
+                              </span>
+                              <span className="text-sm font-black text-slate-900">
+                                {plan.name || 'Offre sans nom'}
+                              </span>
+                              {plan.badge && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">
+                                  {plan.badge}
+                                </span>
+                              )}
+                              {isPopular && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 flex items-center gap-1 border border-emerald-200">
+                                  <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" />
+                                  Recommandé
+                                </span>
+                              )}
+                              {!isEnabled ? (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200 text-slate-600 flex items-center gap-1">
+                                  <EyeOff className="w-3 h-3" />
+                                  Masqué sur la vitrine
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 flex items-center gap-1 border border-emerald-100">
+                                  <Eye className="w-3 h-3" />
+                                  Visible sur la vitrine
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Move Up / Down / Delete actions */}
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => handleMovePricingPlan(index, 'up')}
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors cursor-pointer"
+                                title="Déplacer vers le haut"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === plans.length - 1}
+                                onClick={() => handleMovePricingPlan(index, 'down')}
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-colors cursor-pointer"
+                                title="Déplacer vers le bas"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <div className="w-px h-4 bg-slate-200 mx-1" />
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePricingPlan(index)}
+                                className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-lg transition-colors cursor-pointer"
+                                title="Supprimer cette formule"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Inputs Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Nom de la formule */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Nom de la Formule <span className="text-emerald-600">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={plan.name}
+                                onChange={e => handleUpdatePricingPlan(index, { name: e.target.value })}
+                                placeholder="Ex: Plan Annuel"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+
+                            {/* Badge */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Badge / Catégorie
+                              </label>
+                              <input
+                                type="text"
+                                value={plan.badge || ''}
+                                onChange={e => handleUpdatePricingPlan(index, { badge: e.target.value })}
+                                placeholder="Ex: Établissement, Découverte"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+
+                            {/* Prix affiché */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                  Tarif Affiché <span className="text-emerald-600">*</span>
+                                </label>
+                                {platformSettings.annualPriceCFA ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePricingPlan(index, { price: `${platformSettings.annualPriceCFA.toLocaleString()} F CFA` })}
+                                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer underline"
+                                  >
+                                    PRO ({platformSettings.annualPriceCFA.toLocaleString()} F)
+                                  </button>
+                                ) : null}
+                              </div>
+                              <input
+                                type="text"
+                                value={plan.price}
+                                onChange={e => handleUpdatePricingPlan(index, { price: e.target.value })}
+                                placeholder="Ex: 30 000 F CFA ou 0 F CFA"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-black text-emerald-800 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+
+                            {/* Période */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Périodicité / Durée
+                              </label>
+                              <input
+                                type="text"
+                                value={plan.period || ''}
+                                onChange={e => handleUpdatePricingPlan(index, { period: e.target.value })}
+                                placeholder="Ex: / an, / à vie, ou vide"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Description de l'Offre
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={plan.description || ''}
+                              onChange={e => handleUpdatePricingPlan(index, { description: e.target.value })}
+                              placeholder="Pour tester les fonctionnalités avant l'année scolaire..."
+                              className="w-full p-3 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-800 focus:border-emerald-500 bg-slate-50/50 resize-none leading-relaxed"
+                            />
+                          </div>
+
+                          {/* Action & Button Settings */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Texte du Bouton CTA
+                              </label>
+                              <input
+                                type="text"
+                                value={plan.buttonText || ''}
+                                onChange={e => handleUpdatePricingPlan(index, { buttonText: e.target.value })}
+                                placeholder="Ex: S'abonner maintenant"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Action du Bouton
+                              </label>
+                              <select
+                                value={plan.buttonAction || 'signup'}
+                                onChange={e => handleUpdatePricingPlan(index, { buttonAction: e.target.value as any })}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50 cursor-pointer"
+                              >
+                                <option value="signup">Inscription Directe (Modal Inscription)</option>
+                                <option value="contact">Contact WhatsApp (wa.me)</option>
+                                <option value="custom_url">Lien Externe Personnalisé</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                {plan.buttonAction === 'contact'
+                                  ? 'Lien WhatsApp (ou laisser vide pour n° par défaut)'
+                                  : plan.buttonAction === 'custom_url'
+                                    ? 'URL de destination'
+                                    : 'Optionnel (Lien de redirection)'}
+                              </label>
+                              <input
+                                type="text"
+                                value={plan.buttonUrl || ''}
+                                onChange={e => handleUpdatePricingPlan(index, { buttonUrl: e.target.value })}
+                                placeholder={
+                                  plan.buttonAction === 'contact'
+                                    ? `https://wa.me/${(platformSettings.whatsappNumber || '22890000000').replace(/[^0-9]/g, '')}`
+                                    : 'https://...'
+                                }
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Toggles */}
+                          <div className="flex flex-wrap items-center gap-6 pt-2 pb-1 border-t border-slate-100">
+                            <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-800 select-none">
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={e => handleUpdatePricingPlan(index, { enabled: e.target.checked })}
+                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                              />
+                              <span>Afficher cette offre sur la vitrine</span>
+                            </label>
+
+                            <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-800 select-none">
+                              <input
+                                type="checkbox"
+                                checked={isPopular}
+                                onChange={e => handleUpdatePricingPlan(index, { isPopular: e.target.checked })}
+                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                              />
+                              <span className="flex items-center gap-1.5">
+                                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                                Mettre en avant cette formule (Badge "Recommandé" & bordure émeraude)
+                              </span>
+                            </label>
+                          </div>
+
+                          {/* Features Manager */}
+                          <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                              Avantages & Fonctionnalités Incluses ({(plan.features || []).length})
+                            </label>
+
+                            <div className="flex flex-wrap gap-2">
+                              {(plan.features || []).map((feat, fIdx) => (
+                                <span
+                                  key={fIdx}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-semibold transition-colors"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>{feat}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFeatureFromPlan(index, fIdx)}
+                                    className="p-0.5 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer ml-1"
+                                    title="Supprimer cet avantage"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Add Feature input */}
+                            <div className="flex items-center gap-2 pt-1 max-w-md">
+                              <input
+                                type="text"
+                                value={newFeatureInputs[index] || ''}
+                                onChange={e => setNewFeatureInputs(prev => ({ ...prev, [index]: e.target.value }))}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = newFeatureInputs[index] || '';
+                                    if (val.trim()) {
+                                      handleAddFeatureToPlan(index, val);
+                                      setNewFeatureInputs(prev => ({ ...prev, [index]: '' }));
+                                    }
+                                  }
+                                }}
+                                placeholder="+ Ajouter un avantage (ex: Cartes illimitées)..."
+                                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-medium text-slate-900 focus:border-emerald-500 bg-slate-50/50"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const val = newFeatureInputs[index] || '';
+                                  if (val.trim()) {
+                                    handleAddFeatureToPlan(index, val);
+                                    setNewFeatureInputs(prev => ({ ...prev, [index]: '' }));
+                                  }
+                                }}
+                                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs shrink-0"
+                              >
+                                Ajouter
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Live Preview Container */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-6 space-y-6 bg-gradient-to-b from-white to-slate-50">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/70">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-emerald-600" />
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                          Aperçu en Direct de la Vitrine (Landing Page)
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isTwoCards && (
+                          <span className="text-[10px] font-black uppercase px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
+                            Justification 2 Cartes Active
+                          </span>
+                        )}
+                        <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 bg-slate-200 text-slate-700 rounded-full">
+                          Rendu Visiteur Réel
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Preview Pricing Section */}
+                    <div className="p-6 sm:p-10 bg-white rounded-3xl border border-slate-200/90 shadow-sm space-y-8">
+                      <div className="text-center max-w-2xl mx-auto space-y-3">
+                        <div className="inline-block text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                          Offres & Abonnements
+                        </div>
+                        <h4 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                          {platformSettings.pricingTitle || "Des tarifs transparents, adaptés à votre école"}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
+                          {platformSettings.pricingSubtitle || "Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement."}
+                        </p>
+                      </div>
+
+                      {/* Dynamic Preview Cards Grid with 2-card justification */}
+                      <div className={
+                        activePlansCount === 1
+                          ? "grid grid-cols-1 gap-6 max-w-sm mx-auto items-stretch justify-center"
+                          : activePlansCount === 2
+                            ? "grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-3xl mx-auto items-stretch justify-center"
+                            : activePlansCount === 3
+                              ? "grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch"
+                              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto items-stretch"
+                      }>
+                        {plans.filter(p => p.enabled !== false).map((plan, pIdx) => {
+                          const isPopular = Boolean(plan.isPopular);
+
+                          return (
+                            <div
+                              key={plan.id || pIdx}
+                              className={`p-6 rounded-2xl flex flex-col justify-between relative transition-all w-full h-full ${isPopular
+                                  ? `border-2 border-emerald-600 bg-white shadow-lg shadow-emerald-950/5 ${isTwoCards ? 'md:scale-[1.01]' : 'scale-105'
+                                  }`
+                                  : 'border border-slate-200/90 bg-slate-50/70'
+                                }`}
+                            >
+                              {isPopular && (
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xs whitespace-nowrap">
+                                  Recommandé
+                                </div>
+                              )}
+
+                              <div className="space-y-3 flex-1 flex flex-col">
+                                {plan.badge && (
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${isPopular ? 'text-emerald-600' : 'text-slate-400'
+                                    }`}>
+                                    {plan.badge}
+                                  </span>
+                                )}
+                                <h5 className="text-lg font-black text-slate-900">{plan.name}</h5>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed min-h-[2rem]">
+                                  {plan.description}
+                                </p>
+                                <div className="pt-1">
+                                  <span className={`text-2xl font-black ${isPopular ? 'text-emerald-600' : 'text-slate-900'
+                                    }`}>
+                                    {plan.price}
+                                  </span>
+                                  {plan.period && (
+                                    <span className="text-xs text-slate-400 font-medium"> {plan.period}</span>
+                                  )}
+                                </div>
+
+                                <ul className="space-y-2 pt-3 text-[11px] font-semibold text-slate-600 flex-1">
+                                  {(plan.features || []).map((feat, fIdx) => (
+                                    <li key={fIdx} className="flex gap-2 items-start">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                      <span className="leading-snug">{feat}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              <button
+                                type="button"
+                                disabled
+                                className={`mt-6 w-full py-2.5 rounded-xl font-black text-xs transition-all uppercase tracking-wider ${isPopular
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'border-2 border-emerald-600 text-emerald-700'
+                                  }`}
+                              >
+                                {plan.buttonText || (plan.buttonAction === 'signup' ? 'Commencer' : 'Contacter')}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {isTwoCards && (
+                        <div className="p-3.5 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center justify-center gap-2 text-center text-xs font-bold text-emerald-800">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>
+                            Justification parfaite : Les 2 cartes sont alignées côte-à-côte avec des largeurs équilibrées, une hauteur uniforme et des boutons parfaitement alignés sur la ligne de base.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Save Action Bar */}
+                <div className="p-5 bg-white border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                    <Info className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      Enregistrez pour synchroniser immédiatement la grille tarifaire avec la vitrine publique.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleAddPricingPlan}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      + Ajouter une Offre
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSavePricingOnly}
+                      disabled={isSavingSettings}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingSettings ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Enregistrement...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Enregistrer les Tarifs
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* TAB 5: PLATFORM & PAYMENT SETTINGS */}
           {activeSubTab === 'settings' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Toast feedback notification */}
               {settingsToast && (
                 <div className={`p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fadeIn ${settingsToast.type === 'success'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-red-600 text-white'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-red-600 text-white'
                   }`}>
                   <div className="flex items-center gap-2.5 text-xs font-bold">
                     {settingsToast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
@@ -2175,6 +2920,32 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               {/* Main Settings Form */}
               <form onSubmit={handleSavePlatformSettings} className="space-y-6">
+
+                {/* Banner Shortcut to Pricing Management */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Tag className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                          Tarification & Forfaits de la Vitrine (Landing Page)
+                        </h3>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Modifiez les formules de prix affichées aux visiteurs (Plan Gratuit, Annuel, Sur Mesure, etc.) avec justification automatique en mode 2 tarifs.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubTab('pricing')}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm cursor-pointer shrink-0 active:scale-95"
+                    >
+                      Gérer les Tarifs →
+                    </button>
+                  </div>
+                </div>
 
                 {/* Section 0: Information Paiement Direct Mobile Money */}
                 <div className="double-bezel-outer">
@@ -3061,8 +3832,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     type="button"
                     onClick={() => setActivationDuration(opt.months)}
                     className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${activationDuration === opt.months
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                       }`}
                   >
                     <span className="text-xs font-black">{opt.label}</span>
@@ -3123,6 +3894,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           { id: 'overview', label: 'Supervision', icon: TrendingUp },
           { id: 'schools', label: 'Écoles', icon: Building2 },
           { id: 'payments', label: 'Paiements', icon: MessageSquare, badge: (unreadSchoolMessagesCount > 0 ? unreadSchoolMessagesCount : pendingReceiptsCount) },
+          { id: 'pricing', label: 'Tarifs', icon: Tag },
           { id: 'licenses', label: 'Licences', icon: Key },
           { id: 'analytics', label: 'Audience', icon: BarChart3 },
           { id: 'settings', label: 'Réglages', icon: Settings },

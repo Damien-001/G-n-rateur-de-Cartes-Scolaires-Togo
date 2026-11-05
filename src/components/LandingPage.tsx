@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { recordPageView } from '../lib/analytics';
-import { 
-  Users, 
-  Sparkles, 
-  Shield, 
-  QrCode, 
-  Smartphone, 
-  ArrowRight, 
-  CheckCircle2, 
-  ChevronRight, 
+import {
+  Users,
+  Sparkles,
+  Shield,
+  QrCode,
+  Smartphone,
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
   Activity,
   Layers,
   FileDown,
@@ -20,8 +20,8 @@ import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
 import { LandingVideoSection } from './LandingVideoSection';
-import { PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
-import { fetchPlatformSettings } from '../lib/db';
+import { PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS } from '../types';
+import { fetchPlatformSettings, PLATFORM_SETTINGS_STORAGE_KEY } from '../lib/db';
 
 interface LandingPageProps {
   onStartAuth: (mode: 'signup' | 'signin') => void;
@@ -57,6 +57,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(DEFAULT_PLATFORM_SETTINGS);
+
+  useEffect(() => {
+    fetchPlatformSettings().then(settings => {
+      if (settings) setPlatformSettings(settings);
+    });
+
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail) {
+        setPlatformSettings(e.detail);
+      }
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === PLATFORM_SETTINGS_STORAGE_KEY || e.key === 'cartes_togo_platform_settings') {
+        fetchPlatformSettings().then(settings => {
+          if (settings) setPlatformSettings(settings);
+        });
+      }
+    };
+
+    window.addEventListener('cardschool_platform_settings_updated' as any, handleSettingsUpdate);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('cardschool_platform_settings_updated' as any, handleSettingsUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const handlePlanAction = (plan: LandingPricingPlan) => {
+    if (plan.buttonAction === 'signup') {
+      onStartAuth('signup');
+    } else if (plan.buttonAction === 'contact') {
+      const url = plan.buttonUrl?.trim();
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        const cleanPhone = (platformSettings.whatsappNumber || '22890000000').replace(/[^0-9]/g, '');
+        window.open(`https://wa.me/${cleanPhone}`, '_blank');
+      }
+    } else if (plan.buttonAction === 'custom_url') {
+      const url = plan.buttonUrl?.trim();
+      if (url) {
+        window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
+      } else {
+        onStartAuth('signup');
+      }
+    } else {
+      onStartAuth('signup');
+    }
+  };
 
   // Framer Motion scroll progress spring
   const { scrollYProgress } = useScroll();
@@ -97,10 +147,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
 
   const itemVariants = {
     hidden: { opacity: 0, y: 25 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } 
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
     }
   };
 
@@ -140,28 +190,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-emerald-600 selection:text-white relative">
       {/* Scroll Progress Bar at very top */}
-      <motion.div 
+      <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 z-[100] origin-left shadow-sm shadow-emerald-500/20"
         style={{ scaleX }}
       />
 
       {/* Dynamic Glass Navigation Header */}
-      <motion.nav 
+      <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className={`fixed top-0 left-0 right-0 h-16 sm:h-20 z-50 px-4 sm:px-8 flex items-center justify-between transition-all duration-300 ${
-          scrolled 
-            ? 'bg-white/95 backdrop-blur-xl border-b border-emerald-100/80 shadow-md shadow-gray-900/5' 
+        className={`fixed top-0 left-0 right-0 h-16 sm:h-20 z-50 px-4 sm:px-8 flex items-center justify-between transition-all duration-300 ${scrolled
+            ? 'bg-white/95 backdrop-blur-xl border-b border-emerald-100/80 shadow-md shadow-gray-900/5'
             : 'bg-white/80 backdrop-blur-md border-b border-gray-100/80'
-        }`}
+          }`}
       >
         {/* Brand / Logo */}
-        <div 
+        <div
           onClick={scrollToTop}
           className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
         >
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.05, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
             className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10 shrink-0"
@@ -176,8 +225,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
 
         {/* Desktop Nav Links */}
         <div className="hidden lg:flex items-center gap-7">
-          <button 
-            onClick={scrollToTop} 
+          <button
+            onClick={scrollToTop}
             className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 cursor-pointer bg-transparent border-0 uppercase tracking-wide"
           >
             Accueil
@@ -203,14 +252,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
 
         {/* Right CTA Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
-          <button 
+          <button
             onClick={() => onStartAuth('signin')}
             className="text-xs sm:text-sm font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap"
           >
             Connexion
           </button>
-          
-          <motion.button 
+
+          <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onStartAuth('signup')}
@@ -240,7 +289,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 lg:hidden"
           >
-            <div 
+            <div
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
               onClick={() => setMobileMenuOpen(false)}
             />
@@ -307,18 +356,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       {/* Hero Section */}
       <section id="hero" className="pt-32 pb-24 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative overflow-hidden">
         {/* Subtle Background Parallax Glow Blobs */}
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.45, 0.3] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           className="absolute top-20 left-1/4 w-96 h-96 bg-emerald-200/40 rounded-full blur-3xl -z-10 pointer-events-none"
         />
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           className="absolute bottom-10 right-10 w-80 h-80 bg-teal-200/30 rounded-full blur-3xl -z-10 pointer-events-none"
         />
 
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -338,7 +387,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.p>
 
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3.5 pt-4">
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onStartAuth('signup')}
@@ -348,7 +397,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
               <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
             </motion.button>
             {onStartOfflineMode ? (
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onStartOfflineMode}
@@ -358,7 +407,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 Accès Immédiat
               </motion.button>
             ) : (
-              <motion.a 
+              <motion.a
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 href="#how-it-works"
@@ -384,20 +433,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
         </motion.div>
 
         {/* Card Visual Previews */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.92, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="lg:col-span-5 flex flex-col items-center justify-center gap-6"
         >
           {/* Cards Showcase Container */}
-          <motion.div 
+          <motion.div
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             className="flex flex-col gap-5 items-center"
           >
             {/* Front Card */}
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.03, y: -4 }}
               className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
             >
@@ -405,7 +454,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             </motion.div>
 
             {/* Back Card */}
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.03, y: -4 }}
               className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
             >
@@ -418,7 +467,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       {/* Features Grid with Scroll Reveal */}
       <section id="features" className="py-24 bg-white border-y border-gray-100 relative">
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -440,7 +489,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             {features.map((item, index) => {
               const IconComp = item.icon;
               return (
-                <motion.div 
+                <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -468,7 +517,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       {/* How it works (Workflow Scroll Reveal) */}
       <section id="how-it-works" className="py-24 bg-gray-50/70 relative">
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -504,7 +553,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 desc: "Choisissez le mode (Recto Seul ou Recto/Verso), puis téléchargez la planche PDF. Découpez au massicot et plastifiez."
               }
             ].map((stepItem, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -513,7 +562,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 whileHover={{ y: -4 }}
                 className="flex flex-col items-center text-center space-y-4 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm shadow-gray-200/50 hover:shadow-md transition-all"
               >
-                <motion.div 
+                <motion.div
                   whileInView={{ scale: [0.8, 1.15, 1] }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.2 + 0.2 }}
@@ -534,7 +583,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       {/* Pricing Section */}
       <section id="pricing" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -545,122 +594,113 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
               Offres & Abonnements
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
-              Des tarifs transparents, adaptés à votre école
+              {platformSettings.pricingTitle || "Des tarifs transparents, adaptés à votre école"}
             </h2>
             <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
-              Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement.
+              {platformSettings.pricingSubtitle || "Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement."}
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-5xl mx-auto items-stretch">
-            {/* Plan Gratuit */}
-            <motion.div 
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              whileHover={{ y: -6 }}
-              className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Découverte</span>
-                <h3 className="text-2xl font-bold text-gray-900">Plan Gratuit</h3>
-                <p className="text-sm text-gray-500 font-medium leading-relaxed">Pour tester les fonctionnalités avant l'année scolaire.</p>
-                <div className="pt-2">
-                  <span className="text-3xl font-extrabold text-gray-900">0 F CFA</span>
-                  <span className="text-sm text-gray-400"> / à vie</span>
-                </div>
-                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Limité à 15 élèves</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Thèmes de couleurs basiques</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Filigrane SukuPass au dos</li>
-                </ul>
-              </div>
-              <motion.button 
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onStartAuth('signup')}
-                className="mt-8 w-full py-3.5 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
-              >
-                Commencer gratuitement
-              </motion.button>
-            </motion.div>
+          {(() => {
+            const rawPlans = (platformSettings.pricingPlans && platformSettings.pricingPlans.length > 0)
+              ? platformSettings.pricingPlans
+              : DEFAULT_PRICING_PLANS;
+            const activePlans = rawPlans.filter(p => p.enabled !== false);
+            const isTwoCards = activePlans.length === 2;
+            const isOneCard = activePlans.length === 1;
 
-            {/* Plan Établissement (Conseillé) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              whileHover={{ y: -8 }}
-              className="p-8 rounded-3xl border-2 border-emerald-600 bg-white flex flex-col justify-between relative shadow-xl shadow-emerald-950/10 scale-105 z-10"
-            >
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-sm">
-                Recommandé
-              </div>
-              <div className="space-y-4">
-                <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest block">Établissement</span>
-                <h3 className="text-2xl font-bold text-gray-900">Plan Annuel</h3>
-                <p className="text-sm text-gray-500 font-medium leading-relaxed">Cartes illimitées pour toute l'année scolaire de votre école.</p>
-                <div className="pt-2">
-                  <span className="text-3xl font-extrabold text-emerald-600">30 000 F CFA</span>
-                  <span className="text-sm text-gray-400"> / an</span>
-                </div>
-                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cartes illimitées</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Aucun filigrane de plateforme</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Fonds Guillochés & Togo</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Cachet & Signature proviseur</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Support direct par WhatsApp</li>
-                </ul>
-              </div>
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onStartAuth('signup')}
-                className="mt-8 w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md shadow-emerald-200 cursor-pointer text-sm"
-              >
-                S'abonner maintenant
-              </motion.button>
-            </motion.div>
+            // Justification du conteneur selon le nombre de cartes:
+            // - Si 2 cartes : max-w-4xl mx-auto, 2 colonnes égales (md:grid-cols-2), centrage parfait et justification des hauteurs
+            // - Si 1 carte  : max-w-md mx-auto
+            // - Si 3 cartes : max-w-5xl mx-auto, 3 colonnes (md:grid-cols-3)
+            // - Si 4+ cartes: max-w-6xl mx-auto, 4 colonnes
+            const gridContainerClass = isOneCard
+              ? "grid grid-cols-1 gap-8 mt-16 max-w-md mx-auto items-stretch justify-center"
+              : isTwoCards
+                ? "grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10 mt-16 max-w-4xl mx-auto items-stretch justify-center"
+                : activePlans.length === 3
+                  ? "grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-5xl mx-auto items-stretch"
+                  : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16 max-w-6xl mx-auto items-stretch";
 
-            {/* Plan Inspecteur / Groupe */}
-            <motion.div 
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              whileHover={{ y: -6 }}
-              className="p-8 rounded-3xl border border-gray-100 bg-gray-50 flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Groupe</span>
-                <h3 className="text-2xl font-bold text-gray-900">Inspection / Multi-écoles</h3>
-                <p className="text-sm text-gray-500 font-medium leading-relaxed">Idéal pour les complexes scolaires ou les inspections régionales.</p>
-                <div className="pt-2">
-                  <span className="text-3xl font-extrabold text-gray-900">Sur Mesure</span>
-                </div>
-                <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Gestion multi-établissements</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Comptes opérateurs secrétaires distincts</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Statistiques globales de l'inspection</li>
-                </ul>
+            return (
+              <div className={gridContainerClass}>
+                {activePlans.map((plan, index) => {
+                  const isPopular = Boolean(plan.isPopular);
+
+                  return (
+                    <motion.div
+                      key={plan.id || index}
+                      initial={{ opacity: 0, y: 40 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: index * 0.12 }}
+                      whileHover={{ y: -6 }}
+                      className={`p-8 rounded-3xl flex flex-col justify-between relative transition-all w-full h-full ${isPopular
+                          ? `border-2 border-emerald-600 bg-white shadow-xl shadow-emerald-950/10 ${isTwoCards ? 'md:scale-[1.02] z-10' : 'scale-105 z-10'
+                          }`
+                          : 'border border-gray-200/90 bg-gray-50/80 hover:bg-white shadow-sm hover:shadow-md'
+                        }`}
+                    >
+                      {isPopular && (
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-sm whitespace-nowrap">
+                          Recommandé
+                        </div>
+                      )}
+
+                      <div className="flex-1 flex flex-col space-y-4">
+                        {plan.badge && (
+                          <span className={`text-xs font-bold uppercase tracking-widest block ${isPopular ? 'text-emerald-600' : 'text-gray-400'
+                            }`}>
+                            {plan.badge}
+                          </span>
+                        )}
+                        <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                        <p className="text-sm text-gray-500 font-medium leading-relaxed min-h-[2.5rem]">
+                          {plan.description}
+                        </p>
+                        <div className="pt-2">
+                          <span className={`text-3xl font-extrabold ${isPopular ? 'text-emerald-600' : 'text-gray-900'
+                            }`}>
+                            {plan.price}
+                          </span>
+                          {plan.period && (
+                            <span className="text-sm text-gray-400 font-medium"> {plan.period}</span>
+                          )}
+                        </div>
+                        <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600 flex-1">
+                          {(plan.features || []).map((feat, fIdx) => (
+                            <li key={fIdx} className="flex gap-2.5 items-start">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                              <span className="leading-snug">{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handlePlanAction(plan)}
+                        className={`mt-8 w-full py-3.5 rounded-xl font-bold transition-all cursor-pointer text-sm ${isPopular
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200'
+                            : 'border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700'
+                          }`}
+                      >
+                        {plan.buttonText || (plan.buttonAction === 'signup' ? 'Commencer gratuitement' : 'Nous contacter')}
+                      </motion.button>
+                    </motion.div>
+                  );
+                })}
               </div>
-              <motion.button 
-                whileTap={{ scale: 0.97 }}
-                onClick={() => window.open('https://wa.me/22890000000', '_blank')}
-                className="mt-8 w-full py-3.5 border-2 border-emerald-600 hover:bg-emerald-50 text-emerald-700 font-bold rounded-xl transition-all cursor-pointer text-sm"
-              >
-                Nous contacter sur WhatsApp
-              </motion.button>
-            </motion.div>
-          </div>
+            );
+          })()}
         </div>
       </section>
 
       {/* FAQ Section */}
       <section id="faq" className="py-24 bg-gray-50/70 border-t border-gray-100">
         <div className="max-w-4xl mx-auto px-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -695,8 +735,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 a: "Grâce à notre technologie de cache hors-ligne (PWA), vous pouvez continuer d'ajouter des élèves, de prendre des photos avec la webcam et de configurer vos cartes sans interruption. Les modifications seront automatiquement synchronisées sur le serveur Supabase dès le retour de votre connexion internet."
               }
             ].map((item, i) => (
-              <motion.div 
-                key={i} 
+              <motion.div
+                key={i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -717,7 +757,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 </button>
                 <AnimatePresence>
                   {faqOpen === i && (
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}

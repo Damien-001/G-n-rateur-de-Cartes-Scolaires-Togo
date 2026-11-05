@@ -97,6 +97,9 @@ ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_notice TEX
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_url TEXT DEFAULT '';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_title TEXT DEFAULT 'Découvrez SukuPass en action — Les badges scolaires en quelques clics';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_poster TEXT DEFAULT '';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS pricing_title TEXT DEFAULT 'Des tarifs transparents, adaptés à votre école';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS pricing_subtitle TEXT DEFAULT 'Pas de frais cachés. Choisissez l''abonnement qui correspond à la taille de votre établissement.';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS pricing_plans JSONB;
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 -- Insertion ou mise à jour de la configuration par défaut

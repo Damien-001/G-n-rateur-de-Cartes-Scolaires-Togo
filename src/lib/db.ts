@@ -2,15 +2,15 @@ import { supabase } from './supabase';
 import { normalizeDateToInput } from './dateUtils';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
-import { 
-  getStoredStudents, 
-  setStoredStudents, 
-  getStoredSchoolInfo, 
-  setStoredSchoolInfo, 
+import {
+  getStoredStudents,
+  setStoredStudents,
+  getStoredSchoolInfo,
+  setStoredSchoolInfo,
   getCachedSession,
-  enqueueSyncAction, 
-  getSyncQueue, 
-  removeSyncAction, 
+  enqueueSyncAction,
+  getSyncQueue,
+  removeSyncAction,
   isAppOnline,
   isValidUuid
 } from './offlineStorage';
@@ -87,12 +87,12 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
 
   try {
     const startTime = performance.now();
-    
+
     // Timeout de 5 secondes pour basculer rapidement sur le cache local en cas de réseau lent/coupé
-    const timeoutPromise = new Promise<never>((_, reject) => 
+    const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Timeout fetchStudents')), 5000)
     );
-    
+
     const fetchPromise = supabase
       .from('students')
       .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
@@ -105,12 +105,12 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
       console.warn('fetchStudents error (fallback local):', error.message);
       return localStudents;
     }
-    
+
     const endTime = performance.now();
     console.log(`✅ Supabase: ${data?.length || 0} élèves chargés en ${(endTime - startTime).toFixed(0)}ms`);
-    
+
     const serverStudents = (data as DbStudent[]).map(dbToStudent);
-    
+
     // Sauvegarder dans le cache local pour consultation hors-ligne
     setStoredStudents(userId, serverStudents);
     return serverStudents;
@@ -179,7 +179,7 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
 
       if (error) throw error;
       const saved = dbToStudent(data as DbStudent);
-      
+
       // Mettre à jour l'ID généré par Supabase en local
       const refreshedList = getStoredStudents(userId).map(s => s.id === studentToSave.id ? saved : s);
       setStoredStudents(userId, refreshedList);
@@ -254,7 +254,7 @@ export async function insertStudents(students: Student[], userId: string): Promi
 
     if (error) throw error;
     const serverResult = (data as DbStudent[]).map(dbToStudent);
-    
+
     // Rafraîchir le stockage local
     setStoredStudents(userId, [...serverResult, ...localList]);
     return serverResult;
@@ -359,11 +359,11 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 
   try {
     const startTime = performance.now();
-    
-    const timeoutPromise = new Promise<never>((_, reject) => 
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 4000)
     );
-    
+
     const fetchPromise = supabase
       .from('school_info')
       .select('name, logo_url, signature_url, stamp_url, card_colors')
@@ -376,10 +376,10 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
       console.warn('fetchSchoolInfo error (fallback local):', error.message);
       return localSchool;
     }
-    
+
     const endTime = performance.now();
     console.log(`✅ Supabase: Infos école chargées en ${(endTime - startTime).toFixed(0)}ms`);
-    
+
     if (!data) return localSchool;
     const schoolInfo = dbToSchoolInfo(data as DbSchoolInfo);
     setStoredSchoolInfo(userId, schoolInfo);
@@ -431,7 +431,7 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       supabase
         .from('school_info')
         .upsert(row, { onConflict: 'user_id' }),
-      new Promise<{ error: any }>((_, reject) => 
+      new Promise<{ error: any }>((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), 6000)
       )
     ]);
@@ -637,7 +637,7 @@ export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     try {
       return crypto.randomUUID();
-    } catch {}
+    } catch { }
   }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -653,7 +653,7 @@ export function getDeletedSchoolsBlacklist(): Set<string> {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) return new Set(arr);
     }
-  } catch {}
+  } catch { }
   return new Set();
 }
 
@@ -669,7 +669,7 @@ export function getRegisteredSchoolsRegistry(): AdminSchoolDetail[] {
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) {
-        return arr.filter(s => 
+        return arr.filter(s =>
           s && s.userId &&
           s.userId !== 'admin-super-user-id' &&
           s.userId !== PLATFORM_SETTINGS_SYSTEM_USER_ID &&
@@ -679,7 +679,7 @@ export function getRegisteredSchoolsRegistry(): AdminSchoolDetail[] {
         );
       }
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -762,15 +762,15 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   const schoolsMap = new Map<string, AdminSchoolDetail>();
   const deletedBlacklist = getDeletedSchoolsBlacklist();
 
-  const isSystemId = (id?: string) => 
-    !id || 
+  const isSystemId = (id?: string) =>
+    !id ||
     id === 'admin-super-user-id' ||
     id === 'local-offline-user' ||
     !isValidUuid(id) ||
-    id === PLATFORM_SETTINGS_SYSTEM_USER_ID || 
-    id === LICENSE_KEYS_SYSTEM_USER_ID || 
-    id.startsWith('00000000-0000-0000-0000-') || 
-    id.toLowerCase().includes('system') || 
+    id === PLATFORM_SETTINGS_SYSTEM_USER_ID ||
+    id === LICENSE_KEYS_SYSTEM_USER_ID ||
+    id.startsWith('00000000-0000-0000-0000-') ||
+    id.toLowerCase().includes('system') ||
     id.toLowerCase().includes('admin_sys');
 
   // Pre-fetch all student counts in ONE query instead of N+1 queries
@@ -786,7 +786,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
         }
       }
     }
-  } catch {}
+  } catch { }
 
   // 1. Charger depuis Supabase school_info (Vrais comptes réels)
   try {
@@ -870,7 +870,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
                   existing.name = localSchoolInfo.name;
                 }
               }
-            } catch {}
+            } catch { }
           }
         }
       }
@@ -919,7 +919,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
               }
             }
           }
-        } catch {}
+        } catch { }
       }
     }
   } catch (err) {
@@ -930,7 +930,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   try {
     const localKeys = getLocalLicenseKeys();
     for (const school of schoolsMap.values()) {
-      const matchKey = localKeys.find(k => 
+      const matchKey = localKeys.find(k =>
         (k.targetSchoolId && k.targetSchoolId === school.userId) ||
         (k.usedBySchoolId && k.usedBySchoolId === school.userId) ||
         (k.targetSchoolName && k.targetSchoolName.toUpperCase() === (school.name || '').toUpperCase())
@@ -945,7 +945,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
         }
       }
     }
-  } catch {}
+  } catch { }
 
   const validSchools = Array.from(schoolsMap.values()).filter(school => {
     if (!school || !school.userId) return false;
@@ -987,11 +987,11 @@ export async function fetchAllStudentsCount(): Promise<number> {
           try {
             const list = JSON.parse(raw);
             if (Array.isArray(list)) localTotal += list.length;
-          } catch {}
+          } catch { }
         }
       }
     }
-  } catch {}
+  } catch { }
 
   return Math.max(totalDb, localTotal);
 }
@@ -1005,7 +1005,7 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
   try {
     const remaining = getRegisteredSchoolsRegistry().filter(s => s.userId !== userId);
     localStorage.setItem(REGISTERED_SCHOOLS_KEY, JSON.stringify(remaining));
-  } catch {}
+  } catch { }
 
   // 3. Supprimer de Supabase (school_info, students, admin_logs, chat_messages, license_keys) SI UUID valide
   if (isValidUuid(userId)) {
@@ -1023,8 +1023,8 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
   // 4. Supprimer les clés de licence associées dans le registre persistant
   try {
     const allKeys = await fetchAllLicenseKeys();
-    const filteredKeys = allKeys.filter(k => 
-      k.targetSchoolId !== userId && 
+    const filteredKeys = allKeys.filter(k =>
+      k.targetSchoolId !== userId &&
       k.usedBySchoolId !== userId &&
       (!schoolName || (k.targetSchoolName && k.targetSchoolName.toUpperCase() !== schoolName.toUpperCase()))
     );
@@ -1038,7 +1038,7 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
     localStorage.removeItem('cartes_togo_school_' + userId);
     localStorage.removeItem('cartes_togo_students_' + userId);
     localStorage.removeItem('cartes_togo_sync_queue_' + userId);
-  } catch {}
+  } catch { }
 
   // 6. Journaliser la suppression
   await saveAdminLog(
@@ -1046,7 +1046,7 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
     'SUPPRESSION_ETABLISSEMENT',
     `Établissement "${schoolName || userId}" supprimé (ID: ${userId}) par le super-administrateur`,
     'Administration Système'
-  ).catch(() => {});
+  ).catch(() => { });
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: userId }));
@@ -1092,7 +1092,7 @@ export async function createSchoolByAdmin(data: {
       newSchoolDetail.name,
       undefined,
       data.phone
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   // Journaliser dans le registre d'audit
@@ -1157,7 +1157,7 @@ export async function updateSchoolSubscription(
       existing.updatedAt = timestamp;
       saveRegisteredSchoolRegistry(existing);
     }
-  } catch {}
+  } catch { }
 
   // 3. Mettre à jour la clé cartes_togo_school_*
   try {
@@ -1170,7 +1170,7 @@ export async function updateSchoolSubscription(
       parsed.updatedAt = timestamp;
       localStorage.setItem(localKey, JSON.stringify(parsed));
     }
-  } catch {}
+  } catch { }
 
   // 4. Synchroniser avec les clés de licence (si le compte est suspendu ou réactivé)
   try {
@@ -1210,11 +1210,11 @@ export async function updateSchoolSubscription(
     if (hasKeyChanges) {
       await saveAllLicenseKeys(keys);
     }
-  } catch {}
+  } catch { }
 
   // 5. Journaliser l'action
-  const actionLabel = plan === 'pro' 
-    ? 'Abonnement PRO Activé' 
+  const actionLabel = plan === 'pro'
+    ? 'Abonnement PRO Activé'
     : (plan === 'suspended' ? 'Compte Suspendu' : 'Abonnement Réinitialisé Gratuit');
   const details = plan === 'pro'
     ? `Plan PRO 1 An validé (Expire le: ${expiresAt || 'Non défini'})`
@@ -1225,7 +1225,7 @@ export async function updateSchoolSubscription(
     actionLabel,
     details,
     cleanName
-  ).catch(() => {});
+  ).catch(() => { });
 
   // 6. Émettre les événements globaux
   if (typeof window !== 'undefined') {
@@ -1281,7 +1281,7 @@ export async function saveAdminLog(
       details: details,
       created_at: timestamp
     });
-  } catch {}
+  } catch { }
 
   // (audit_logs table removed — admin_logs is the single source of truth)
 
@@ -1316,7 +1316,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
         });
       }
     }
-  } catch {}
+  } catch { }
 
   // (audit_logs table removed — data consolidated in admin_logs only)
 
@@ -1332,7 +1332,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
         }
       }
     }
-  } catch {}
+  } catch { }
 
   return Array.from(logsMap.values())
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -1397,7 +1397,7 @@ export function getLocalLicenseKeys(): LicenseKey[] {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) return parsed;
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
@@ -1530,7 +1530,7 @@ export async function fetchAllLicenseKeys(): Promise<LicenseKey[]> {
           const parsed = JSON.parse(systemRow.card_colors);
           if (Array.isArray(parsed)) rawList = parsed;
           else if (Array.isArray(parsed?.licenseKeys)) rawList = parsed.licenseKeys;
-        } catch {}
+        } catch { }
       }
 
       for (const k of rawList) {
@@ -1629,7 +1629,7 @@ export async function fetchAllLicenseKeys(): Promise<LicenseKey[]> {
             }
           }
         }
-      } catch {}
+      } catch { }
     }
   } catch (err) {
     // Continue to local storage
@@ -1665,14 +1665,14 @@ export async function fetchAllLicenseKeys(): Promise<LicenseKey[]> {
     const jsonStr = JSON.stringify(resultList);
     localStorage.setItem(LICENSE_KEYS_STORAGE_KEY, jsonStr);
     localStorage.setItem(LICENSE_KEYS_STORAGE_KEY_ALT, jsonStr);
-  } catch {}
+  } catch { }
 
   return resultList;
 }
 
 export async function generateLicenseKey(
-  durationMonths: number = 12, 
-  note?: string, 
+  durationMonths: number = 12,
+  note?: string,
   targetSchoolName?: string
 ): Promise<LicenseKey> {
   const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -1709,7 +1709,7 @@ export async function generateLicenseKey(
   const currentKeys = await fetchAllLicenseKeys();
   const updatedKeys = [newKey, ...currentKeys.filter(k => normalizeLicenseCode(k.code) !== normalizeLicenseCode(code))];
   await saveAllLicenseKeys(updatedKeys);
-  
+
   const destInfo = targetSchoolName ? ` pour "${targetSchoolName}"` : '';
   await saveAdminLog(null, 'Clé Licence Créée', `Clé de licence PRO 1 An générée : ${code}${destInfo}`);
   return newKey;
@@ -1726,7 +1726,7 @@ export async function createPreassignedLicenseForSchool(
   const keys = await fetchAllLicenseKeys();
 
   // Vérifier si une clé pré-assignée ou utilisée existe déjà pour cet établissement
-  const existingKey = keys.find(k => 
+  const existingKey = keys.find(k =>
     (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
     (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName) ||
     (k.usedBySchoolId && k.usedBySchoolId === schoolUserId)
@@ -1817,7 +1817,7 @@ export async function activateSchoolDirectly(
 
     // 2. Mettre à jour la licence pré-assignée pour marquer son utilisation
     const keys = await fetchAllLicenseKeys();
-    let targetKey = keys.find(k => 
+    let targetKey = keys.find(k =>
       !k.isUsed && (
         (k.targetSchoolId && k.targetSchoolId === schoolUserId) ||
         (k.targetSchoolName && k.targetSchoolName.toUpperCase() === cleanName.toUpperCase())
@@ -1871,7 +1871,7 @@ export async function activateSchoolDirectly(
         is_suspended: false,
         created_at: targetKey.createdAt || nowIso
       }, { onConflict: 'code' });
-    } catch {}
+    } catch { }
 
     await saveAllLicenseKeys(keys);
 
@@ -1901,7 +1901,7 @@ export async function activateSchoolDirectly(
         'admin',
         `🎉 Félicitations ! Votre règlement a été validé par l'administrateur. Votre compte est désormais activé en formule PRO Illimitée jusqu'au ${expiresAtStr}. Vous pouvez créer et exporter vos cartes sans aucune restriction.`
       );
-    } catch {}
+    } catch { }
 
     // 6. Émettre les événements globaux pour rafraîchissement temps réel
     if (typeof window !== 'undefined') {
@@ -1941,14 +1941,14 @@ export async function toggleLicenseKeyStatus(keyId: string): Promise<boolean> {
         .from('license_keys')
         .update({ is_suspended: key.isSuspended })
         .eq('code', key.code);
-    } catch {}
+    } catch { }
 
     await saveAllLicenseKeys(keys);
 
     // Synchroniser le statut d'abonnement de l'école associée
     const targetUserId = key.usedBySchoolId || key.targetSchoolId;
     const allSchools = await fetchAllSchools();
-    const matchedSchool = allSchools.find(s => 
+    const matchedSchool = allSchools.find(s =>
       (targetUserId && s.userId === targetUserId) ||
       (key.targetSchoolName && s.name.toUpperCase() === key.targetSchoolName.toUpperCase())
     );
@@ -1963,8 +1963,8 @@ export async function toggleLicenseKeyStatus(keyId: string): Promise<boolean> {
 
     const statusStr = key.isSuspended ? 'Désactivée / Suspendue' : 'Réactivée / Active';
     await saveAdminLog(
-      null, 
-      key.isSuspended ? 'Clé Licence Suspendue' : 'Clé Licence Réactivée', 
+      null,
+      key.isSuspended ? 'Clé Licence Suspendue' : 'Clé Licence Réactivée',
       `La clé ${key.code} (${key.targetSchoolName || 'Non assignée'}) est désormais ${statusStr}`
     );
     return true;
@@ -1987,14 +1987,14 @@ export async function deleteLicenseKey(keyId: string): Promise<boolean> {
         .from('license_keys')
         .delete()
         .eq('code', keyToDelete.code);
-    } catch {}
+    } catch { }
 
     const remainingKeys = keys.filter(k => k.id !== keyId && k.code !== keyId);
     await saveAllLicenseKeys(remainingKeys);
 
     await saveAdminLog(
-      null, 
-      'Clé Licence Supprimée', 
+      null,
+      'Clé Licence Supprimée',
       `Suppression définitive de la clé ${keyToDelete.code} (${keyToDelete.targetSchoolName || 'Non assignée'})`
     );
     return true;
@@ -2036,7 +2036,7 @@ export async function purgeOrphanLicenseKeys(): Promise<{ removedCount: number }
         null,
         'Nettoyage Licences Orphelines',
         `Suppression de ${removedCount} clé(s) de licence orphelines sans école associée`
-      ).catch(() => {});
+      ).catch(() => { });
     }
     return { removedCount };
   } catch (err) {
@@ -2092,14 +2092,14 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
         used_at: foundKey.usedAt
       })
       .eq('code', foundKey.code);
-  } catch {}
+  } catch { }
 
   await saveAllLicenseKeys(keys);
 
   await saveAdminLog(
-    schoolUserId, 
-    'Licence PRO Activée', 
-    `Clé ${foundKey.code} activée avec succès pour l'établissement "${schoolName}" (Expire le ${expiresAtStr})`, 
+    schoolUserId,
+    'Licence PRO Activée',
+    `Clé ${foundKey.code} activée avec succès pour l'établissement "${schoolName}" (Expire le ${expiresAtStr})`,
     schoolName
   );
 
@@ -2108,9 +2108,9 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
     window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
   }
 
-  return { 
-    success: true, 
-    message: `Félicitations ! Votre abonnement PRO (${duration} mois) a été activé avec succès jusqu'au ${expiresAtStr}.` 
+  return {
+    success: true,
+    message: `Félicitations ! Votre abonnement PRO (${duration} mois) a été activé avec succès jusqu'au ${expiresAtStr}.`
   };
 }
 
@@ -2127,7 +2127,7 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
 
   const addUnique = (msg: ChatMessage) => {
     if (!msg || (!msg.message && !msg.attachmentUrl)) return;
-    
+
     const id = msg.id?.toString();
     const timeMs = new Date(msg.createdAt || Date.now()).getTime();
     // 4-second time bucket prevents duplicates when timestamp differs by a few ms between client & server
@@ -2150,8 +2150,8 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
       if (schoolId) {
         query = query.eq('school_id', schoolId);
       }
-      
-      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => 
+
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) =>
         setTimeout(() => reject(new Error('Timeout chat messages')), 3500)
       );
 
@@ -2208,7 +2208,7 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
       localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, serialized);
       localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, serialized);
     }
-  } catch {}
+  } catch { }
 
   return sorted;
 }
@@ -2227,7 +2227,7 @@ export async function compressImageForChat(
     }
 
     const img = new Image();
-    
+
     img.onload = () => {
       let width = img.width;
       let height = img.height;
@@ -2314,7 +2314,7 @@ export async function sendChatMessage(
   if (processedAttachment && processedAttachment.startsWith('data:image/')) {
     try {
       processedAttachment = await compressImageForChat(processedAttachment, 1024, 1024, 0.72);
-    } catch {}
+    } catch { }
   }
 
   let finalMsg: ChatMessage = {
@@ -2355,10 +2355,10 @@ export async function sendChatMessage(
     const stored = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
     const messages: ChatMessage[] = stored ? JSON.parse(stored) : [];
     const timeMs = new Date(finalMsg.createdAt).getTime();
-    
+
     // Filter out any previous identical message (same content within 4 seconds)
-    const filtered = messages.filter(m => 
-      m.id !== finalMsg.id && 
+    const filtered = messages.filter(m =>
+      m.id !== finalMsg.id &&
       !(m.schoolId === finalMsg.schoolId && m.senderRole === finalMsg.senderRole && m.message === finalMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
     );
     const updated = [...filtered, finalMsg];
@@ -2370,13 +2370,13 @@ export async function sendChatMessage(
 
   // 3. Supabase audit log for visibility
   try {
-    const actionLabel = senderRole === 'school' 
+    const actionLabel = senderRole === 'school'
       ? (attachmentUrl ? 'Preuve Paiement Reçue' : 'Message Établissement Reçu')
       : 'Réponse Administrateur Chat';
 
     const logDetails = `${cleanSchoolName} : ${cleanMessage.substring(0, 100)}${attachmentUrl ? ' [Capture jointe]' : ''}`;
     await saveAdminLog(schoolId, actionLabel, logDetails, cleanSchoolName);
-  } catch {}
+  } catch { }
 
   // 4. Live dispatch for cross-component & cross-tab real-time sync
   if (typeof window !== 'undefined') {
@@ -2501,7 +2501,7 @@ export function getLocalFedaKey(): string {
       const p = JSON.parse(raw);
       return sanitizeKey(p.fedapayPublicKey);
     }
-  } catch {}
+  } catch { }
   return '';
 }
 
@@ -2512,6 +2512,9 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   let localVideoTitle = '';
   let localVideoPoster = '';
   let localFedaKey = '';
+  let localPricingPlans: any[] | undefined = undefined;
+  let localPricingTitle = '';
+  let localPricingSubtitle = '';
   try {
     const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (raw) {
@@ -2520,8 +2523,11 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       localVideoTitle = p.demoVideoTitle || '';
       localVideoPoster = p.demoVideoPoster || '';
       localFedaKey = sanitizeKey(p.fedapayPublicKey);
+      if (Array.isArray(p.pricingPlans)) localPricingPlans = p.pricingPlans;
+      localPricingTitle = p.pricingTitle || '';
+      localPricingSubtitle = p.pricingSubtitle || '';
     }
-  } catch {}
+  } catch { }
 
   // 1. Try Supabase custom table platform_settings
   try {
@@ -2534,6 +2540,13 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     if (!error && data) {
       // Prefer DB key if valid, otherwise fallback to localStorage key
       const dbKey = sanitizeKey(data.fedapay_public_key);
+      let dbPricingPlans: any[] | undefined;
+      if (data.pricing_plans) {
+        try {
+          dbPricingPlans = typeof data.pricing_plans === 'string' ? JSON.parse(data.pricing_plans) : data.pricing_plans;
+        } catch { }
+      }
+
       const merged: PlatformSettings = {
         ...DEFAULT_PLATFORM_SETTINGS,
         tmoneyNumber: data.tmoney_number || DEFAULT_PLATFORM_SETTINGS.tmoneyNumber,
@@ -2551,11 +2564,16 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
         supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
         // If data.demo_video_url is undefined/null in DB (e.g. column not yet in remote schema), preserve local cache
-        demoVideoUrl: (data.demo_video_url !== undefined && data.demo_video_url !== null) 
-          ? data.demo_video_url 
+        demoVideoUrl: (data.demo_video_url !== undefined && data.demo_video_url !== null)
+          ? data.demo_video_url
           : (localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl),
         demoVideoTitle: data.demo_video_title || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
         demoVideoPoster: data.demo_video_poster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+        pricingTitle: data.pricing_title || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
+        pricingSubtitle: data.pricing_subtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
+        pricingPlans: (Array.isArray(dbPricingPlans) && dbPricingPlans.length > 0)
+          ? dbPricingPlans
+          : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
         updatedAt: data.updated_at
       };
       localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
@@ -2576,7 +2594,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 
     if (!sysError && systemRow && systemRow.card_colors) {
       const parsed = typeof systemRow.card_colors === 'string' ? JSON.parse(systemRow.card_colors) : systemRow.card_colors;
-      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl)) {
+      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl || parsed.pricingPlans)) {
         const dbKey = sanitizeKey(parsed.fedapayPublicKey);
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
@@ -2584,6 +2602,11 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
           demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
           demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
           demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+          pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
+          pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
+          pricingPlans: (Array.isArray(parsed.pricingPlans) && parsed.pricingPlans.length > 0)
+            ? parsed.pricingPlans
+            : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
           fedapayPublicKey: dbKey || localFedaKey,
           updatedAt: systemRow.updated_at
         };
@@ -2608,7 +2631,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     if (!logError && logs && logs.length > 0 && logs[0].details) {
       try {
         const parsed = JSON.parse(logs[0].details);
-        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl)) {
+        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl || parsed.pricingPlans)) {
           const dbKey = sanitizeKey(parsed.fedapayPublicKey);
           const merged: PlatformSettings = {
             ...DEFAULT_PLATFORM_SETTINGS,
@@ -2616,6 +2639,11 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
             demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
             demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
             demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+            pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
+            pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
+            pricingPlans: (Array.isArray(parsed.pricingPlans) && parsed.pricingPlans.length > 0)
+              ? parsed.pricingPlans
+              : (localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans),
             fedapayPublicKey: dbKey || localFedaKey,
             updatedAt: logs[0].created_at
           };
@@ -2623,7 +2651,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
           localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(merged));
           return merged;
         }
-      } catch {}
+      } catch { }
     }
   } catch (err) {
     // Ignore and proceed to local storage
@@ -2634,8 +2662,8 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     const stored = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { 
-        ...DEFAULT_PLATFORM_SETTINGS, 
+      return {
+        ...DEFAULT_PLATFORM_SETTINGS,
         ...parsed,
         fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey)
       };
@@ -2700,6 +2728,9 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
       demo_video_url: settingsToSave.demoVideoUrl,
       demo_video_title: settingsToSave.demoVideoTitle,
       demo_video_poster: settingsToSave.demoVideoPoster,
+      pricing_title: settingsToSave.pricingTitle,
+      pricing_subtitle: settingsToSave.pricingSubtitle,
+      pricing_plans: settingsToSave.pricingPlans ? JSON.stringify(settingsToSave.pricingPlans) : null,
       updated_at: timestamp
     }, { onConflict: 'id' });
 

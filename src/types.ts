@@ -124,6 +124,80 @@ export const SCHOOL_YEARS = [
   "2023-2024", "2024-2025", "2025-2026", "2026-2027", "2027-2028"
 ];
 
+export interface LandingPricingPlan {
+  id: string;
+  badge?: string;
+  name: string;
+  description: string;
+  price: string;
+  period?: string;
+  features: string[];
+  buttonText: string;
+  buttonAction: 'signup' | 'contact' | 'custom_url';
+  buttonUrl?: string;
+  isPopular?: boolean;
+  enabled?: boolean;
+}
+
+export const DEFAULT_PRICING_PLANS: LandingPricingPlan[] = [
+  {
+    id: 'free',
+    badge: 'Découverte',
+    name: 'Plan Gratuit',
+    description: "Pour tester les fonctionnalités avant l'année scolaire.",
+    price: '0 F CFA',
+    period: '/ à vie',
+    features: [
+      'Limité à 15 élèves',
+      'Thèmes de couleurs basiques',
+      'Filigrane SukuPass au dos'
+    ],
+    buttonText: 'Commencer gratuitement',
+    buttonAction: 'signup',
+    buttonUrl: '',
+    isPopular: false,
+    enabled: true
+  },
+  {
+    id: 'annual',
+    badge: 'Établissement',
+    name: 'Plan Annuel',
+    description: "Cartes illimitées pour toute l'année scolaire de votre école.",
+    price: '30 000 F CFA',
+    period: '/ an',
+    features: [
+      'Cartes illimitées',
+      'Aucun filigrane de plateforme',
+      'Fonds Guillochés & Togo',
+      'Cachet & Signature proviseur',
+      'Support direct par WhatsApp'
+    ],
+    buttonText: "S'abonner maintenant",
+    buttonAction: 'signup',
+    buttonUrl: '',
+    isPopular: true,
+    enabled: true
+  },
+  {
+    id: 'custom',
+    badge: 'Groupe',
+    name: 'Inspection / Multi-écoles',
+    description: "Idéal pour les complexes scolaires ou les inspections régionales.",
+    price: 'Sur Mesure',
+    period: '',
+    features: [
+      'Gestion multi-établissements',
+      'Comptes opérateurs secrétaires distincts',
+      "Statistiques globales de l'inspection"
+    ],
+    buttonText: 'Nous contacter sur WhatsApp',
+    buttonAction: 'contact',
+    buttonUrl: 'https://wa.me/22890000000',
+    isPopular: false,
+    enabled: true
+  }
+];
+
 export interface PlatformSettings {
   // Coordonnées de paiement Mobile Money manuel
   tmoneyNumber: string;
@@ -152,6 +226,11 @@ export interface PlatformSettings {
   demoVideoTitle?: string;
   demoVideoPoster?: string;
 
+  // Tarifs & Offres de la Landing Page
+  pricingTitle?: string;
+  pricingSubtitle?: string;
+  pricingPlans?: LandingPricingPlan[];
+
   updatedAt?: string;
 }
 
@@ -172,5 +251,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   supportNotice: "Notre équipe administrative est disponible du Lundi au Samedi de 8h à 18h pour toute assistance technique ou activation de compte.",
   demoVideoUrl: '',
   demoVideoTitle: 'Découvrez SukuPass en action — Les badges scolaires en quelques clics',
-  demoVideoPoster: ''
+  demoVideoPoster: '',
+  pricingTitle: 'Des tarifs transparents, adaptés à votre école',
+  pricingSubtitle: "Pas de frais cachés. Choisissez l'abonnement qui correspond à la taille de votre établissement.",
+  pricingPlans: DEFAULT_PRICING_PLANS
 };
