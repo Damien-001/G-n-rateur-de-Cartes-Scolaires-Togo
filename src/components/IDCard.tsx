@@ -79,6 +79,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             <img
               src={schoolInfo.logoUrl}
               alt="Logo"
+              crossOrigin="anonymous"
               style={{
                 width: 32,
                 height: 32,
@@ -320,6 +321,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 <img
                   src={student.photoUrl}
                   alt="Student"
+                  crossOrigin="anonymous"
                   style={{ 
                     width: '100%', 
                     height: '100%', 
@@ -550,6 +552,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 <img
                   src={schoolInfo.stampUrl}
                   alt="Cachet"
+                  crossOrigin="anonymous"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -588,6 +591,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 <img
                   src={schoolInfo.signatureUrl}
                   alt="Signature"
+                  crossOrigin="anonymous"
                   style={{
                     position: 'absolute',
                     maxHeight: '100%',

@@ -202,6 +202,7 @@ export const IDCardBack: React.FC<IDCardBackProps> = React.memo(({ student, scho
               <img 
                 src={schoolInfo.signatureUrl} 
                 alt="Signature" 
+                crossOrigin="anonymous"
                 style={{ width: '100%', height: '100%', objectContain: 'contain' }} 
               />
               <span style={{ 
@@ -231,6 +232,7 @@ export const IDCardBack: React.FC<IDCardBackProps> = React.memo(({ student, scho
               <img 
                 src={schoolInfo.stampUrl} 
                 alt="Cachet" 
+                crossOrigin="anonymous"
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
               />
             </div>

@@ -94,6 +94,12 @@ export default function App({ session, onLogout }: AppProps) {
     }
     return 'sheet';
   });
+  const [downloadReadyModal, setDownloadReadyModal] = useState<{
+    url: string;
+    filename: string;
+    count: number;
+  } | null>(null);
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const isSuperAdminUser = session.userId === 'admin-super-user-id' || 
     session.email?.toLowerCase().trim() === 'admin@sukupass.tg' || 
@@ -249,16 +255,38 @@ export default function App({ session, onLogout }: AppProps) {
       return;
     }
 
+    if (studentsToPrint.length === 0) {
+      alert("Aucun élève sélectionné pour l'impression.");
+      return;
+    }
+
     setIsGeneratingPDF(true);
-    // Si l'utilisateur est en vue cartes individuelles sur mobile, basculer vers la feuille A4 pour html2canvas
+    setPdfProgress({ current: 0, total: Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1) });
+
+    // Basculer vers la feuille A4 pour que html2canvas trouve les éléments dans le DOM
     const prevViewStyle = printViewStyle;
     if (prevViewStyle !== 'sheet') {
       setPrintViewStyle('sheet');
     }
-    // Courte pause pour laisser React rendre la feuille A4 dans le DOM
-    await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Si des wrappers d'échelle mobile existent, réinitialiser temporairement à 100% (794x1123) pour que html2canvas capture en haute définition sans artefact
+    // Attendre de manière dynamique que les pages A4 soient prêtes dans le DOM
+    let pages = document.querySelectorAll<HTMLElement>('.a4-page');
+    let attempts = 0;
+    while (pages.length === 0 && attempts < 15) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      pages = document.querySelectorAll<HTMLElement>('.a4-page');
+      attempts++;
+    }
+
+    if (pages.length === 0) {
+      alert("Erreur : Impossible de charger la feuille d'impression. Veuillez réessayer.");
+      setIsGeneratingPDF(false);
+      setPdfProgress(null);
+      if (prevViewStyle !== 'sheet') setPrintViewStyle(prevViewStyle);
+      return;
+    }
+
+    // Réinitialiser temporairement les wrappers d'échelle mobile à 100% (794x1123) pour html2canvas
     const scaleWrappers = document.querySelectorAll<HTMLElement>('.a4-page-scale-wrapper');
     const originalWrappers = Array.from(scaleWrappers).map(w => ({
       wrapper: w,
@@ -276,18 +304,15 @@ export default function App({ session, onLogout }: AppProps) {
     });
 
     try {
-      // Récupérer toutes les pages A4 rendues dans le DOM
-      const pages = document.querySelectorAll<HTMLElement>('.a4-page');
-      if (pages.length === 0) {
-        alert('Aucune page à exporter.');
-        return;
-      }
-
-      // Chargement dynamique des bibliothèques PDF & Canvas à la demande
+      // Chargement dynamique des bibliothèques PDF & Canvas
       const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
         import('jspdf'),
         import('html2canvas')
       ]);
+
+      const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+      // 1.5 sur mobile pour éviter de saturer la mémoire canvas d'iOS Safari, 2 sur desktop
+      const renderScale = isMobileDevice ? 1.5 : 2;
 
       // A4 en mm: 210 × 297
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -295,23 +320,47 @@ export default function App({ session, onLogout }: AppProps) {
       const A4_H_MM = 297;
 
       for (let i = 0; i < pages.length; i++) {
+        setPdfProgress({ current: i + 1, total: pages.length });
         const page = pages[i];
         const canvas = await html2canvas(page, {
-          scale: 2,           // haute résolution
-          useCORS: true,      // images cross-origin (photos Supabase)
+          scale: renderScale,
+          useCORS: true,
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
+          imageTimeout: 8000,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        const imgData = canvas.toDataURL('image/jpeg', 0.90);
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
       }
 
-      const date = new Date().toISOString().split('T')[0];
-      pdf.save(`cartes_scolaires_${date}.pdf`);
-      
+      const cleanSchoolName = (schoolInfo.name || 'sukupass')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 30);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `cartes_scolaires_${cleanSchoolName}_${dateStr}.pdf`;
+
+      // 1. Créer le Blob PDF et URL Blob
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      // 2. Tenter le téléchargement automatique standard
+      try {
+        pdf.save(filename);
+      } catch (saveErr) {
+        console.warn('pdf.save direct a échoué (normal sur certains navigateurs mobiles):', saveErr);
+      }
+
+      // 3. Ouvrir la modale de succès avec lien direct de secours (garantit 100% de succès sur iPhone & Android)
+      setDownloadReadyModal({
+        url: blobUrl,
+        filename,
+        count: studentsToPrint.length
+      });
+
       saveAdminLog(
         session.userId,
         'Impression Cartes PDF',
@@ -320,7 +369,7 @@ export default function App({ session, onLogout }: AppProps) {
       );
     } catch (error) {
       console.error('Erreur génération PDF:', error);
-      alert('Erreur lors de la génération du PDF.');
+      alert('Erreur lors de la génération du PDF. Vous pouvez aussi utiliser le bouton "Imprimer" pour générer le PDF directement via votre navigateur.');
     } finally {
       // Restaurer l'échelle mobile adaptée immédiatement
       originalWrappers.forEach(item => {
@@ -334,6 +383,7 @@ export default function App({ session, onLogout }: AppProps) {
         setPrintViewStyle(prevViewStyle);
       }
       setIsGeneratingPDF(false);
+      setPdfProgress(null);
     }
   };
 
@@ -1071,24 +1121,34 @@ export default function App({ session, onLogout }: AppProps) {
                 )}
               </div>
 
-              <button
-                onClick={generatePDF}
-                title="Télécharge le PDF officiel A4 prêt pour l'impression"
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3 sm:px-4 py-2 sm:py-2.5 shrink-0"
-                disabled={isGeneratingPDF}
-              >
-                {isGeneratingPDF ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="hidden sm:inline">Génération...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-4 h-4" />
-                    <span>Télécharger PDF</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  title="Imprimer directement ou enregistrer en PDF via le navigateur"
+                  className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                >
+                  <Printer className="w-4 h-4 text-slate-600" />
+                  <span className="hidden sm:inline">Imprimer</span>
+                </button>
+                <button
+                  onClick={generatePDF}
+                  title="Télécharge le PDF officiel A4 prêt pour l'impression"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3 sm:px-4 py-2 sm:py-2.5 shrink-0"
+                  disabled={isGeneratingPDF}
+                >
+                  {isGeneratingPDF ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="hidden sm:inline">Génération...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4" />
+                      <span>Télécharger PDF</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Mobile Print Options Sub-bar */}
@@ -1182,6 +1242,16 @@ export default function App({ session, onLogout }: AppProps) {
                     )}
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 border border-gray-200 flex items-center gap-1 active:scale-95 cursor-pointer"
+                  title="Imprimer directement via le navigateur"
+                >
+                  <Printer className="w-3 h-3 text-slate-600" />
+                  <span>Imprimer</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1361,6 +1431,86 @@ export default function App({ session, onLogout }: AppProps) {
           students={students}
           schoolInfo={schoolInfo}
         />
+
+        {/* PDF Download Ready Modal (Mobile & Safari Fallback) */}
+        {downloadReadyModal && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full text-center shadow-2xl space-y-4 animate-scaleUp">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Vos cartes sont prêtes !</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {downloadReadyModal.count} carte{downloadReadyModal.count > 1 ? 's' : ''} officielle{downloadReadyModal.count > 1 ? 's' : ''} générée{downloadReadyModal.count > 1 ? 's' : ''} en haute définition.
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <a
+                  href={downloadReadyModal.url}
+                  download={downloadReadyModal.filename}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary w-full py-3.5 text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <FileDown className="w-5 h-5 shrink-0" />
+                  <span>Ouvrir / Télécharger le PDF</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadReadyModal(null);
+                    window.print();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
+                >
+                  <Printer className="w-4 h-4 text-slate-600" />
+                  <span>Imprimer via le navigateur (AirPrint)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDownloadReadyModal(null)}
+                  className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Generation Progress Modal */}
+        {isGeneratingPDF && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-scaleUp">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl mx-auto flex items-center justify-center animate-spin">
+                <Loader2 className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Génération du PDF officiel...</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {pdfProgress && pdfProgress.total > 0
+                    ? `Capture HD de la page ${pdfProgress.current} sur ${pdfProgress.total}...`
+                    : 'Préparation de la mise en page...'}
+                </p>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
+                  style={{ 
+                    width: pdfProgress && pdfProgress.total > 0 
+                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%` 
+                      : '20%' 
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">Veuillez ne pas fermer cette page pendant le traitement.</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -2109,6 +2259,86 @@ export default function App({ session, onLogout }: AppProps) {
           students={students}
           schoolInfo={schoolInfo}
         />
+
+        {/* PDF Download Ready Modal (Mobile & Safari Fallback) */}
+        {downloadReadyModal && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full text-center shadow-2xl space-y-4 animate-scaleUp">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-2xl mx-auto flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Vos cartes sont prêtes !</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {downloadReadyModal.count} carte{downloadReadyModal.count > 1 ? 's' : ''} officielle{downloadReadyModal.count > 1 ? 's' : ''} générée{downloadReadyModal.count > 1 ? 's' : ''} en haute définition.
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <a
+                  href={downloadReadyModal.url}
+                  download={downloadReadyModal.filename}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary w-full py-3.5 text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <FileDown className="w-5 h-5 shrink-0" />
+                  <span>Ouvrir / Télécharger le PDF</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadReadyModal(null);
+                    window.print();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
+                >
+                  <Printer className="w-4 h-4 text-slate-600" />
+                  <span>Imprimer via le navigateur (AirPrint)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDownloadReadyModal(null)}
+                  className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Generation Progress Modal */}
+        {isGeneratingPDF && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 animate-scaleUp">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl mx-auto flex items-center justify-center animate-spin">
+                <Loader2 className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Génération du PDF officiel...</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {pdfProgress && pdfProgress.total > 0
+                    ? `Capture HD de la page ${pdfProgress.current} sur ${pdfProgress.total}...`
+                    : 'Préparation de la mise en page...'}
+                </p>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-full transition-all duration-300 rounded-full"
+                  style={{ 
+                    width: pdfProgress && pdfProgress.total > 0 
+                      ? `${Math.max(10, Math.round((pdfProgress.current / pdfProgress.total) * 100))}%` 
+                      : '20%' 
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-400">Veuillez ne pas fermer cette page pendant le traitement.</p>
+            </div>
+          </div>
+        )}
       </React.Suspense>
 
       {/* Offline Status & Sync Banner */}
