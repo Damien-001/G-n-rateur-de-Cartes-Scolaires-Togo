@@ -834,7 +834,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <h2 className="text-xs font-black text-slate-900 truncate leading-tight uppercase tracking-tight">
               Console Admin
             </h2>
-            <p className="text-[8px] text-emerald-700 font-bold uppercase tracking-wider">CardSchool Togo</p>
+            <p className="text-[8px] text-emerald-700 font-bold uppercase tracking-wider">SukuPass Togo</p>
           </div>
         </div>
 
@@ -865,7 +865,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         {/* Top Logo Section: exact height h-[73px], edge-to-edge border-b */}
         <div className={`h-[73px] flex items-center border-b border-slate-200 shrink-0 ${isSidebarOpen ? 'px-5 justify-between' : 'justify-center px-2'}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0" title={!isSidebarOpen ? "Console Admin - CardSchool Togo" : undefined}>
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-500/20 shadow-md shadow-emerald-600/10 shrink-0" title={!isSidebarOpen ? "Console Admin - SukuPass Togo" : undefined}>
               <Shield className="w-5 h-5" />
             </div>
             {isSidebarOpen && (
@@ -873,7 +873,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 <h2 className="text-sm font-black text-slate-900 truncate leading-tight uppercase tracking-wider">
                   Console Admin
                 </h2>
-                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.1em] mt-0.5">CardSchool Togo</p>
+                <p className="text-[9px] text-emerald-700 font-black uppercase tracking-[0.1em] mt-0.5">SukuPass Togo</p>
               </div>
             )}
           </div>
@@ -2208,7 +2208,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               required
                               value={platformSettings.tmoneyHolder}
                               onChange={e => setPlatformSettings(prev => ({ ...prev, tmoneyHolder: e.target.value }))}
-                              placeholder="Ex: CardSchool SAS ou Nom du Trésorier"
+                              placeholder="Ex: SukuPass SAS ou Nom du Trésorier"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50/50"
                             />
                             <p className="text-[10px] text-slate-400 font-medium">Titulaire officiel apparaissant sur le reçu</p>
@@ -2240,7 +2240,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               required
                               value={platformSettings.floozHolder}
                               onChange={e => setPlatformSettings(prev => ({ ...prev, floozHolder: e.target.value }))}
-                              placeholder="Ex: CardSchool SAS"
+                              placeholder="Ex: SukuPass SAS"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-slate-50/50"
                             />
                             <p className="text-[10px] text-slate-400 font-medium">Titulaire officiel apparaissant sur le reçu</p>
@@ -2296,7 +2296,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 required
                                 value={platformSettings.supportEmail}
                                 onChange={e => setPlatformSettings(prev => ({ ...prev, supportEmail: e.target.value }))}
-                                placeholder="contact@cardschool.tg"
+                                placeholder="contact@sukupass.tg"
                                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                               />
                             </div>
@@ -2444,7 +2444,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 <p className="text-xs font-black text-slate-900">{platformSettings.tmoneyNumber || '+228 90 00 00 00'}</p>
                               </div>
                               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded">
-                                {platformSettings.tmoneyHolder || 'CardSchool'}
+                                {platformSettings.tmoneyHolder || 'SukuPass'}
                               </span>
                             </div>
 
@@ -2454,7 +2454,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 <p className="text-xs font-black text-slate-900">{platformSettings.floozNumber || '+228 95 00 00 00'}</p>
                               </div>
                               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded">
-                                {platformSettings.floozHolder || 'CardSchool'}
+                                {platformSettings.floozHolder || 'SukuPass'}
                               </span>
                             </div>
                           </div>

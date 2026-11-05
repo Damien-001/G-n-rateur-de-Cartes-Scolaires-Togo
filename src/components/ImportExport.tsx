@@ -103,7 +103,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
     link.href = URL.createObjectURL(blob);
     const dateStr = new Date().toISOString().split('T')[0];
     const classSuffix = currentClassFilter !== 'all' ? `_${currentClassFilter.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : '';
-    link.setAttribute('download', `eleves_cardschool${classSuffix}_${dateStr}.csv`);
+    link.setAttribute('download', `eleves_sukupass${classSuffix}_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

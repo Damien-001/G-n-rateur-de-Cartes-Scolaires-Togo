@@ -498,7 +498,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                               <span className="text-[9px] font-mono text-slate-400 font-bold">(*145#)</span>
                             </div>
                             <p className="text-sm font-black text-slate-900 tracking-wide">{platformSettings.tmoneyNumber || '+228 90 00 00 00'}</p>
-                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.tmoneyHolder || 'CardSchool Togo'}</p>
+                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.tmoneyHolder || 'SukuPass Togo'}</p>
                           </div>
                         </div>
 
@@ -534,7 +534,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                               <span className="text-[9px] font-mono text-slate-400 font-bold">(*155#)</span>
                             </div>
                             <p className="text-sm font-black text-slate-900 tracking-wide">{platformSettings.floozNumber || '+228 95 00 00 00'}</p>
-                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.floozHolder || 'CardSchool Togo'}</p>
+                            <p className="text-[10px] text-emerald-800 font-bold">Titulaire : {platformSettings.floozHolder || 'SukuPass Togo'}</p>
                           </div>
                         </div>
 

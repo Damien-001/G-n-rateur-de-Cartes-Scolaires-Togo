@@ -267,7 +267,7 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
                 </h3>
                 <p className="text-[11px] text-emerald-100 font-medium">
-                  Service direct CardSchool Togo
+                  Service direct SukuPass Togo
                 </p>
               </div>
             </div>
@@ -333,7 +333,7 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
                     className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                   >
                     <div className="flex items-center gap-1 text-[9px] text-gray-400 font-semibold mb-0.5 px-1">
-                      <span>{isMe ? 'Vous' : 'Support CardSchool'}</span>
+                      <span>{isMe ? 'Vous' : 'Support SukuPass'}</span>
                       <span>•</span>
                       <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>

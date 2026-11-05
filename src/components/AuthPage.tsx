@@ -343,7 +343,7 @@ const ConfirmScreen: React.FC<{
         <ol className="space-y-1.5">
           {[
             'Ouvrez votre boîte email',
-            'Recherchez un email de "Générateur de Cartes Scolaires"',
+            'Recherchez un email de "SukuPass"',
             'Cliquez sur le bouton de confirmation',
             'Revenez sur cette page et connectez-vous',
           ].map((step, i) => (
@@ -436,8 +436,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth, onBackToHome, initia
                 <IconSchool />
               </div>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Générateur de Cartes</h1>
-            <p className="text-xs text-emerald-800 font-bold uppercase tracking-[0.2em] mt-1.5">Scolaire • Togo</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">SukuPass</h1>
+            <p className="text-xs text-emerald-800 font-bold uppercase tracking-[0.2em] mt-1.5">Les badges scolaires en quelques clics • Togo</p>
           </div>
 
           <div className="double-bezel-outer">

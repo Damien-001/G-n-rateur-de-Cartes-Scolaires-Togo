@@ -127,7 +127,7 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
               </span>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                Tracking d'Audience en Temps Réel • CardSchool Togo
+                Tracking d'Audience en Temps Réel • SukuPass Togo
               </span>
             </div>
             <h2 className="text-base font-black text-slate-900 tracking-tight mt-0.5">

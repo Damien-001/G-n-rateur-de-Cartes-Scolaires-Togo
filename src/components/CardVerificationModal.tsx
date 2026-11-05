@@ -228,7 +228,7 @@ export const CardVerificationModal: React.FC<CardVerificationModalProps> = ({
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <p className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            Vérification sécurisée CardSchool Togo v3.1
+            Vérification sécurisée SukuPass Togo v3.1
           </p>
           <button
             onClick={onClose}

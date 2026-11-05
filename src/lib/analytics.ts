@@ -1,5 +1,5 @@
 /**
- * Service d'Analytique et de Statistiques Visiteurs — CardSchool Togo
+ * Service d'Analytique et de Statistiques Visiteurs — SukuPass Togo
  * Suit de manière anonyme et respectueuse de la vie privée la fréquentation du site
  * (Pages vues, visiteurs uniques, appareils, régions du Togo, conversions).
  */

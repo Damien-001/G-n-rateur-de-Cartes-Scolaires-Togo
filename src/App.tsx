@@ -83,7 +83,10 @@ export default function App({ session, onLogout }: AppProps) {
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
-  const [isAdminView, setIsAdminView] = useState(session.email.toLowerCase() === 'admin@cardschool.tg');
+  const isSuperAdminUser = session.userId === 'admin-super-user-id' || 
+    session.email?.toLowerCase().trim() === 'admin@sukupass.tg' || 
+    session.email?.toLowerCase().trim() === 'admin@cardschool.tg';
+  const [isAdminView, setIsAdminView] = useState(isSuperAdminUser);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('cardschool_school_sidebar_open');
@@ -293,7 +296,7 @@ export default function App({ session, onLogout }: AppProps) {
   useEffect(() => {
     const loadData = async () => {
       // Si c'est le super-admin, ne pas charger ni créer d'école élève
-      if (session.email?.toLowerCase().trim() === 'admin@cardschool.tg' || session.userId === 'admin-super-user-id') {
+      if (isSuperAdminUser) {
         setLoading(false);
         return;
       }
@@ -389,7 +392,7 @@ export default function App({ session, onLogout }: AppProps) {
   // ── Écouteur temps-réel des activations et mises à jour d'abonnement ───────────
   useEffect(() => {
     // Si c'est l'admin, ne pas écouter les changements d'abonnement d'école
-    if (session.userId === 'admin-super-user-id' || session.email?.toLowerCase().trim() === 'admin@cardschool.tg') {
+    if (isSuperAdminUser) {
       return;
     }
 
@@ -435,7 +438,7 @@ export default function App({ session, onLogout }: AppProps) {
   useEffect(() => {
     if (loading) return;
     // Ne jamais auto-sauvegarder sur Supabase pour le super-admin ou un compte local non-UUID
-    if (session.userId === 'admin-super-user-id' || session.email?.toLowerCase().trim() === 'admin@cardschool.tg' || !isValidUuid(session.userId)) {
+    if (isSuperAdminUser || !isValidUuid(session.userId)) {
       if (session.userId && !isValidUuid(session.userId)) {
         setStoredSchoolInfo(session.userId, schoolInfo);
       }
@@ -711,7 +714,7 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+            {isSuperAdminUser && (
               <button
                 onClick={() => setIsAdminView(true)}
                 title="Console Admin"
@@ -760,7 +763,7 @@ export default function App({ session, onLogout }: AppProps) {
 
           <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto overflow-x-hidden ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
             <div className="space-y-4">
-              {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+              {isSuperAdminUser && (
                 <div className="relative group">
                   <button
                     onClick={() => setIsAdminView(true)}
@@ -1152,7 +1155,7 @@ export default function App({ session, onLogout }: AppProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+          {isSuperAdminUser && (
             <button
               onClick={() => setIsAdminView(true)}
               title="Console Admin"
@@ -1202,7 +1205,7 @@ export default function App({ session, onLogout }: AppProps) {
         {/* Scrollable Nav & Footer Content */}
         <div className={`py-6 flex-1 flex flex-col justify-between overflow-y-auto overflow-x-hidden ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
           <div className="space-y-4">
-            {session.email.toLowerCase() === 'admin@cardschool.tg' && (
+            {isSuperAdminUser && (
               <div className="relative group">
                 <button
                   onClick={() => setIsAdminView(true)}

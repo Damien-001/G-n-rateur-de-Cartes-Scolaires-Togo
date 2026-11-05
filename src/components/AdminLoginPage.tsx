@@ -8,7 +8,8 @@ interface AdminLoginPageProps {
   onBackToLanding: () => void;
 }
 
-const ADMIN_EMAIL = 'admin@cardschool.tg';
+const ADMIN_EMAILS = ['admin@sukupass.tg', 'admin@cardschool.tg'];
+const DEFAULT_ADMIN_EMAIL = 'admin@sukupass.tg';
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackToLanding }) => {
   useEffect(() => {
@@ -26,8 +27,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
 
     const formattedEmail = email.toLowerCase().trim();
 
-    if (formattedEmail !== ADMIN_EMAIL) {
-      setError('Accès refusé. Ce portail est réservé aux administrateurs CardSchool.');
+    if (!ADMIN_EMAILS.includes(formattedEmail)) {
+      setError('Accès refusé. Ce portail est réservé aux administrateurs SukuPass.');
       return;
     }
 
@@ -39,12 +40,12 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
 
     setIsLoading(true);
 
-    const MASTER_ADMIN_PASSWORDS = ['admin', 'admin123', 'admin2026', 'cardschool', 'cardschool2026', 'togoschool'];
+    const MASTER_ADMIN_PASSWORDS = ['admin', 'admin123', 'admin2026', 'sukupass', 'sukupass2026', 'cardschool', 'cardschool2026', 'togoschool'];
     if (MASTER_ADMIN_PASSWORDS.includes(trimmedPassword.toLowerCase())) {
       const adminSession: Session = {
         userId: 'admin-super-user-id',
-        email: ADMIN_EMAIL,
-        fullName: 'Super Administrateur CardSchool',
+        email: formattedEmail,
+        fullName: 'Super Administrateur SukuPass',
         schoolName: 'Administration Centrale SaaS',
         location: 'Lomé, Togo'
       };
@@ -63,8 +64,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
         // Fallback for admin access when testing or initial setup
         const adminSession: Session = {
           userId: 'admin-super-user-id',
-          email: ADMIN_EMAIL,
-          fullName: 'Super Administrateur CardSchool',
+          email: formattedEmail,
+          fullName: 'Super Administrateur SukuPass',
           schoolName: 'Administration Centrale SaaS',
           location: 'Lomé, Togo'
         };
@@ -75,8 +76,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
       // Fallback for local / demo admin login
       const adminSession: Session = {
         userId: 'admin-super-user-id',
-        email: ADMIN_EMAIL,
-        fullName: 'Super Administrateur CardSchool',
+        email: formattedEmail,
+        fullName: 'Super Administrateur SukuPass',
         schoolName: 'Administration Centrale SaaS',
         location: 'Lomé, Togo'
       };
@@ -130,7 +131,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Portail Administrateur</h1>
             <span className="inline-block px-3 py-1 bg-emerald-50 border border-emerald-200/60 rounded-full text-[10px] text-emerald-800 font-black uppercase tracking-widest shadow-xs">
-              CardSchool SaaS — Accès Restreint
+              SukuPass — Accès Restreint
             </span>
           </div>
         </div>
@@ -158,7 +159,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
                   required
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(''); }}
-                  placeholder="admin@cardschool.tg"
+                  placeholder="admin@sukupass.tg"
                   className="w-full bg-slate-50/80 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm font-semibold rounded-xl pl-11 pr-4 py-3.5 outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
                   autoComplete="email"
                 />
@@ -249,7 +250,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
 
         {/* Footer */}
         <p className="text-center mt-6 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          CardSchool SaaS © {new Date().getFullYear()} — Système de Gestion de Cartes Scolaires Togo
+          SukuPass © {new Date().getFullYear()} — Les badges scolaires en quelques clics • Togo
         </p>
       </div>
     </div>

@@ -673,7 +673,7 @@ export function getRegisteredSchoolsRegistry(): AdminSchoolDetail[] {
           s && s.userId &&
           s.userId !== 'admin-super-user-id' &&
           s.userId !== PLATFORM_SETTINGS_SYSTEM_USER_ID &&
-          s.managerEmail?.toLowerCase().trim() !== 'admin@cardschool.tg' &&
+          s.managerEmail?.toLowerCase().trim() !== 'admin@cardschool.tg' && s.managerEmail?.toLowerCase().trim() !== 'admin@sukupass.tg' &&
           !s.name?.toUpperCase().includes('ADMINISTRATION CENTRALE') &&
           !s.name?.toUpperCase().includes('CONFIGURATION SYSTEME')
         );
@@ -691,7 +691,7 @@ export function saveRegisteredSchoolRegistry(school: AdminSchoolDetail) {
     school.userId === 'local-offline-user' ||
     !isValidUuid(school.userId) ||
     school.userId === PLATFORM_SETTINGS_SYSTEM_USER_ID ||
-    school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' ||
+    school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' || school.managerEmail?.toLowerCase().trim() === 'admin@sukupass.tg' ||
     school.name?.toUpperCase().includes('ADMINISTRATION CENTRALE') ||
     school.name?.toUpperCase().includes('CONFIGURATION SYSTEME')
   ) {
@@ -711,7 +711,7 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
     school.userId === 'local-offline-user' ||
     !isValidUuid(school.userId) ||
     school.userId === PLATFORM_SETTINGS_SYSTEM_USER_ID ||
-    school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' ||
+    school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' || school.managerEmail?.toLowerCase().trim() === 'admin@sukupass.tg' ||
     school.name?.toUpperCase().includes('ADMINISTRATION CENTRALE') ||
     school.name?.toUpperCase().includes('CONFIGURATION SYSTEME')
   ) {
@@ -951,7 +951,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     if (!school || !school.userId) return false;
     if (school.userId === PLATFORM_SETTINGS_SYSTEM_USER_ID) return false;
     if (school.userId === 'admin-super-user-id') return false;
-    if (school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg') return false;
+    if (school.managerEmail?.toLowerCase().trim() === 'admin@cardschool.tg' || school.managerEmail?.toLowerCase().trim() === 'admin@sukupass.tg') return false;
     if (school.name?.toUpperCase().includes('ADMINISTRATION CENTRALE')) return false;
     if (school.name?.toUpperCase().includes('CONFIGURATION SYSTEME')) return false;
     if (deletedBlacklist.has(school.userId)) return false;
@@ -1256,7 +1256,7 @@ export async function saveAdminLog(
   const timestamp = new Date().toISOString();
   const newLogItem: AdminLogItem = {
     id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 6),
-    schoolName: schoolName || (schoolUserId ? 'Établissement' : 'Système CardSchool'),
+    schoolName: schoolName || (schoolUserId ? 'Établissement' : 'Système SukuPass'),
     action,
     details,
     createdAt: timestamp
@@ -1309,7 +1309,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
         const id = log.id?.toString() || `${log.created_at}-${log.school_id}`;
         logsMap.set(id, {
           id,
-          schoolName: log.school_name || (log.school_id ? 'Établissement' : 'Système CardSchool'),
+          schoolName: log.school_name || (log.school_id ? 'Établissement' : 'Système SukuPass'),
           action: log.action || 'Action',
           details: log.details || '',
           createdAt: log.created_at || new Date().toISOString(),
@@ -2477,7 +2477,7 @@ export function exportSchoolsToCSV(schools: AdminSchoolDetail[]) {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `CardSchool_Ecoles_Togo_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `SukuPass_Ecoles_Togo_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -2665,7 +2665,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
   try {
     await supabase.from('school_info').upsert({
       user_id: PLATFORM_SETTINGS_SYSTEM_USER_ID,
-      name: 'CONFIGURATION SYSTEME CARDSCHOOL',
+      name: 'CONFIGURATION SYSTEME SUKUPASS',
       logo_url: null,
       signature_url: null,
       stamp_url: null,

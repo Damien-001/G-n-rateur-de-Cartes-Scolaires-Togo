@@ -1,6 +1,6 @@
 {
-  "short_name": "CardSchool",
-  "name": "CardSchool Togo — Générateur de Cartes Scolaires",
+  "short_name": "SukuPass",
+  "name": "SukuPass Togo — Les badges scolaires en quelques clics",
   "description": "Application de génération et d'impression de cartes scolaires officielles avec QR code pour les établissements du Togo et de l'espace UEMOA.",
   "lang": "fr-TG",
   "id": "/",

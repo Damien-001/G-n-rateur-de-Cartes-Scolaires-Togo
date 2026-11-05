@@ -151,11 +151,11 @@ export interface PlatformSettings {
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   tmoneyNumber: '+228 90 00 00 00',
-  tmoneyHolder: 'CardSchool Togo',
+  tmoneyHolder: 'SukuPass Togo',
   floozNumber: '+228 95 00 00 00',
-  floozHolder: 'CardSchool Togo',
+  floozHolder: 'SukuPass Togo',
   annualPriceCFA: 30000,
-  supportEmail: 'contact@cardschool.tg',
+  supportEmail: 'contact@sukupass.tg',
   supportPhone: '+228 90 00 00 00',
   whatsappNumber: '+228 90 00 00 00',
   officeAddress: 'Lomé, Togo',

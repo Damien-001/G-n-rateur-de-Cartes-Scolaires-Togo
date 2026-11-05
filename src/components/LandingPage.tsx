@@ -163,10 +163,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             whileTap={{ scale: 0.95 }}
             className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white border border-emerald-400/20 shadow-md shadow-emerald-800/10 shrink-0"
           >
-            <span className="font-extrabold text-base sm:text-lg">C</span>
+            <span className="font-extrabold text-base sm:text-lg">S</span>
           </motion.div>
           <div>
-            <span className="text-xs sm:text-base font-black text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors uppercase tracking-tight block">CardSchool SaaS</span>
+            <span className="text-xs sm:text-base font-black text-gray-900 leading-tight group-hover:text-emerald-700 transition-colors uppercase tracking-tight block">SukuPass</span>
             <p className="text-[8px] sm:text-[9px] text-emerald-700 font-extrabold uppercase tracking-[0.12em] mt-0.5">Togo & UEMOA</p>
           </div>
         </div>
@@ -323,11 +323,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
         >
           <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-200/60 shadow-xs">
             <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider">Solution SaaS Éducation 2026</span>
+            <span className="text-xs font-bold uppercase tracking-wider">SukuPass Togo • Éducation 2026</span>
           </motion.div>
 
           <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.12]">
-            Générez les cartes scolaires de vos élèves au Togo <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
+            SukuPass — Les badges scolaires <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
           </motion.h1>
 
           <motion.p variants={itemVariants} className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-medium">
@@ -570,7 +570,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 <ul className="space-y-3 pt-4 text-xs font-semibold text-gray-600">
                   <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Limité à 15 élèves</li>
                   <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Thèmes de couleurs basiques</li>
-                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Filigrane CardSchool au dos</li>
+                  <li className="flex gap-2.5 items-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Filigrane SukuPass au dos</li>
                 </ul>
               </div>
               <motion.button 
@@ -737,8 +737,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       <footer className="bg-gray-900 text-white py-14 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center border-b border-gray-800 pb-10">
           <div>
-            <span className="font-extrabold text-xl text-emerald-400">CardSchool SaaS</span>
-            <p className="text-xs text-gray-400 mt-2 font-medium">Simplifier l'administration scolaire au Togo.</p>
+            <span className="font-extrabold text-xl text-emerald-400">SukuPass</span>
+            <p className="text-xs text-gray-400 mt-2 font-medium">Les badges scolaires en quelques clics au Togo.</p>
           </div>
           <div className="flex gap-6 text-sm text-gray-400 font-medium justify-center md:justify-start">
             <a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a>
@@ -746,7 +746,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
           <div className="text-xs text-gray-500 text-center md:text-right font-medium">
-            <span>&copy; 2026 CardSchool. Tous droits réservés.</span>
+            <span>&copy; 2026 SukuPass Togo. Tous droits réservés.</span>
           </div>
         </div>
       </footer>
