@@ -234,7 +234,7 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
       {!isOpen && (
         <button
           onClick={onOpen}
-          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 cursor-pointer border-2 border-emerald-400/30"
+          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-3 cursor-pointer border-2 border-emerald-400/30"
           title="Assistance & Validation de Paiement"
         >
           <div className="relative">

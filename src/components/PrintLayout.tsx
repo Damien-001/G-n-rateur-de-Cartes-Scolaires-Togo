@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Student, SchoolInfo } from '../types';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
@@ -8,14 +8,33 @@ interface PrintLayoutProps {
   schoolInfo: SchoolInfo;
   printMode?: 'recto' | 'recto-verso';
   cardsPerPage?: 8 | 10;
+  fitToScreen?: boolean;
 }
 
 export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({ 
   students, 
   schoolInfo,
   printMode = 'recto',
-  cardsPerPage = 10
+  cardsPerPage = 10,
+  fitToScreen = true
 }) => {
+  // Calcul dynamique de l'échelle d'affichage mobile
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  );
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 820;
+  // Sur mobile, réduire pour s'adapter exactement à la largeur d'écran (avec marge de 16px)
+  const autoScale = (isMobile && fitToScreen) 
+    ? Math.min(1, Math.max(0.32, (windowWidth - 20) / 794)) 
+    : 1;
+
   // Split students into pages based on cardsPerPage
   const pageBatches: Student[][] = [];
   for (let i = 0; i < students.length; i += cardsPerPage) {
@@ -36,10 +55,41 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
 
   const rows = cardsPerPage / 2;
 
+  const wrapWithScale = (pageEl: React.ReactElement, key: string) => {
+    if (autoScale < 1) {
+      return (
+        <div
+          key={`scaled-wrapper-${key}`}
+          className="a4-page-scale-wrapper"
+          style={{
+            width: Math.round(794 * autoScale),
+            height: Math.round(1123 * autoScale),
+            margin: '0 auto 20px auto',
+            position: 'relative',
+            overflow: 'visible',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              transform: `scale(${autoScale})`,
+              transformOrigin: 'top left',
+              width: 794,
+              height: 1123,
+            }}
+          >
+            {pageEl}
+          </div>
+        </div>
+      );
+    }
+    return pageEl;
+  };
+
   return (
-    <div className="print-container print-layout-container" style={{ backgroundColor: 'transparent', minHeight: '100vh', padding: '32px 0' }}>
+    <div className="print-container print-layout-container" style={{ backgroundColor: 'transparent', minHeight: '100vh', padding: autoScale < 1 ? '12px 0 40px 0' : '32px 0' }}>
       {pageBatches.map((pageStudents, pageIdx) => {
-        const frontPage = (
+        const frontPageElement = (
           <div
             key={`front-${pageIdx}`}
             className="a4-page print-page"
@@ -76,13 +126,15 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
           </div>
         );
 
+        const frontPage = wrapWithScale(frontPageElement, `front-${pageIdx}`);
+
         if (printMode === 'recto') {
           return frontPage;
         }
 
         // Recto-Verso Mode: generate the mirrored back page
         const backStudents = getBacksOrder(pageStudents);
-        const backPage = (
+        const backPageElement = (
           <div
             key={`back-${pageIdx}`}
             className="a4-page print-page"
@@ -119,6 +171,8 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
             </div>
           </div>
         );
+
+        const backPage = wrapWithScale(backPageElement, `back-${pageIdx}`);
 
         return (
           <React.Fragment key={`page-pair-${pageIdx}`}>

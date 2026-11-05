@@ -27,7 +27,9 @@ import {
   Filter,
   CheckCircle2,
   Menu,
-  X
+  X,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
@@ -82,6 +84,7 @@ export default function App({ session, onLogout }: AppProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
+  const [mobileFitScreen, setMobileFitScreen] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'students' | 'design' | 'print' | 'settings' | 'billing'>('students');
   const isSuperAdminUser = session.userId === 'admin-super-user-id' || 
     session.email?.toLowerCase().trim() === 'admin@sukupass.tg' || 
@@ -241,6 +244,23 @@ export default function App({ session, onLogout }: AppProps) {
     // Courte pause pour laisser React mettre à jour le bouton
     await new Promise(resolve => setTimeout(resolve, 150));
 
+    // Si des wrappers d'échelle mobile existent, réinitialiser temporairement à 100% (794x1123) pour que html2canvas capture en haute définition sans artefact
+    const scaleWrappers = document.querySelectorAll<HTMLElement>('.a4-page-scale-wrapper');
+    const originalWrappers = Array.from(scaleWrappers).map(w => ({
+      wrapper: w,
+      width: w.style.width,
+      height: w.style.height,
+      innerTransform: (w.firstElementChild as HTMLElement)?.style.transform || ''
+    }));
+
+    scaleWrappers.forEach(w => {
+      w.style.width = '794px';
+      w.style.height = '1123px';
+      if (w.firstElementChild) {
+        (w.firstElementChild as HTMLElement).style.transform = 'none';
+      }
+    });
+
     try {
       // Récupérer toutes les pages A4 rendues dans le DOM
       const pages = document.querySelectorAll<HTMLElement>('.a4-page');
@@ -288,6 +308,14 @@ export default function App({ session, onLogout }: AppProps) {
       console.error('Erreur génération PDF:', error);
       alert('Erreur lors de la génération du PDF.');
     } finally {
+      // Restaurer l'échelle mobile adaptée immédiatement
+      originalWrappers.forEach(item => {
+        item.wrapper.style.width = item.width;
+        item.wrapper.style.height = item.height;
+        if (item.wrapper.firstElementChild) {
+          (item.wrapper.firstElementChild as HTMLElement).style.transform = item.innerTransform;
+        }
+      });
       setIsGeneratingPDF(false);
     }
   };
@@ -918,19 +946,22 @@ export default function App({ session, onLogout }: AppProps) {
         </aside>
 
         {/* Content area - Independently scrollable */}
-        <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-24 md:pb-8">
+        <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-36 md:pb-8">
           {/* Top Sticky Bar */}
           <div className="sticky top-0 z-40 bg-white shadow-xs px-6 md:h-[73px] py-3 md:py-0 flex flex-col md:flex-row md:items-center justify-between no-print border-b border-slate-200 shrink-0 space-y-3 md:space-y-0">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <span className="text-xs sm:text-sm text-slate-800 font-extrabold flex items-center gap-1.5 truncate">
-                  Aperçu d'impression
-                </span>
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-emerald-900 bg-emerald-50 px-2 sm:px-3 py-1 rounded-xl border border-emerald-200 shrink-0">
-                  <span>{studentsToPrint.length} élève{studentsToPrint.length > 1 ? 's' : ''}</span>
-                  <span className="text-emerald-300">•</span>
-                  <span>{Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1)} page(s) A4</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm text-slate-900 font-black whitespace-nowrap">
+                    Aperçu d'impression
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0">
+                    {studentsToPrint.length} carte{studentsToPrint.length > 1 ? 's' : ''}
+                  </span>
                 </div>
+                <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+                  • {Math.ceil(studentsToPrint.length / cardsPerPage) * (printMode === 'recto-verso' ? 2 : 1)} page(s) A4
+                </span>
               </div>
 
               {/* Desktop Interactive Print Options */}
@@ -1021,7 +1052,7 @@ export default function App({ session, onLogout }: AppProps) {
 
             {/* Mobile Print Options Sub-bar */}
             <div className="flex lg:hidden flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-              <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+              <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
                 <span className="text-[10px] font-bold text-gray-400 uppercase">Classe:</span>
                 <select
                   value={printClassFilter}
@@ -1037,7 +1068,31 @@ export default function App({ session, onLogout }: AppProps) {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Mobile Fit / 100% Zoom Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setMobileFitScreen(prev => !prev)}
+                  className={`text-[10px] font-bold px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    mobileFitScreen 
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black' 
+                      : 'bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200'
+                  }`}
+                  title={mobileFitScreen ? "Feuille A4 adaptée à l'écran du téléphone (Cliquer pour zoom 100%)" : "Mode taille réelle 100% (Cliquer pour ajuster à l'écran)"}
+                >
+                  {mobileFitScreen ? (
+                    <>
+                      <Minimize2 className="w-3 h-3 text-emerald-700" />
+                      <span>Ajusté A4</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3 h-3 text-gray-600" />
+                      <span>Zoom 100%</span>
+                    </>
+                  )}
+                </button>
+
                 <div className="bg-gray-100 p-0.5 rounded-lg flex">
                   <button
                     onClick={() => setPrintMode('recto')}
@@ -1079,13 +1134,14 @@ export default function App({ session, onLogout }: AppProps) {
             </div>
           </div>
 
-          {/* Printable layout container with responsive horizontal overflow scroll */}
-          <div className="py-6 sm:py-8 print:py-0 px-2 sm:px-6 print:px-0 flex justify-center overflow-x-auto max-w-full">
+          {/* Printable layout container with responsive scaling */}
+          <div className="py-4 sm:py-8 print:py-0 px-1 sm:px-6 print:px-0 flex flex-col items-center justify-center overflow-x-auto max-w-full">
             <PrintLayout 
               students={studentsToPrint} 
               schoolInfo={schoolInfo} 
               printMode={printMode}
               cardsPerPage={cardsPerPage}
+              fitToScreen={mobileFitScreen}
             />
           </div>
         </div>

@@ -172,6 +172,20 @@ html {
     background: white !important;
   }
 
+  .a4-page-scale-wrapper {
+    width: 794px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .a4-page-scale-wrapper > div {
+    transform: none !important;
+    width: 794px !important;
+    height: 1123px !important;
+  }
+
   .a4-page {
     box-shadow: none !important;
     margin: 0 !important;
