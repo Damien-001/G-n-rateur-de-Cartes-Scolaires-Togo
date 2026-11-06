@@ -58,7 +58,10 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const isMobileDevice =
+    typeof navigator !== 'undefined' &&
+    (/Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && /Macintosh|Linux/i.test(navigator.userAgent)));
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [webcamError, setWebcamError] = useState<string | null>(null);
   const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>(
@@ -365,100 +368,89 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
   } as Student;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div className="double-bezel-outer w-full max-w-5xl overflow-hidden shadow-2xl">
-        <div className="double-bezel-inner flex flex-col md:flex-row overflow-hidden max-h-[90vh]">
-                  <div className="flex-1 overflow-y-auto max-h-[90vh] md:max-h-none bg-white">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 transition-all duration-300">
+      <div className="double-bezel-outer w-full max-w-6xl overflow-hidden shadow-2xl">
+        <div className="double-bezel-inner flex flex-col md:flex-row overflow-hidden max-h-[92vh]">
+          <div className="flex-1 min-w-0 overflow-y-auto max-h-[92vh] md:max-h-none bg-white">
             {/* Form Header */}
-            <div className="px-8 py-6 border-b border-gray-100/70 flex justify-between items-center bg-white sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100/50">
+            <div className="px-5 sm:px-6 lg:px-8 py-5 border-b border-gray-100/70 flex justify-between items-center bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100/50">
                   <User className="w-4 h-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-base font-bold text-gray-900 tracking-tight leading-tight">
                     {student ? "Modifier les informations de l'élève" : "Ajouter un nouvel élève"}
                   </h2>
-                  <p className="text-[10px] text-gray-400 font-medium mt-0.5">Saisie des informations de la carte d'identité scolaire</p>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">Saisie des informations de la carte d'identité scolaire</p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={onCancel} 
-                className="md:hidden p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                className="md:hidden p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-          <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6 lg:p-8 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+              {/* Ligne 1 : Nom & Prénoms */}
+              <div className="min-w-0">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <User className="w-3.5 h-3.5 text-gray-400/80" /> Nom
+                  <User className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Nom
                 </label>
                 <input
                   required
                   type="text"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
                   placeholder="Ex: KOFFI"
                 />
               </div>
-              <div>
+
+              <div className="min-w-0">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <User className="w-3.5 h-3.5 text-gray-400/80" /> Prénoms
+                  <User className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Prénoms
                 </label>
                 <input
                   required
                   type="text"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
                   placeholder="Ex: Jean-Luc"
                 />
               </div>
-              <div>
+
+              {/* Ligne 2 : Matricule & Classe */}
+              <div className="min-w-0">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <Shield className="w-3.5 h-3.5 text-gray-400/80" /> Matricule
+                  <Shield className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Matricule
                 </label>
                 <input
                   required
                   type="text"
                   value={formData.matricule}
                   onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-semibold text-emerald-800 placeholder-gray-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-semibold text-emerald-800 placeholder-gray-400"
                   placeholder="Ex: 2024-TG-001"
                 />
               </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <Landmark className="w-3.5 h-3.5 text-gray-400/80" /> Centre d'Examen
-                </label>
-                <input
-                  type="text"
-                  value={formData.examCenter}
-                  onChange={(e) => setFormData({ ...formData, examCenter: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
-                  placeholder="Ex: Lycée de Tokoin"
-                />
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    <BookOpen className="w-3.5 h-3.5 text-gray-400/80" /> Classe
+                    <BookOpen className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Classe
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsCustomClassInput(!isCustomClassInput)}
-                    className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer whitespace-nowrap"
                   >
-                    {isCustomClassInput ? "Choisir dans la liste" : "+ Saisie libre"}
+                    {isCustomClassInput ? "Liste" : "+ Saisie libre"}
                   </button>
                 </div>
                 {isCustomClassInput ? (
@@ -468,7 +460,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                     placeholder="Ex: 6ème A, 3ème 2, Terminale CD..."
                     value={formData.className}
                     onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus-brand outline-none text-sm font-semibold text-gray-800"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white focus-brand outline-none text-sm font-semibold text-gray-800"
                   />
                 ) : (
                   <select
@@ -481,7 +473,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                         setFormData({ ...formData, className: e.target.value });
                       }
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 cursor-pointer"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 cursor-pointer"
                   >
                     <option value="">Sélectionner une classe</option>
                     {availableClasses.map(cls => (
@@ -491,60 +483,77 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                   </select>
                 )}
               </div>
-              <div>
+
+              {/* Ligne 3 : Date de Naissance & Lieu de Naissance (chacun sur sa propre colonne complète) */}
+              <div className="min-w-0">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400/80" /> Année Scolaire
+                  <Calendar className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Date de Naissance
+                </label>
+                <input
+                  required
+                  type="date"
+                  value={normalizeDateToInput(formData.birthDate)}
+                  onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
+                />
+              </div>
+
+              <div className="min-w-0">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Lieu de Naissance
+                </label>
+                <input
+                  type="text"
+                  value={formData.birthPlace}
+                  onChange={(e) => setFormData({ ...formData, birthPlace: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
+                  placeholder="Ex: Lomé, Atakpamé..."
+                />
+              </div>
+
+              {/* Ligne 4 : Année Scolaire & Date d'Expiration */}
+              <div className="min-w-0">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Année Scolaire
                 </label>
                 <select
                   required
                   value={formData.schoolYear}
                   onChange={(e) => setFormData({ ...formData, schoolYear: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 cursor-pointer"
                 >
                   {SCHOOL_YEARS.map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                    <Calendar className="w-3 h-3 text-gray-400/80" /> Date Naiss.
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    value={normalizeDateToInput(formData.birthDate)}
-                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                    <MapPin className="w-3 h-3 text-gray-400/80" /> Lieu Naiss.
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.birthPlace}
-                    onChange={(e) => setFormData({ ...formData, birthPlace: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
-                    placeholder="Ex: Lomé"
-                  />
-                </div>
-              </div>
-              <div>
+
+              <div className="min-w-0">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400/80" /> Date d'Expiration
+                  <Calendar className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Date d'Expiration
                 </label>
                 <input
                   type="date"
                   value={normalizeDateToInput(formData.expirationDate)}
                   onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
+                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800"
+                />
+              </div>
+
+              {/* Ligne 5 : Centre d'Examen sur toute la largeur pour éviter toute coupure */}
+              <div className="sm:col-span-2 min-w-0">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Centre d'Examen
+                </label>
+                <input
+                  type="text"
+                  value={formData.examCenter}
+                  onChange={(e) => setFormData({ ...formData, examCenter: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
+                  placeholder="Ex: Lycée de Tokoin"
                 />
               </div>
             </div>
-          </div>
 
             <div className="space-y-4 pt-2">
               <div>
@@ -747,7 +756,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       </div>
 
       {/* Preview Section */}
-      <div className="hidden md:flex flex-col w-[420px] bg-gray-50/50 p-8 items-center justify-start overflow-y-auto relative border-l border-gray-100 max-h-[90vh]">
+      <div className="hidden md:flex flex-col md:w-[345px] lg:w-[410px] shrink-0 bg-gray-50/50 md:p-4 lg:p-8 items-center justify-start overflow-y-auto relative border-l border-gray-100 max-h-[92vh]">
         <button 
           onClick={onCancel} 
           className="absolute top-4 right-4 p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer z-10"
@@ -755,18 +764,18 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           <X className="w-5 h-5" />
         </button>
         
-        <div className="text-center mb-6 pt-6">
+        <div className="text-center mb-4 lg:mb-6 pt-4 lg:pt-6">
           <span className="text-[10px] font-extrabold text-emerald-800 tracking-[0.2em] uppercase bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/50">
             Aperçu en temps réel
           </span>
           <p className="text-xs text-gray-400 mt-2 font-medium">Les modifications apparaissent instantanément</p>
         </div>
 
-        <div className="flex flex-col gap-6 items-center w-full py-4 shrink-0">
+        <div className="flex flex-col gap-4 lg:gap-6 items-center w-full py-2 lg:py-4 shrink-0">
           {/* Recto */}
-          <div className="flex flex-col items-center gap-1.5 w-full">
+          <div className="flex flex-col items-center gap-1 w-full">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
-            <div className="p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-95 origin-center bg-white">
+            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.88] lg:scale-95 origin-center bg-white">
               <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
                 <IDCard student={previewStudent} schoolInfo={schoolInfo} showCuttingMarks={false} />
               </div>
@@ -774,9 +783,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           </div>
 
           {/* Verso */}
-          <div className="flex flex-col items-center gap-1.5 w-full">
+          <div className="flex flex-col items-center gap-1 w-full">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Verso (Dos)</span>
-            <div className="p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-95 origin-center bg-white">
+            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.88] lg:scale-95 origin-center bg-white">
               <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
                 <IDCardBack student={previewStudent} schoolInfo={schoolInfo} />
               </div>
@@ -784,7 +793,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           </div>
         </div>
 
-        <div className="mt-4 px-5 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-[280px] w-full shrink-0">
+        <div className="mt-2 lg:mt-4 px-4 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-[280px] w-full shrink-0">
           <p className="text-[10px] text-emerald-850 font-bold leading-relaxed text-center">
             Note : Les dimensions réelles de la carte (85x54mm) seront respectées lors de l'impression.
           </p>
