@@ -108,7 +108,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
-import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS } from '../types';
+import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS, getSchoolTrialInfo } from '../types';
 import { AdminVisitorAnalytics } from './AdminVisitorAnalytics';
 
 interface AdminDashboardViewProps {
@@ -1985,9 +1985,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                         </span>
                                       );
                                     }
+                                    const trial = getSchoolTrialInfo(school);
+                                    if (trial.isTrialExpired) {
+                                      return (
+                                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                                          ⏰ Essai 14j Expiré
+                                        </span>
+                                      );
+                                    }
                                     return (
                                       <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
-                                        Gratuit
+                                        ⏳ Essai 14j ({trial.daysRemaining}j)
                                       </span>
                                     );
                                   })()}
@@ -2035,6 +2043,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                         <Zap className="w-3 h-3 text-amber-300" />
                                         <span>Valider Paiement & Activer PRO</span>
                                       </button>
+                                      {getSchoolTrialInfo(school).isTrialExpired && (
+                                        <button
+                                          onClick={() => handleResetToFree(school.userId, school.name)}
+                                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                                          title="Prolonger de 14 jours supplémentaires d'essai gratuit"
+                                        >
+                                          +14j Essai
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => handleSuspendSchool(school.userId, school.name)}
                                         className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"

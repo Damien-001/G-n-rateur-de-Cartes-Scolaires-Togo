@@ -33,7 +33,7 @@ import {
   FileText,
   Sparkles
 } from 'lucide-react';
-import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
+import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors, getSchoolTrialInfo, computeDefaultTrialExpiresAt } from './types';
 import { Session, logout } from './lib/auth';
 import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
 import { setStoredSchoolInfo, getStoredSchoolInfo, getStoredStudents, isAppOnline } from './lib/offlineStorage';
@@ -105,6 +105,7 @@ export default function App({ session, onLogout }: AppProps) {
       schoolType: session.schoolType || 'Lycée',
       location: session.location || '',
       phone: session.phone || '',
+      trialExpiresAt: computeDefaultTrialExpiresAt(),
     };
   });
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -269,6 +270,9 @@ export default function App({ session, onLogout }: AppProps) {
   const isAccountSuspended = schoolInfo.subscriptionPlan === 'suspended';
   const effectiveQuota = schoolInfo.customQuota || 15;
   const isQuotaExceeded = !isEffectivePro && students.length >= effectiveQuota;
+  const trialInfo = getSchoolTrialInfo(schoolInfo);
+  const isTrialExpired = !isEffectivePro && !isAccountSuspended && trialInfo.isTrialExpired;
+  const trialDaysRemaining = trialInfo.daysRemaining;
 
   // ── Timer d'inactivité — déconnexion après 10 min ───────────────────────────
   useEffect(() => {
@@ -297,6 +301,12 @@ export default function App({ session, onLogout }: AppProps) {
     if (isAccountSuspended) {
       alert("⚠️ Votre compte est actuellement suspendu. Le téléchargement et l'impression de cartes scolaires sont bloqués. Veuillez contacter le support pour réactiver votre accès.");
       setIsChatOpen(true);
+      return;
+    }
+
+    if (isTrialExpired) {
+      alert(`⏰ Votre période d'essai gratuit de 14 jours est arrivée à expiration (le ${trialInfo.expiresAtDate}). Passez au Plan PRO 1 An pour débloquer l'impression et le téléchargement PDF illimité de vos cartes scolaires.`);
+      setActiveTab('billing');
       return;
     }
 
@@ -496,6 +506,7 @@ export default function App({ session, onLogout }: AppProps) {
             location: session.location || '',
             phone: session.phone || '',
             subscriptionPlan: 'free',
+            trialExpiresAt: computeDefaultTrialExpiresAt(),
           };
           skipNextSchoolSaveRef.current = true;
           setSchoolInfo(initialInfo);
@@ -550,18 +561,21 @@ export default function App({ session, onLogout }: AppProps) {
     const applyRemoteUpdate = (incoming: {
       plan?: 'free' | 'pro' | 'suspended';
       expiresAt?: string;
+      trialExpiresAt?: string;
       customQuota?: number;
     }) => {
       setSchoolInfo(prev => {
         const nextPlan = incoming.plan !== undefined ? incoming.plan : prev.subscriptionPlan;
         const nextExpires = incoming.expiresAt !== undefined ? incoming.expiresAt : prev.subscriptionExpiresAt;
+        const nextTrialExpires = incoming.trialExpiresAt !== undefined ? incoming.trialExpiresAt : prev.trialExpiresAt;
         const nextQuota = incoming.customQuota !== undefined ? incoming.customQuota : prev.customQuota;
 
         const planChanged = nextPlan !== prev.subscriptionPlan;
         const expiresChanged = nextExpires !== prev.subscriptionExpiresAt;
+        const trialChanged = nextTrialExpires !== undefined && nextTrialExpires !== prev.trialExpiresAt;
         const quotaChanged = nextQuota !== undefined && nextQuota !== (prev.customQuota || 15);
 
-        if (!planChanged && !expiresChanged && !quotaChanged) {
+        if (!planChanged && !expiresChanged && !trialChanged && !quotaChanged) {
           return prev;
         }
 
@@ -601,6 +615,7 @@ export default function App({ session, onLogout }: AppProps) {
           ...prev,
           subscriptionPlan: nextPlan,
           subscriptionExpiresAt: nextExpires,
+          trialExpiresAt: nextTrialExpires ?? prev.trialExpiresAt,
           customQuota: nextQuota ?? prev.customQuota
         };
         skipNextSchoolSaveRef.current = true;
@@ -614,10 +629,11 @@ export default function App({ session, onLogout }: AppProps) {
       if (detail && detail.userId && detail.userId !== session.userId) {
         return;
       }
-      if (detail && (detail.plan !== undefined || detail.subscriptionPlan !== undefined || detail.customQuota !== undefined)) {
+      if (detail && (detail.plan !== undefined || detail.subscriptionPlan !== undefined || detail.customQuota !== undefined || detail.trialExpiresAt !== undefined)) {
         applyRemoteUpdate({
           plan: detail.plan ?? detail.subscriptionPlan,
           expiresAt: detail.expiresAt ?? detail.subscriptionExpiresAt,
+          trialExpiresAt: detail.trialExpiresAt,
           customQuota: detail.customQuota
         });
       } else if (isValidUuid(session.userId)) {
@@ -626,6 +642,7 @@ export default function App({ session, onLogout }: AppProps) {
             applyRemoteUpdate({
               plan: s.subscriptionPlan,
               expiresAt: s.subscriptionExpiresAt,
+              trialExpiresAt: s.trialExpiresAt,
               customQuota: s.customQuota
             });
           }
@@ -640,6 +657,7 @@ export default function App({ session, onLogout }: AppProps) {
           applyRemoteUpdate({
             plan: s.subscriptionPlan,
             expiresAt: s.subscriptionExpiresAt,
+            trialExpiresAt: s.trialExpiresAt,
             customQuota: s.customQuota
           });
         }
@@ -828,12 +846,17 @@ export default function App({ session, onLogout }: AppProps) {
     }
     if (isPlanExpired) {
       alert("⚠️ Votre abonnement PRO annuel est arrivé à expiration. Veuillez renouveler votre abonnement dans l'onglet 'Abonnement' pour continuer à générer des cartes en illimité.");
-      setIsChatOpen(true);
+      setActiveTab('billing');
+      return;
+    }
+    if (isTrialExpired) {
+      alert(`⏰ Votre période d'essai gratuit de 14 jours est arrivée à expiration (le ${trialInfo.expiresAtDate}). Passez au Plan PRO 1 An pour ajouter et imprimer des élèves en illimité.`);
+      setActiveTab('billing');
       return;
     }
     if (isQuotaExceeded) {
       alert(`⚠️ Quota gratuit atteint (${students.length}/${effectiveQuota} cartes). Passez au Plan PRO pour ajouter des élèves en illimité.`);
-      setIsChatOpen(true);
+      setActiveTab('billing');
       return;
     }
     setIsFormOpen(true);
@@ -847,12 +870,17 @@ export default function App({ session, onLogout }: AppProps) {
     }
     if (isPlanExpired) {
       alert("⚠️ Votre abonnement PRO annuel est arrivé à expiration. Veuillez renouveler votre abonnement pour importer vos listes d'élèves.");
-      setIsChatOpen(true);
+      setActiveTab('billing');
+      return;
+    }
+    if (isTrialExpired) {
+      alert(`⏰ Votre période d'essai gratuit de 14 jours est arrivée à expiration (le ${trialInfo.expiresAtDate}). Passez au Plan PRO illimité pour importer vos listes d'élèves.`);
+      setActiveTab('billing');
       return;
     }
     if (!isEffectivePro && (students.length + newStudents.length) > effectiveQuota) {
       alert(`⚠️ Impossible d'importer ${newStudents.length} élèves : cela dépasserait votre quota gratuit de ${effectiveQuota} élèves (${students.length} déjà enregistrés). Passez au Plan PRO illimité pour importer toute votre base scolaire.`);
-      setIsChatOpen(true);
+      setActiveTab('billing');
       return;
     }
     try {
@@ -871,7 +899,7 @@ export default function App({ session, onLogout }: AppProps) {
       console.error('Erreur import:', err);
       alert('Erreur lors de l\'import : ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     }
-  }, [session.userId, isAccountSuspended, isPlanExpired, isEffectivePro, students.length, effectiveQuota, schoolInfo.name]);
+  }, [session.userId, isAccountSuspended, isPlanExpired, isTrialExpired, trialInfo.expiresAtDate, isEffectivePro, students.length, effectiveQuota, schoolInfo.name]);
 
   const handleEditStudent = useCallback((student: Student) => {
     setEditingStudent(student);
@@ -1899,10 +1927,24 @@ export default function App({ session, onLogout }: AppProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${isEffectivePro ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-              }`}>
-              {isEffectivePro ? '⭐ Plan PRO Actif' : 'Plan Découverte'}
-            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('billing')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                isEffectivePro
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                  : isTrialExpired
+                    ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+              }`}
+              title="Voir les détails de votre abonnement"
+            >
+              {isEffectivePro
+                ? '⭐ Plan PRO Actif'
+                : isTrialExpired
+                  ? '⏰ Essai 14j Expiré'
+                  : `⏳ Essai 14j • ${trialDaysRemaining}j restant${trialDaysRemaining > 1 ? 's' : ''} (${students.length}/${effectiveQuota})`}
+            </button>
 
             <button
               onClick={() => setIsVerificationOpen(true)}
@@ -2018,21 +2060,76 @@ export default function App({ session, onLogout }: AppProps) {
               </div>
             )}
 
+            {/* Trial Expired Alert Banner */}
+            {!isAccountSuspended && isTrialExpired && (
+              <div className="mb-6 p-4 bg-red-600 text-white rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-100 shrink-0" />
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider">Période d'Essai Gratuit de 14 Jours Expirée</h3>
+                    <p className="text-xs text-red-100 font-medium">
+                      Votre essai gratuit de 14 jours a pris fin le {trialInfo.expiresAtDate}. Activez le Plan PRO 1 An pour débloquer l'ajout d'élèves, l'import CSV et l'impression de cartes en illimité.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveTab('billing')}
+                    className="px-4 py-2 bg-white text-red-700 hover:bg-red-50 text-xs font-black rounded-xl shadow transition-all cursor-pointer"
+                  >
+                    ⭐ Activer Plan PRO
+                  </button>
+                  <button
+                    onClick={() => setIsChatOpen(true)}
+                    className="px-3 py-2 bg-red-700/80 hover:bg-red-800 text-white text-xs font-bold rounded-xl border border-red-400/40 transition-all cursor-pointer"
+                  >
+                    💬 Support
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Quota Exceeded Alert Banner */}
-            {!isAccountSuspended && isQuotaExceeded && (
+            {!isAccountSuspended && !isTrialExpired && isQuotaExceeded && (
               <div className="mb-6 p-4 bg-amber-500 text-white rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fadeIn">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="w-6 h-6 text-amber-100 shrink-0" />
                   <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider">Quota Gratuit Atteint ({students.length}/{effectiveQuota} cartes)</h3>
-                    <p className="text-xs text-amber-100 font-medium">Vous avez atteint la limite du plan découverte. Activez le plan PRO 1 An (30 000 F CFA) pour ajouter et imprimer des élèves sans aucune limite.</p>
+                    <h3 className="text-xs font-black uppercase tracking-wider">Quota d'Essai Gratuit Atteint ({students.length}/{effectiveQuota} cartes)</h3>
+                    <p className="text-xs text-amber-100 font-medium">Vous avez atteint la limite de {effectiveQuota} élèves de l'essai gratuit ({trialDaysRemaining} jour{trialDaysRemaining > 1 ? 's' : ''} restant{trialDaysRemaining > 1 ? 's' : ''}). Activez le Plan PRO 1 An pour continuer sans aucune limite.</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsChatOpen(true)}
+                  onClick={() => setActiveTab('billing')}
                   className="px-4 py-2 bg-white text-amber-900 hover:bg-amber-50 text-xs font-black rounded-xl shadow transition-all shrink-0 cursor-pointer"
                 >
                   ⭐ Activer Plan PRO
+                </button>
+              </div>
+            )}
+
+            {/* Active 14-Day Free Trial Status Bar */}
+            {!isAccountSuspended && !isEffectivePro && !isTrialExpired && !isQuotaExceeded && (
+              <div className="mb-6 px-4 py-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
+                    {trialDaysRemaining}j
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-emerald-950">
+                      Essai Gratuit 14 Jours Actif • <span className="text-emerald-700">{trialDaysRemaining} jour{trialDaysRemaining > 1 ? 's' : ''} restant{trialDaysRemaining > 1 ? 's' : ''}</span> (expire le {trialInfo.expiresAtDate})
+                    </p>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      Quota découverte : <strong>{students.length} / {effectiveQuota} élèves</strong> utilisés • Impression et personnalisation incluses pendant l'essai.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('billing')}
+                  className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black rounded-xl transition-all shrink-0 cursor-pointer shadow-xs"
+                >
+                  Passer au PRO Illimité →
                 </button>
               </div>
             )}

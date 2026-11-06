@@ -32,8 +32,51 @@ export interface SchoolInfo {
   phone?: string;
   subscriptionPlan?: 'free' | 'pro' | 'suspended';
   subscriptionExpiresAt?: string;
+  trialExpiresAt?: string;
   region?: string;
   customQuota?: number;
+}
+
+export const FREE_TRIAL_DURATION_DAYS = 14;
+
+export function computeDefaultTrialExpiresAt(baseDateMs: number = Date.now()): string {
+  const safeBase = Number.isFinite(baseDateMs) && baseDateMs > 0 ? baseDateMs : Date.now();
+  const d = new Date(safeBase + FREE_TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+export function getSchoolTrialInfo(schoolInfo?: Partial<SchoolInfo> | null): {
+  isTrialActive: boolean;
+  isTrialExpired: boolean;
+  daysRemaining: number;
+  expiresAtDate: string;
+} {
+  if (!schoolInfo) {
+    const exp = computeDefaultTrialExpiresAt();
+    return { isTrialActive: true, isTrialExpired: false, daysRemaining: FREE_TRIAL_DURATION_DAYS, expiresAtDate: exp };
+  }
+  const isPro = schoolInfo.subscriptionPlan === 'pro' &&
+    (!schoolInfo.subscriptionExpiresAt || new Date(schoolInfo.subscriptionExpiresAt).getTime() >= Date.now());
+  if (isPro || schoolInfo.subscriptionPlan === 'suspended') {
+    return {
+      isTrialActive: false,
+      isTrialExpired: false,
+      daysRemaining: 0,
+      expiresAtDate: schoolInfo.trialExpiresAt || ''
+    };
+  }
+  const expStr = schoolInfo.trialExpiresAt || computeDefaultTrialExpiresAt();
+  const expEndMs = new Date(`${expStr}T23:59:59`).getTime();
+  const safeExpEndMs = Number.isFinite(expEndMs) ? expEndMs : (Date.now() + FREE_TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  const diffMs = safeExpEndMs - Date.now();
+  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const isTrialExpired = diffMs < 0;
+  return {
+    isTrialActive: !isTrialExpired,
+    isTrialExpired,
+    daysRemaining,
+    expiresAtDate: expStr
+  };
 }
 
 export interface LicenseKey {
@@ -142,17 +185,18 @@ export interface LandingPricingPlan {
 export const DEFAULT_PRICING_PLANS: LandingPricingPlan[] = [
   {
     id: 'free',
-    badge: 'Découverte',
+    badge: 'Essai 14 Jours',
     name: 'Plan Gratuit',
-    description: "Pour tester les fonctionnalités avant l'année scolaire.",
+    description: "Pour tester gratuitement les fonctionnalités pendant 14 jours.",
     price: '0 F CFA',
-    period: '/ à vie',
+    period: '/ 14 jours',
     features: [
-      'Limité à 15 élèves',
+      'Essai gratuit valable 14 jours',
+      'Limité à 15 élèves maximum',
       'Thèmes de couleurs basiques',
       'Filigrane SukuPass au dos'
     ],
-    buttonText: 'Commencer gratuitement',
+    buttonText: 'Essai gratuit 14 jours',
     buttonAction: 'signup',
     buttonUrl: '',
     isPopular: false,

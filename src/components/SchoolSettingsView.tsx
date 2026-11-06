@@ -24,7 +24,7 @@ import {
   Loader2,
   X
 } from 'lucide-react';
-import { SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
+import { SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, getSchoolTrialInfo } from '../types';
 import { Session } from '../lib/auth';
 import { redeemLicenseKey, fetchPlatformSettings } from '../lib/db';
 
@@ -112,6 +112,8 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
   const currentPlan = schoolInfo.subscriptionPlan || 'free';
   const maxFreeStudents = schoolInfo.customQuota || 15;
   const usagePercentage = Math.min(100, Math.round((studentsCount / maxFreeStudents) * 100));
+  const trialInfo = getSchoolTrialInfo(schoolInfo);
+  const trialTimeUsedPercentage = Math.min(100, Math.max(5, Math.round(((14 - trialInfo.daysRemaining) / 14) * 100)));
 
   // Copy Feedback State
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
@@ -264,17 +266,32 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Formule Actuelle</span>
-                    <h2 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-gray-900 mt-1 flex flex-wrap items-center gap-2">
                       {isEffectivePro 
                         ? 'Plan PRO Illimité' 
                         : isPlanExpired
                         ? 'Plan PRO Expiré'
-                        : (schoolInfo.subscriptionPlan === 'suspended' ? 'Compte Suspendu' : 'Plan Découverte')}
+                        : schoolInfo.subscriptionPlan === 'suspended'
+                        ? 'Compte Suspendu'
+                        : trialInfo.isTrialExpired
+                        ? 'Essai 14 Jours Expiré'
+                        : 'Essai Gratuit 14 Jours'}
                       {isEffectivePro && (
                         <span className="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">Actif</span>
                       )}
                       {isPlanExpired && (
                         <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-bold">À renouveler</span>
+                      )}
+                      {!isEffectivePro && !isPlanExpired && schoolInfo.subscriptionPlan !== 'suspended' && (
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                          trialInfo.isTrialExpired
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {trialInfo.isTrialExpired
+                            ? 'Expiré'
+                            : `${trialInfo.daysRemaining} jour${trialInfo.daysRemaining > 1 ? 's' : ''} restant${trialInfo.daysRemaining > 1 ? 's' : ''}`}
+                        </span>
                       )}
                     </h2>
                   </div>
@@ -286,21 +303,44 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-gray-100">
-                  <div className="flex justify-between text-xs font-bold text-gray-600">
-                    <span>Cartes Générées :</span>
-                    <span className="text-gray-900">{studentsCount} / {isEffectivePro ? 'Illimité' : `${maxFreeStudents} max`}</span>
-                  </div>
-
-                  {!isEffectivePro && (
-                    <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          usagePercentage >= 90 ? 'bg-red-500' : 'bg-emerald-600'
-                        }`}
-                        style={{ width: `${usagePercentage}%` }}
-                      />
+                  {!isEffectivePro && !isPlanExpired && schoolInfo.subscriptionPlan !== 'suspended' && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-gray-600">
+                        <span>Durée d'Essai Gratuit (14 Jours) :</span>
+                        <span className={trialInfo.isTrialExpired ? 'text-red-600 font-black' : 'text-emerald-700 font-black'}>
+                          {trialInfo.isTrialExpired
+                            ? `Expiré le ${trialInfo.expiresAtDate}`
+                            : `${trialInfo.daysRemaining}j restant${trialInfo.daysRemaining > 1 ? 's' : ''} (jusqu'au ${trialInfo.expiresAtDate})`}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            trialInfo.isTrialExpired || trialInfo.daysRemaining <= 2 ? 'bg-red-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${trialTimeUsedPercentage}%` }}
+                        />
+                      </div>
                     </div>
                   )}
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-gray-600">
+                      <span>Cartes Générées :</span>
+                      <span className="text-gray-900">{studentsCount} / {isEffectivePro ? 'Illimité' : `${maxFreeStudents} max`}</span>
+                    </div>
+
+                    {!isEffectivePro && (
+                      <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            usagePercentage >= 90 ? 'bg-red-500' : 'bg-emerald-600'
+                          }`}
+                          style={{ width: `${usagePercentage}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {isEffectivePro ? (
                     <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-2">
@@ -325,14 +365,24 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                         Votre abonnement PRO pour la session précédente est arrivé à terme le {new Date(schoolInfo.subscriptionExpiresAt!).toLocaleDateString()}. Veuillez renouveler votre licence pour la nouvelle rentrée scolaire afin de réactiver l'impression illimitée.
                       </p>
                     </div>
+                  ) : trialInfo.isTrialExpired ? (
+                    <div className="p-4 bg-red-50 rounded-2xl border border-red-200 space-y-2">
+                      <p className="text-xs text-red-900 font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        Période d'Essai Gratuit de 14 Jours Expirée
+                      </p>
+                      <p className="text-[11px] text-red-800 font-semibold leading-relaxed">
+                        Votre essai gratuit de 14 jours a expiré le {trialInfo.expiresAtDate}. Activez le Plan PRO Annuel ci-dessous ou saisissez une clé de licence pour débloquer l'ajout d'élèves et l'impression illimitée.
+                      </p>
+                    </div>
                   ) : (
                     <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
                       <p className="text-xs text-amber-900 font-bold flex items-center gap-1.5">
                         <AlertTriangle className="w-4 h-4 text-amber-700" />
-                        Limite du Plan Gratuit
+                        Conditions de l'Essai Gratuit (14 Jours & {maxFreeStudents} Élèves)
                       </p>
                       <p className="text-[11px] text-amber-800 font-semibold leading-relaxed">
-                        Le plan découverte est limité à {maxFreeStudents} cartes scolaires. Passez au Plan PRO pour imprimer toutes les cartes de l'établissement sans restriction.
+                        Votre essai gratuit est valable <strong>14 jours</strong> (jusqu'au {trialInfo.expiresAtDate}) dans la limite de <strong>{maxFreeStudents} cartes scolaires</strong>. Passez au Plan PRO Annuel pour imprimer toutes les cartes de l'établissement sans aucune restriction.
                       </p>
                     </div>
                   )}

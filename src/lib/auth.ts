@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { User, Session as SupabaseSession } from '@supabase/supabase-js';
 import { getCachedSession, setCachedSession, setStoredSchoolInfo } from './offlineStorage';
 import { saveAdminLog, registerSchoolRecord, createPreassignedLicenseForSchool, AdminSchoolDetail } from './db';
-import { DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, SchoolInfo } from '../types';
+import { DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, SchoolInfo, computeDefaultTrialExpiresAt } from '../types';
 
 // On réexporte Session avec la même interface qu'avant
 // pour ne pas casser les composants existants
@@ -101,6 +101,7 @@ export async function register(
       location: location.trim(),
       phone: phone.trim(),
       subscriptionPlan: 'free',
+      trialExpiresAt: computeDefaultTrialExpiresAt(),
       region: 'Grand Lomé',
       customQuota: 15
     };

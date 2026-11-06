@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { normalizeDateToInput } from './dateUtils';
-import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan } from '../types';
+import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, computeDefaultTrialExpiresAt } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
 import {
   getStoredStudents,
@@ -54,6 +54,7 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
 
 function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
   const cardColors = row.card_colors ?? DEFAULT_CARD_COLORS;
+  const fallbackBaseMs = row.updated_at ? new Date(row.updated_at).getTime() : Date.now();
   return {
     name: row.name,
     logoUrl: row.logo_url,
@@ -65,6 +66,7 @@ function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
     phone: (row.card_colors as any)?.phone ?? '',
     subscriptionPlan: (row.card_colors as any)?.subscriptionPlan ?? 'free',
     subscriptionExpiresAt: (row.card_colors as any)?.subscriptionExpiresAt ?? '',
+    trialExpiresAt: (row.card_colors as any)?.trialExpiresAt || computeDefaultTrialExpiresAt(isNaN(fallbackBaseMs) ? Date.now() : fallbackBaseMs),
     region: (row.card_colors as any)?.region ?? 'Grand Lomé',
     customQuota: (row.card_colors as any)?.customQuota ?? 15,
   };
@@ -366,7 +368,7 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 
     const fetchPromise = supabase
       .from('school_info')
-      .select('name, logo_url, signature_url, stamp_url, card_colors')
+      .select('name, logo_url, signature_url, stamp_url, card_colors, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -382,6 +384,9 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 
     if (!data) return localSchool;
     const schoolInfo = dbToSchoolInfo(data as DbSchoolInfo);
+    if (!(data as any)?.card_colors?.trialExpiresAt && localSchool?.trialExpiresAt) {
+      schoolInfo.trialExpiresAt = localSchool.trialExpiresAt;
+    }
     setStoredSchoolInfo(userId, schoolInfo);
     return schoolInfo;
   } catch (e: any) {
@@ -399,6 +404,7 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       ? latestLocal.subscriptionPlan
       : (info.subscriptionPlan ?? latestLocal?.subscriptionPlan ?? 'free'),
     subscriptionExpiresAt: info.subscriptionExpiresAt || latestLocal?.subscriptionExpiresAt || '',
+    trialExpiresAt: info.trialExpiresAt || latestLocal?.trialExpiresAt || computeDefaultTrialExpiresAt(),
     customQuota: (latestLocal?.customQuota && latestLocal.customQuota !== 15 && (!info.customQuota || info.customQuota === 15))
       ? latestLocal.customQuota
       : (info.customQuota ?? latestLocal?.customQuota ?? 15),
@@ -434,6 +440,7 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
         phone: mergedInfo.phone,
         subscriptionPlan: mergedInfo.subscriptionPlan ?? 'free',
         subscriptionExpiresAt: mergedInfo.subscriptionExpiresAt ?? '',
+        trialExpiresAt: mergedInfo.trialExpiresAt || computeDefaultTrialExpiresAt(),
         region: mergedInfo.region ?? 'Grand Lomé',
         customQuota: mergedInfo.customQuota ?? 15,
       } as any,
@@ -612,6 +619,7 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
             phone: info.phone,
             subscriptionPlan: info.subscriptionPlan ?? 'free',
             subscriptionExpiresAt: info.subscriptionExpiresAt ?? '',
+            trialExpiresAt: info.trialExpiresAt || computeDefaultTrialExpiresAt(),
             region: info.region ?? 'Grand Lomé',
             customQuota: info.customQuota ?? 15,
           } as any,
@@ -776,6 +784,7 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
         phone: school.phone,
         subscriptionPlan: school.subscriptionPlan ?? 'free',
         subscriptionExpiresAt: school.subscriptionExpiresAt ?? '',
+        trialExpiresAt: school.trialExpiresAt || computeDefaultTrialExpiresAt(),
         region: school.region ?? 'Grand Lomé',
         customQuota: school.customQuota ?? 15,
       } as any,
@@ -1113,6 +1122,7 @@ export async function createSchoolByAdmin(data: {
     region: data.region || 'Grand Lomé',
     customQuota: data.customQuota || 15,
     subscriptionPlan: data.plan || 'free',
+    trialExpiresAt: computeDefaultTrialExpiresAt(),
     userId: pseudoUserId,
     updatedAt: now,
     studentCount: 0
@@ -1154,6 +1164,7 @@ export async function updateSchoolSubscription(
 ): Promise<boolean> {
   const timestamp = new Date().toISOString();
   const cleanName = (schoolName || 'Établissement').trim();
+  const trialExpiresAt = plan === 'free' ? computeDefaultTrialExpiresAt() : undefined;
 
   // 1. Mettre à jour le registre persistant local immédiatement (0ms)
   try {
@@ -1162,6 +1173,7 @@ export async function updateSchoolSubscription(
     if (existing) {
       existing.subscriptionPlan = plan;
       existing.subscriptionExpiresAt = expiresAt;
+      if (trialExpiresAt) existing.trialExpiresAt = trialExpiresAt;
       existing.updatedAt = timestamp;
       saveRegisteredSchoolRegistry(existing);
     }
@@ -1175,6 +1187,7 @@ export async function updateSchoolSubscription(
       const parsed = JSON.parse(localRaw);
       parsed.subscriptionPlan = plan;
       parsed.subscriptionExpiresAt = expiresAt;
+      if (trialExpiresAt) parsed.trialExpiresAt = trialExpiresAt;
       parsed.updatedAt = timestamp;
       localStorage.setItem(localKey, JSON.stringify(parsed));
     }
@@ -1182,10 +1195,10 @@ export async function updateSchoolSubscription(
 
   // 3. Émettre les événements globaux immédiatement (0ms) + Broadcast WebSocket (<50ms) vers l'école
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt } }));
-    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { userId: schoolUserId, plan, expiresAt, schoolName: cleanName } }));
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt, trialExpiresAt } }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { userId: schoolUserId, plan, expiresAt, trialExpiresAt, schoolName: cleanName } }));
   }
-  broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, schoolName: cleanName, timestamp });
+  broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, trialExpiresAt, schoolName: cleanName, timestamp });
 
   // 4. Synchronisation Supabase et journal en arrière-plan sans bloquer l'UI
   const backgroundSync = async () => {
@@ -1206,14 +1219,15 @@ export async function updateSchoolSubscription(
         card_colors: {
           ...(typeof currentColors === 'object' ? currentColors : {}),
           subscriptionPlan: plan,
-          subscriptionExpiresAt: expiresAt
+          subscriptionExpiresAt: expiresAt,
+          ...(trialExpiresAt ? { trialExpiresAt } : {})
         },
         updated_at: timestamp
       };
 
       await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
       // Re-broadcast after DB commit so any newly connected peer receives the update
-      broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, schoolName: cleanName, timestamp });
+      broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, trialExpiresAt, schoolName: cleanName, timestamp });
     } catch (err) {
       console.warn('updateSchoolSubscription Supabase error:', err);
     }
@@ -2273,6 +2287,7 @@ export interface LiveSchoolStatusPayload {
   userId: string;
   plan?: 'free' | 'pro' | 'suspended';
   expiresAt?: string;
+  trialExpiresAt?: string;
   customQuota?: number;
   schoolName?: string;
   timestamp?: string;
@@ -2290,6 +2305,7 @@ function applyIncomingSchoolStatusUpdate(payload: LiveSchoolStatusPayload) {
       const parsed = JSON.parse(localRaw);
       if (payload.plan !== undefined) parsed.subscriptionPlan = payload.plan;
       if (payload.expiresAt !== undefined) parsed.subscriptionExpiresAt = payload.expiresAt;
+      if (payload.trialExpiresAt !== undefined) parsed.trialExpiresAt = payload.trialExpiresAt;
       if (payload.customQuota !== undefined) parsed.customQuota = payload.customQuota;
       parsed.updatedAt = nowIso;
       localStorage.setItem(localKey, JSON.stringify(parsed));
@@ -2303,6 +2319,7 @@ function applyIncomingSchoolStatusUpdate(payload: LiveSchoolStatusPayload) {
     if (existing) {
       if (payload.plan !== undefined) existing.subscriptionPlan = payload.plan;
       if (payload.expiresAt !== undefined) existing.subscriptionExpiresAt = payload.expiresAt;
+      if (payload.trialExpiresAt !== undefined) existing.trialExpiresAt = payload.trialExpiresAt;
       if (payload.customQuota !== undefined) existing.customQuota = payload.customQuota;
       existing.updatedAt = nowIso;
       saveRegisteredSchoolRegistry(existing);
@@ -2319,6 +2336,7 @@ function applyIncomingSchoolStatusUpdate(payload: LiveSchoolStatusPayload) {
         userId: payload.userId,
         subscriptionPlan: payload.plan,
         subscriptionExpiresAt: payload.expiresAt,
+        trialExpiresAt: payload.trialExpiresAt,
         customQuota: payload.customQuota
       }
     }));
@@ -2449,6 +2467,7 @@ export function ensureLiveChatBus(): void {
             userId: row.user_id,
             plan: colors.subscriptionPlan,
             expiresAt: colors.subscriptionExpiresAt,
+            trialExpiresAt: colors.trialExpiresAt,
             customQuota: colors.customQuota,
             schoolName: row.name,
             timestamp: row.updated_at
