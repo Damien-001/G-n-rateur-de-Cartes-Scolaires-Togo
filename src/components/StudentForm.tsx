@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Student, SchoolInfo, CLASSES_LIST, SCHOOL_YEARS } from '../types';
-import { X, Upload, Plus, Trash2, Edit2, Camera, User, Calendar, MapPin, Shield, Landmark, BookOpen, AlertCircle } from 'lucide-react';
+import { X, Upload, Plus, Trash2, Edit2, Camera, SwitchCamera, User, Calendar, MapPin, Shield, Landmark, BookOpen, AlertCircle } from 'lucide-react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
 import { normalizeDateToInput } from '../lib/utils';
@@ -60,31 +60,68 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [webcamError, setWebcamError] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>(() => {
+    if (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
+      return 'environment';
+    }
+    return 'user';
+  });
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Fonction pour démarrer la webcam
-  const startWebcam = async () => {
+  // Fonction pour démarrer ou changer la caméra (avant / arrière)
+  const startWebcam = async (modeOverride?: 'user' | 'environment') => {
+    const targetMode = modeOverride ?? cameraFacingMode;
     setWebcamError(null);
+    setCameraFacingMode(targetMode);
     setIsWebcamActive(true);
+
+    // Arrêter tout flux existant avant d'ouvrir la nouvelle caméra (requis sur mobile)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        },
-        audio: false
-      });
+      let stream: MediaStream;
+      try {
+        // Sur téléphone, forcer la caméra choisie (frontale ou arrière)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: { exact: targetMode }
+          },
+          audio: false
+        });
+      } catch {
+        // Fallback souple (ex: PC avec une seule webcam)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: { ideal: targetMode }
+          },
+          audio: false
+        });
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
       }
     } catch (err: any) {
       console.error("Erreur d'accès à la webcam:", err);
       setWebcamError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
       setIsWebcamActive(false);
     }
+  };
+
+  // Basculer entre caméra avant et caméra arrière
+  const toggleCameraFacingMode = () => {
+    const nextMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+    startWebcam(nextMode);
   };
 
   // Fonction pour arrêter la webcam
@@ -450,25 +487,59 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                 
                 {isWebcamActive ? (
                   <div className="flex flex-col items-center gap-3 bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 max-w-sm">
+                    {/* Sélecteur Caméra Avant / Arrière */}
+                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200 shadow-2xs w-full max-w-[230px]">
+                      <button
+                        type="button"
+                        onClick={() => startWebcam('user')}
+                        className={`flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          cameraFacingMode === 'user'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Caméra Avant
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startWebcam('environment')}
+                        className={`flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          cameraFacingMode === 'environment'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Caméra Arrière
+                      </button>
+                    </div>
+
                     <div className="relative w-44 h-56 bg-black rounded-2xl overflow-hidden shadow-inner border border-gray-250">
                       <video 
                         ref={videoRef} 
                         autoPlay 
                         playsInline 
                         muted 
-                        className="w-full h-full object-cover scale-x-[-1]"
+                        className={`w-full h-full object-cover ${cameraFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                       />
+                      <button
+                        type="button"
+                        onClick={toggleCameraFacingMode}
+                        title={cameraFacingMode === 'user' ? 'Basculer vers la caméra arrière' : 'Basculer vers la caméra avant'}
+                        className="absolute top-2 right-2 z-10 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-xs border border-white/20 transition-all cursor-pointer active:scale-90"
+                      >
+                        <SwitchCamera className="w-4 h-4" />
+                      </button>
                       <div className="absolute inset-3 border border-dashed border-white/20 rounded-xl pointer-events-none flex items-center justify-center">
                         <p className="text-[8px] text-white/50 uppercase tracking-[0.2em] font-bold">Cadrer le visage</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full max-w-[190px]">
+                    <div className="flex gap-2 w-full max-w-[230px]">
                       <button
                         type="button"
                         onClick={capturePhoto}
                         className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95"
                       >
-                        Prendre la photo
+                        Capturer
                       </button>
                       <button
                         type="button"
@@ -534,7 +605,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                         
                         <button
                           type="button"
-                          onClick={startWebcam}
+                          onClick={() => startWebcam()}
                           className="px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
                         >
                           <Camera className="w-3.5 h-3.5" />
