@@ -14,9 +14,28 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { ChatMessage, SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS } from '../types';
-import { fetchChatMessages, sendChatMessage, fetchPlatformSettings, compressImageForChat } from '../lib/db';
+import { fetchChatMessages, sendChatMessage, fetchPlatformSettings, compressImageForChat, ensureLiveChatBus } from '../lib/db';
 import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
+
+const playSchoolChatChime = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.1); // G5
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.32);
+  } catch { }
+};
 
 interface SchoolChatDrawerProps {
   session: Session;
@@ -101,22 +120,26 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
           const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
           if (!hasDiff) return prev;
         }
+        // Check if a brand-new admin message appeared during background sync
+        if (prev.length > 0 && msgs.length > prev.length) {
+          const prevIds = new Set(prev.map(m => m.id));
+          const hasNewAdminReply = msgs.some(m => !prevIds.has(m.id) && m.senderRole === 'admin');
+          if (hasNewAdminReply) {
+            playSchoolChatChime();
+            if (!isOpen) {
+              setUnreadCount(c => c + 1);
+            }
+          }
+        }
         return msgs;
       });
-      
-      // Calculate unread admin messages
-      if (!isOpen) {
-        const unread = msgs.filter(m => m.senderRole === 'admin' && m.status !== 'read').length;
-        setUnreadCount(unread);
-      } else {
-        setUnreadCount(0);
-      }
     } catch (e) {
       console.error('Error loading chat messages:', e);
     }
   };
 
   useEffect(() => {
+    ensureLiveChatBus();
     loadMessages();
 
     const handleNewMsg = (e: any) => {
@@ -129,15 +152,30 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
             (m.schoolId === newMsg.schoolId && m.senderRole === newMsg.senderRole && m.message === newMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
           );
           if (exists) return prev;
+
+          if (newMsg.senderRole === 'admin') {
+            playSchoolChatChime();
+            if (!isOpen) {
+              setUnreadCount(c => c + 1);
+            }
+          }
           return [...prev, newMsg];
         });
       }
     };
 
+    const handleFocusOrOnline = () => {
+      if (isAppOnline()) {
+        loadMessages().catch(() => {});
+      }
+    };
+
     window.addEventListener('cardschool_chat_message_received', handleNewMsg);
+    window.addEventListener('focus', handleFocusOrOnline);
+    window.addEventListener('online', handleFocusOrOnline);
     
-    // Polling adapté : 6s si le chat est ouvert, 30s s'il est fermé, et uniquement si connecté
-    const intervalMs = isOpen ? 6000 : 30000;
+    // Polling ultra-léger de secours : 2s si le chat est ouvert, 5s s'il est fermé
+    const intervalMs = isOpen ? 2000 : 5000;
     const interval = setInterval(() => {
       if (isAppOnline()) {
         loadMessages().catch(() => {});
@@ -146,6 +184,8 @@ export const SchoolChatDrawer: React.FC<SchoolChatDrawerProps> = ({
 
     return () => {
       window.removeEventListener('cardschool_chat_message_received', handleNewMsg);
+      window.removeEventListener('focus', handleFocusOrOnline);
+      window.removeEventListener('online', handleFocusOrOnline);
       clearInterval(interval);
     };
   }, [session.userId, isOpen]);

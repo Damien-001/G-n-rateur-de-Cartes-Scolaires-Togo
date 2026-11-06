@@ -99,7 +99,8 @@ import {
   activateSchoolDirectly,
   createPreassignedLicenseForSchool,
   purgeOrphanLicenseKeys,
-  uploadPlatformAsset
+  uploadPlatformAsset,
+  ensureLiveChatBus
 } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
@@ -310,6 +311,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   };
 
   useEffect(() => {
+    ensureLiveChatBus();
     loadData();
 
     const handleDataChanged = () => {
@@ -324,30 +326,35 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       }
     };
 
-    // Live chat message received event handler
+    // Live chat message received event handler (via Broadcast <50ms, Postgres Changes, or BroadcastChannel)
     const handleNewChatMessage = (e: any) => {
       const newMsg = e.detail as ChatMessage;
       if (newMsg) {
         setChatMessages(prev => {
-          if (prev.some(m => m.id === newMsg.id || (m.schoolId === newMsg.schoolId && m.createdAt === newMsg.createdAt && m.message === newMsg.message))) {
+          const timeMs = new Date(newMsg.createdAt).getTime();
+          const alreadyExists = prev.some(m =>
+            m.id === newMsg.id ||
+            (m.schoolId === newMsg.schoolId && m.senderRole === newMsg.senderRole && m.message === newMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
+          );
+          if (alreadyExists) {
             return prev;
           }
+
+          if (newMsg.senderRole === 'school') {
+            playAdminChime();
+            setLatestNotification({
+              id: newMsg.id,
+              schoolId: newMsg.schoolId,
+              schoolName: newMsg.schoolName || 'Établissement',
+              message: newMsg.message,
+              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+              hasAttachment: !!newMsg.attachmentUrl
+            });
+            fetchAllSchools().then(setSchools).catch(() => { });
+          }
+
           return [...prev, newMsg];
         });
-
-        if (newMsg.senderRole === 'school') {
-          playAdminChime();
-          setLatestNotification({
-            id: newMsg.id,
-            schoolId: newMsg.schoolId,
-            schoolName: newMsg.schoolName || 'Établissement',
-            message: newMsg.message,
-            time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            hasAttachment: !!newMsg.attachmentUrl
-          });
-          // Refresh schools in case a brand new school sent the message
-          fetchAllSchools().then(setSchools).catch(() => { });
-        }
       }
     };
 
@@ -379,7 +386,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
-    // Supabase Realtime Subscription on chat_messages table
+    // Supabase Realtime Subscription on school_info & admin_logs tables
     let realtimeSub: any = null;
     try {
       realtimeSub = supabase
@@ -414,44 +421,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             fetchAllSchools().then(setSchools).catch(() => { });
           }
         })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-          const row = payload.new as any;
-          if (row) {
-            const incomingMsg: ChatMessage = {
-              id: row.id?.toString() || `${row.school_id}_${row.created_at}`,
-              schoolId: row.school_id,
-              schoolName: row.school_name || 'Établissement',
-              senderRole: (row.sender_role || row.sender) === 'admin' ? 'admin' : 'school',
-              message: row.message || '',
-              attachmentUrl: row.attachment_url || undefined,
-              createdAt: row.created_at || new Date().toISOString(),
-              status: row.status || 'sent',
-            };
-
-            setChatMessages(prev => {
-              if (prev.some(m => m.id === incomingMsg.id || (m.schoolId === incomingMsg.schoolId && m.createdAt === incomingMsg.createdAt))) {
-                return prev;
-              }
-              return [...prev, incomingMsg];
-            });
-
-            if (incomingMsg.senderRole === 'school') {
-              playAdminChime();
-              setLatestNotification({
-                id: incomingMsg.id,
-                schoolId: incomingMsg.schoolId,
-                schoolName: incomingMsg.schoolName || 'Établissement',
-                message: incomingMsg.message,
-                time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-                hasAttachment: !!incomingMsg.attachmentUrl
-              });
-              fetchAllSchools().then(setSchools).catch(() => { });
-            }
-          }
-        })
         .subscribe();
     } catch { }
 
+    // Polling de secours ultra-rapide (2.5s, charge < 5 Ko grâce au stockage des pièces jointes sur Supabase Storage)
     const interval = setInterval(() => {
       if (isAppOnline()) {
         fetchChatMessages().then(msgs => {
@@ -460,11 +433,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               const hasDiff = prev.some((m, idx) => m.id !== msgs[idx]?.id || m.message !== msgs[idx]?.message || m.status !== msgs[idx]?.status);
               if (!hasDiff) return prev;
             }
+            if (prev.length > 0 && msgs.length > prev.length) {
+              const prevIds = new Set(prev.map(m => m.id));
+              const newestSchoolMsg = [...msgs].reverse().find(m => !prevIds.has(m.id) && m.senderRole === 'school');
+              if (newestSchoolMsg) {
+                playAdminChime();
+                setLatestNotification({
+                  id: newestSchoolMsg.id,
+                  schoolId: newestSchoolMsg.schoolId,
+                  schoolName: newestSchoolMsg.schoolName || 'Établissement',
+                  message: newestSchoolMsg.message,
+                  time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                  hasAttachment: !!newestSchoolMsg.attachmentUrl
+                });
+              }
+            }
             return msgs;
           });
         }).catch(() => { });
       }
-    }, 5000);
+    }, 2500);
 
     return () => {
       window.removeEventListener('cardschool_school_registered', handleSchoolRegistered);

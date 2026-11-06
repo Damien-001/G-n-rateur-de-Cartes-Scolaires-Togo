@@ -2211,8 +2211,157 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
 export const CHAT_MESSAGES_STORAGE_KEY = 'cardschool_chat_messages';
 export const CHAT_MESSAGES_STORAGE_KEY_ALT = 'cartes_togo_chat_messages';
 
+let liveChatChannel: any = null;
+let liveChatChannelReady = false;
+let localBroadcastBus: BroadcastChannel | null = null;
+
+function appendMessageToLocalCache(msg: ChatMessage) {
+  try {
+    const stored = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+    const messages: ChatMessage[] = stored ? JSON.parse(stored) : [];
+    const timeMs = new Date(msg.createdAt).getTime();
+
+    const filtered = messages.filter(m =>
+      m.id !== msg.id &&
+      !(m.schoolId === msg.schoolId && m.senderRole === msg.senderRole && m.message === msg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
+    );
+    const updated = [...filtered, msg].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const serialized = JSON.stringify(updated);
+    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, serialized);
+    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+function emitIncomingChatMessage(incomingMsg: ChatMessage) {
+  if (!incomingMsg || (!incomingMsg.message && !incomingMsg.attachmentUrl)) return;
+  appendMessageToLocalCache(incomingMsg);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_chat_message_received', {
+      detail: incomingMsg
+    }));
+  }
+}
+
+/** Initialize the shared WebSocket Broadcast + Postgres Changes + BroadcastChannel bus for <50ms chat delivery */
+export function ensureLiveChatBus(): void {
+  if (typeof window === 'undefined') return;
+
+  if (!localBroadcastBus && typeof BroadcastChannel !== 'undefined') {
+    try {
+      localBroadcastBus = new BroadcastChannel('sukupass_live_chat_bus');
+      localBroadcastBus.onmessage = (ev) => {
+        if (ev?.data && ev.data.id) {
+          emitIncomingChatMessage(ev.data as ChatMessage);
+        }
+      };
+    } catch { }
+  }
+
+  if (liveChatChannel) return;
+
+  try {
+    liveChatChannel = supabase
+      .channel('sukupass_live_chat_bus', {
+        config: {
+          broadcast: { self: false, ack: false }
+        }
+      })
+      .on('broadcast', { event: 'new_chat_message' }, (payload: any) => {
+        const msg = (payload?.payload || payload) as ChatMessage;
+        if (msg && msg.id && msg.schoolId) {
+          emitIncomingChatMessage(msg);
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload: any) => {
+        const row = payload?.new as any;
+        if (row && row.school_id) {
+          const incomingMsg: ChatMessage = {
+            id: row.id?.toString() || `${row.school_id}_${row.created_at}`,
+            schoolId: row.school_id,
+            schoolName: row.school_name || 'Établissement',
+            senderRole: (row.sender_role || row.sender) === 'admin' ? 'admin' : 'school',
+            message: row.message || '',
+            attachmentUrl: row.attachment_url || undefined,
+            createdAt: row.created_at || new Date().toISOString(),
+            status: row.status || 'sent',
+          };
+          emitIncomingChatMessage(incomingMsg);
+        }
+      })
+      .subscribe((status: string) => {
+        liveChatChannelReady = status === 'SUBSCRIBED';
+      });
+  } catch { }
+}
+
+function broadcastChatMessageLive(msg: ChatMessage) {
+  try {
+    if (localBroadcastBus) {
+      localBroadcastBus.postMessage(msg);
+    }
+  } catch { }
+
+  try {
+    ensureLiveChatBus();
+    if (liveChatChannel && liveChatChannelReady) {
+      // Avoid sending huge base64 strings over WebSocket broadcast if storage upload fell back to base64
+      if (!msg.attachmentUrl || !msg.attachmentUrl.startsWith('data:') || msg.attachmentUrl.length < 180000) {
+        liveChatChannel.send({
+          type: 'broadcast',
+          event: 'new_chat_message',
+          payload: msg
+        }).catch(() => { });
+      }
+    }
+  } catch { }
+}
+
+/** Upload a compressed base64 chat image to Supabase Storage so chat_messages stays < 5KB */
+async function uploadChatAttachmentToStorage(msgId: string, dataUrl: string): Promise<string> {
+  if (!dataUrl || !dataUrl.startsWith('data:image/') || !isAppOnline()) {
+    return dataUrl;
+  }
+  try {
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+    if (!match) return dataUrl;
+    const mimeType = match[1];
+    const base64Data = match[2];
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const blob = new Blob([byteNumbers], { type: mimeType });
+    const filePath = `chat-attachments/${msgId}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('school-assets')
+      .upload(filePath, blob, {
+        contentType: mimeType,
+        cacheControl: '31536000',
+        upsert: true
+      });
+
+    if (!error) {
+      const { data } = supabase.storage.from('school-assets').getPublicUrl(filePath);
+      if (data?.publicUrl) {
+        return data.publicUrl;
+      }
+    }
+  } catch {
+    // Fallback to compressed base64 if storage upload fails
+  }
+  return dataUrl;
+}
+
 /** Fetch chat messages for a specific school or all messages for admin */
 export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[]> {
+  ensureLiveChatBus();
   const messagesList: ChatMessage[] = [];
   const seenIds = new Set<string>();
   const seenFingerprints = new Set<string>();
@@ -2244,7 +2393,7 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
       }
 
       const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout chat messages')), 3500)
+        setTimeout(() => reject(new Error('Timeout chat messages')), 8000)
       );
 
       const res = await Promise.race([query, timeoutPromise]).catch(() => ({ data: null, error: null }));
@@ -2292,13 +2441,17 @@ export async function fetchChatMessages(schoolId?: string): Promise<ChatMessage[
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
-  // Clean and sync localStorage so duplicates don't persist on disk (uniquement si le contenu a changé)
+  // Clean and sync localStorage only when fetching global messages (or merge without wiping other schools)
   try {
-    const serialized = JSON.stringify(sorted);
-    const existing = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
-    if (existing !== serialized) {
-      localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, serialized);
-      localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, serialized);
+    if (!schoolId) {
+      const serialized = JSON.stringify(sorted);
+      const existing = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+      if (existing !== serialized) {
+        localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, serialized);
+        localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, serialized);
+      }
+    } else {
+      sorted.forEach(m => appendMessageToLocalCache(m));
     }
   } catch { }
 
@@ -2389,6 +2542,7 @@ export async function sendChatMessage(
   message: string,
   attachmentUrl?: string
 ): Promise<ChatMessage> {
+  ensureLiveChatBus();
   const timestamp = new Date().toISOString();
   // Valid UUID generation so Supabase and LocalStorage have identical primary keys
   let msgId: string;
@@ -2405,7 +2559,9 @@ export async function sendChatMessage(
   let processedAttachment = attachmentUrl;
   if (processedAttachment && processedAttachment.startsWith('data:image/')) {
     try {
-      processedAttachment = await compressImageForChat(processedAttachment, 1024, 1024, 0.72);
+      processedAttachment = await compressImageForChat(processedAttachment, 960, 960, 0.7);
+      // Upload to Supabase Storage so chat_messages table remains ultra-lightweight (< 5KB)
+      processedAttachment = await uploadChatAttachmentToStorage(msgId, processedAttachment);
     } catch { }
   }
 
@@ -2421,29 +2577,15 @@ export async function sendChatMessage(
   };
 
   // 1. Sauvegarde locale immédiate (0ms) avec déduplication
-  try {
-    const stored = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
-    const messages: ChatMessage[] = stored ? JSON.parse(stored) : [];
-    const timeMs = new Date(finalMsg.createdAt).getTime();
+  appendMessageToLocalCache(finalMsg);
 
-    // Filter out any previous identical message (same content within 4 seconds)
-    const filtered = messages.filter(m =>
-      m.id !== finalMsg.id &&
-      !(m.schoolId === finalMsg.schoolId && m.senderRole === finalMsg.senderRole && m.message === finalMsg.message && Math.abs(new Date(m.createdAt).getTime() - timeMs) < 4000)
-    );
-    const updated = [...filtered, finalMsg];
-    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(updated));
-    localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY_ALT, JSON.stringify(updated));
-  } catch (err) {
-    console.warn('sendChatMessage local error:', err);
-  }
-
-  // 2. Émission live instantanée (0ms) pour rafraîchissement immédiat de l'UI
+  // 2. Émission live instantanée (0ms) localement + Broadcast WebSocket (<50ms) vers l'autre partie
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_chat_message_received', {
       detail: finalMsg
     }));
   }
+  broadcastChatMessageLive(finalMsg);
 
   // 3. Persistance Supabase distante en arrière-plan sans bloquer
   const persistRemote = async () => {
@@ -2460,6 +2602,8 @@ export async function sendChatMessage(
         created_at: timestamp,
         status: 'sent'
       });
+      // Re-broadcast after DB commit in case a peer just connected
+      broadcastChatMessageLive(finalMsg);
     } catch (supabaseErr) {
       console.warn('sendChatMessage Supabase chat_messages error:', supabaseErr);
     }
