@@ -181,15 +181,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
       {/* Full-screen wrapper */}
       <div className="min-h-screen bg-[#e8edf3] flex items-center justify-center p-3 sm:p-6 font-sans">
         
-        {/* Back button — floating */}
-        <button
-          onClick={onBackToLanding}
-          className="fixed top-4 left-4 z-50 flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer group bg-white/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-200/80 shadow-sm"
-        >
-          <span className="group-hover:-translate-x-0.5 transition-transform"><IconArrowLeft /></span>
-          Retour
-        </button>
-
         {/* Split-screen card */}
         <div
           className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-12 shadow-2xl shadow-slate-900/15 overflow-hidden rounded-[20px] sm:rounded-[28px]"
