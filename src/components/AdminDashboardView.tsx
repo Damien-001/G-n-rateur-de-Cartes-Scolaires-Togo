@@ -1751,13 +1751,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     ) : (
                       <div className="space-y-4">
                         {activityLogs.slice(0, 5).map((log) => (
-                          <div key={log.id} className="text-xs space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                            <div className="flex justify-between items-center">
-                              <span className="font-extrabold text-gray-800 truncate max-w-[150px]">{log.schoolName}</span>
-                              <span className="text-[9px] text-gray-400 font-medium">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                          <div key={log.id} className="text-xs space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-100 overflow-hidden">
+                            <div className="flex justify-between items-center gap-2 min-w-0">
+                              <span className="font-extrabold text-gray-800 truncate max-w-[160px]">{log.schoolName}</span>
+                              <span className="text-[9px] text-gray-400 font-medium shrink-0">{new Date(log.createdAt).toLocaleTimeString()}</span>
                             </div>
-                            <p className="text-[10px] font-extrabold text-emerald-850">{log.action}</p>
-                            <p className="text-[10px] text-gray-500 font-semibold leading-relaxed">{log.details}</p>
+                            <p className="text-[10px] font-extrabold text-emerald-850 break-words">{log.action}</p>
+                            <p className="text-[10px] text-gray-500 font-semibold leading-relaxed break-words line-clamp-2">{log.details}</p>
                           </div>
                         ))}
                       </div>
@@ -3832,12 +3832,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   ) : (
                     <div className="space-y-3">
                       {activityLogs.map((log) => (
-                        <div key={log.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
-                          <div>
-                            <p className="text-xs font-black text-gray-900">{log.schoolName} - {log.action}</p>
-                            <p className="text-xs text-gray-500">{log.details}</p>
+                        <div key={log.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 hover:bg-slate-50 transition-colors overflow-hidden">
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="text-xs font-black text-gray-900 break-words">{log.schoolName} - {log.action}</p>
+                            <p className="text-xs text-gray-500 break-words leading-relaxed">{log.details}</p>
                           </div>
-                          <span className="text-[10px] text-gray-400 font-semibold">{new Date(log.createdAt).toLocaleString()}</span>
+                          <span className="text-[10px] text-gray-400 font-semibold shrink-0 whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</span>
                         </div>
                       ))}
                     </div>

@@ -1316,6 +1316,26 @@ export async function saveAdminLog(
   ).catch(err => console.warn('saveAdminLog Supabase background error:', err));
 }
 
+/** Helper pour ignorer les logs techniques internes ou JSON bruts */
+function isInternalOrCorruptedLog(item: { action?: string; details?: string; schoolName?: string; school_name?: string }): boolean {
+  const action = (item.action || '').trim();
+  const details = (item.details || '').trim();
+  const schoolName = (item.schoolName || item.school_name || '').trim();
+  if (
+    action === 'SYNC_PLATFORM_SETTINGS' ||
+    action === 'SYNC_LICENSE_KEYS' ||
+    action === 'PAGE_VISIT' ||
+    details === 'SYNC_PLATFORM_SETTINGS' ||
+    details === 'SYNC_LICENSE_KEYS' ||
+    action.startsWith('{') ||
+    details.startsWith('{') ||
+    schoolName.startsWith('{')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Fetches real admin logs from Supabase with fallback to real local activity logs */
 export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
   const logsMap = new Map<string, AdminLogItem>();
@@ -1330,7 +1350,7 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
 
     if (adminData) {
       for (const log of adminData) {
-        if (log.action === 'SYNC_PLATFORM_SETTINGS' || log.action === 'SYNC_LICENSE_KEYS' || log.action === 'PAGE_VISIT') continue;
+        if (isInternalOrCorruptedLog(log)) continue;
         const id = log.id?.toString() || `${log.created_at}-${log.school_id}`;
         logsMap.set(id, {
           id,
@@ -1345,16 +1365,21 @@ export async function fetchAdminLogs(): Promise<AdminLogItem[]> {
 
   // (audit_logs table removed — data consolidated in admin_logs only)
 
-  // 3. Fallback / Fusion avec LocalStorage
+  // 3. Fallback / Fusion avec LocalStorage (et nettoyage automatique des entrées JSON corrompues)
   try {
     const stored = localStorage.getItem(AUDIT_LOGS_STORAGE_KEY);
     if (stored) {
       const localList: AdminLogItem[] = JSON.parse(stored);
+      const cleanedLocalList: AdminLogItem[] = [];
       for (const item of localList) {
-        if (item.action === 'SYNC_PLATFORM_SETTINGS' || item.action === 'SYNC_LICENSE_KEYS' || item.action === 'PAGE_VISIT') continue;
+        if (isInternalOrCorruptedLog(item)) continue;
+        cleanedLocalList.push(item);
         if (!logsMap.has(item.id)) {
           logsMap.set(item.id, item);
         }
+      }
+      if (cleanedLocalList.length !== localList.length) {
+        localStorage.setItem(AUDIT_LOGS_STORAGE_KEY, JSON.stringify(cleanedLocalList));
       }
     }
   } catch { }
@@ -2832,14 +2857,6 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     if (error) {
       console.error('savePlatformSettings Supabase platform_settings error:', error);
     }
-
-    // Save audit log entry
-    saveAdminLog(
-      'SYSTEM_GLOBAL',
-      'Configuration Système',
-      'SYNC_PLATFORM_SETTINGS',
-      JSON.stringify(settingsToSave)
-    ).catch(() => {});
 
     return !error;
   } catch (err) {
