@@ -367,3 +367,4 @@ export const LegalPrivacyModal: React.FC<LegalPrivacyModalProps> = ({
     </div>
   );
 };
+
