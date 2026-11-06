@@ -80,23 +80,6 @@ const IconGoogle = () => (
   </svg>
 );
 
-const HandDrawnUnderline = () => (
-  <svg
-    viewBox="0 0 140 10"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-full h-2 mt-0.5 text-emerald-700"
-    preserveAspectRatio="none"
-  >
-    <path
-      d="M2 7.5C38 2.2 96 1.8 138 6.5"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
 // ── Témoignages d'établissements scolaires togolais ───────────────────────────
 interface TestimonialItem {
   quote: string;
@@ -276,10 +259,9 @@ const LoginForm: React.FC<{
         <button
           type="button"
           onClick={onSwitchToRegister}
-          className="inline-flex flex-col items-center text-xs font-extrabold text-slate-900 hover:text-emerald-800 transition-colors cursor-pointer align-top"
+          className="text-xs font-extrabold text-emerald-800 hover:text-emerald-600 transition-colors cursor-pointer"
         >
-          <span>Essai gratuit 14 jours</span>
-          <HandDrawnUnderline />
+          Essai gratuit 14 jours
         </button>
       </div>
     </form>
@@ -567,10 +549,9 @@ const RegisterForm: React.FC<{
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="inline-flex flex-col items-center text-xs font-extrabold text-slate-900 hover:text-emerald-800 transition-colors cursor-pointer align-top"
+          className="text-xs font-extrabold text-emerald-800 hover:text-emerald-600 transition-colors cursor-pointer"
         >
-          <span>Se connecter</span>
-          <HandDrawnUnderline />
+          Se connecter
         </button>
       </div>
     </form>
