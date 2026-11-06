@@ -20,6 +20,7 @@ import { motion, AnimatePresence, useScroll, useSpring } from 'motion/react';
 import { IDCard } from './IDCard';
 import { IDCardBack } from './IDCardBack';
 import { LandingVideoSection } from './LandingVideoSection';
+import { LegalPrivacyModal, LegalTab } from './LegalPrivacyModal';
 import { PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS } from '../types';
 import { fetchPlatformSettings, PLATFORM_SETTINGS_STORAGE_KEY, sanitizePricingPlans } from '../lib/db';
 
@@ -58,6 +59,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroPhraseIndex, setHeroPhraseIndex] = useState(0);
+  const [legalModal, setLegalModal] = useState<{ open: boolean; tab: LegalTab }>({
+    open: false,
+    tab: 'privacy'
+  });
 
   const heroPhrases = [
     'en quelques clics',
@@ -937,18 +942,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             <span className="font-extrabold text-xl text-emerald-400">SukuPass</span>
             <p className="text-xs text-gray-400 mt-2 font-medium">Les badges scolaires en quelques clics au Togo.</p>
           </div>
-          <div className="flex gap-6 text-sm text-gray-400 font-medium justify-center md:justify-start">
+          <div className="flex flex-wrap gap-6 text-sm text-gray-400 font-medium justify-center md:justify-start">
             <a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a>
             {platformSettings.pricingEnabled !== false && (
               <a href="#pricing" className="hover:text-white transition-colors">Tarifs</a>
             )}
             <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+            <button
+              type="button"
+              onClick={() => setLegalModal({ open: true, tab: 'privacy' })}
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              Confidentialité
+            </button>
+            <button
+              type="button"
+              onClick={() => setLegalModal({ open: true, tab: 'cgu' })}
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              CGU
+            </button>
           </div>
-          <div className="text-xs text-gray-500 text-center md:text-right font-medium">
-            <span>&copy; 2026 SukuPass Togo. Tous droits réservés.</span>
+          <div className="text-xs text-gray-500 text-center md:text-right font-medium space-y-1">
+            <span className="block">&copy; 2026 SukuPass Togo. Tous droits réservés.</span>
+            <button
+              type="button"
+              onClick={() => setLegalModal({ open: true, tab: 'data_protection' })}
+              className="text-[11px] text-emerald-400/80 hover:text-emerald-300 underline cursor-pointer"
+            >
+              Conforme Loi n° 2019-014 (IPDCP Togo)
+            </button>
           </div>
         </div>
       </footer>
+
+      <LegalPrivacyModal
+        isOpen={legalModal.open}
+        initialTab={legalModal.tab}
+        onClose={() => setLegalModal(prev => ({ ...prev, open: false }))}
+      />
 
       {/* Floating Scroll To Top Button */}
       <AnimatePresence>

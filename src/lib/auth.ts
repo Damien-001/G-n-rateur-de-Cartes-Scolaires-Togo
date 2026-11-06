@@ -207,6 +207,46 @@ export async function login(
   }
 }
 
+/** Réinitialisation du mot de passe par email */
+export async function resetPassword(
+  email: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    if (!email || !email.trim()) {
+      return { success: false, error: 'Veuillez saisir votre adresse email.' };
+    }
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo,
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'Impossible d\'envoyer l\'email de réinitialisation.' };
+  }
+}
+
+/** Connexion / Inscription rapide via Google OAuth */
+export async function loginWithGoogle(): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+      },
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'Erreur lors de la connexion Google.' };
+  }
+}
+
 /** Déconnexion */
 export async function logout(): Promise<void> {
   setCachedSession(null);
