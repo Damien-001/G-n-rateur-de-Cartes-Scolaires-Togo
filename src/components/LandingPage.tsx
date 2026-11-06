@@ -276,6 +276,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             Accueil
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
           </button>
+          <a href="#demo" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
+            Démo Vidéo
+            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
+          </a>
           <a href="#features" className="text-xs font-bold text-gray-600 hover:text-emerald-700 transition-colors relative group py-1 uppercase tracking-wide">
             Fonctionnalités
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 transition-all duration-300 group-hover:w-full" />
@@ -351,6 +355,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 <div className="space-y-1">
                   {[
                     { label: 'Accueil', href: '#hero', onClick: () => { scrollToTop(); setMobileMenuOpen(false); } },
+                    { label: 'Démo Vidéo', href: '#demo', onClick: () => setMobileMenuOpen(false) },
                     { label: 'Fonctionnalités', href: '#features', onClick: () => setMobileMenuOpen(false) },
                     { label: 'Comment ça marche', href: '#how-it-works', onClick: () => setMobileMenuOpen(false) },
                     ...(platformSettings.pricingEnabled !== false ? [{ label: 'Tarifs & Abonnements', href: '#pricing', onClick: () => setMobileMenuOpen(false) }] : []),
@@ -456,7 +461,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
               <motion.a
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                href="#how-it-works"
+                href="#demo"
                 className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-base font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xs"
               >
                 Voir la Démo
@@ -509,6 +514,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Section Vidéo de Présentation Officielle */}
+      <LandingVideoSection
+        videoUrl={platformSettings.demoVideoUrl}
+        videoTitle={platformSettings.demoVideoTitle}
+        videoPoster={platformSettings.demoVideoPoster}
+        onStartAuth={onStartAuth}
+      />
 
       {/* Features Grid with Scroll Reveal */}
       <section id="features" className="py-24 bg-white border-y border-gray-100 relative">
