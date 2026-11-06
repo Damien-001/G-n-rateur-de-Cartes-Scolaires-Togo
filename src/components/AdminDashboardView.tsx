@@ -144,6 +144,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [totalStudents, setTotalStudents] = useState<number>(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        return false;
+      }
       const saved = localStorage.getItem('cardschool_admin_sidebar_open');
       return saved !== null ? saved === 'true' : true;
     } catch {
@@ -1615,7 +1618,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         )}
 
         {/* Tab content renderer */}
-        <div className="p-8 space-y-8">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
 
           {/* TAB 1: OVERVIEW */}
           {activeSubTab === 'overview' && (
@@ -1646,7 +1649,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
 
               {/* Stats Widgets */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
 
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-2 bg-white">
@@ -2023,10 +2026,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           {/* TAB 3: CHAT & MOBILE MONEY PAYMENT PROOFS */}
           {activeSubTab === 'payments' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-210px)] min-h-[580px] max-h-[780px]">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-210px)] lg:min-h-[580px] lg:max-h-[780px]">
 
                 {/* Left column: Schools conversations list */}
-                <div className="lg:col-span-4 double-bezel-outer h-full flex flex-col min-h-0">
+                <div className="lg:col-span-4 double-bezel-outer h-[340px] lg:h-full flex flex-col min-h-0">
                   <div className="double-bezel-inner p-4 bg-white flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-200/70 shrink-0">
                       <div className="flex items-center gap-2">
@@ -2083,7 +2086,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </div>
 
                 {/* Right column: Selected conversation message view */}
-                <div className="lg:col-span-8 double-bezel-outer h-full flex flex-col min-h-0">
+                <div className="lg:col-span-8 double-bezel-outer h-[520px] lg:h-full flex flex-col min-h-0">
                   <div className="double-bezel-inner p-0 bg-white flex-1 flex flex-col min-h-0 overflow-hidden">
                     {selectedSchoolChatId ? (
                       (() => {
@@ -2098,7 +2101,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         return (
                           <>
                             {/* Chat Header */}
-                            <div className="p-4 bg-gray-50/80 border-b border-slate-200/70 flex items-center justify-between shrink-0">
+                            <div className="p-4 bg-gray-50/80 border-b border-slate-200/70 flex flex-wrap items-center justify-between gap-2 shrink-0">
                               <div>
                                 <h4 className="text-sm font-black text-gray-900 flex items-center gap-2">
                                   {schoolDisplayName}

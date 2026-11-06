@@ -29,10 +29,11 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const isMobile = windowWidth < 820;
-  // Sur mobile, réduire pour s'adapter exactement à la largeur d'écran (avec marge de 16px)
-  const autoScale = (isMobile && fitToScreen) 
-    ? Math.min(1, Math.max(0.32, (windowWidth - 20) / 794)) 
+  // Sur mobile et tablette, calculer la largeur utile (en tenant compte de la barre latérale à partir de 768px)
+  const availableContentWidth = windowWidth >= 768 ? windowWidth - 110 : windowWidth - 20;
+  const needsScaling = availableContentWidth < 810;
+  const autoScale = (needsScaling && fitToScreen) 
+    ? Math.min(1, Math.max(0.32, availableContentWidth / 794)) 
     : 1;
 
   // Split students into pages based on cardsPerPage

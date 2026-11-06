@@ -177,11 +177,11 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
               </div>
 
               {/* Signature & Cachet split */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
                 {/* Signature */}
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Signature</label>
-                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80 overflow-hidden">
                     <div className="relative w-full h-9 bg-white border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden shadow-sm">
                       {signatureUrl ? (
                         <>
@@ -209,9 +209,9 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
                 </div>
 
                 {/* Stamp */}
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cachet</label>
-                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80">
+                  <div className="flex flex-col gap-2 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80 overflow-hidden">
                     <div className="relative w-9 h-9 mx-auto bg-white border border-slate-200 rounded-full flex items-center justify-center overflow-hidden shadow-sm">
                       {stampUrl ? (
                         <>
@@ -344,17 +344,17 @@ export const CardDesignView: React.FC<CardDesignViewProps> = ({
         </div>
 
         {/* Right column: Card Live Previews */}
-        <div className="lg:col-span-7 space-y-8 flex flex-col items-center">
+        <div className="lg:col-span-7 space-y-6 sm:space-y-8 flex flex-col items-center min-w-0">
           
           {/* Real-time ID Cards Mockup Frame */}
-          <div className="w-full bg-gray-55 rounded-3xl border border-gray-200/60 p-8 flex flex-col items-center gap-8 shadow-inner">
-            <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-4.5 h-4.5 text-amber-500 animate-spin-slow" />
-              Prévisualisation en Temps Réel (Recto/Verso)
+          <div className="w-full bg-gray-55 rounded-3xl border border-gray-200/60 p-4 sm:p-6 lg:p-8 flex flex-col items-center gap-6 sm:gap-8 shadow-inner overflow-x-auto">
+            <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 text-center">
+              <Sparkles className="w-4.5 h-4.5 text-amber-500 animate-spin-slow shrink-0" />
+              <span>Prévisualisation en Temps Réel (Recto/Verso)</span>
             </h2>
 
             {/* Recto / Verso stacked frame */}
-            <div className="flex flex-col gap-6 items-center justify-center scale-95 sm:scale-100 transition-all duration-300">
+            <div className="flex flex-col gap-4 sm:gap-6 items-center justify-center scale-[0.85] sm:scale-95 xl:scale-100 origin-center transition-all duration-300">
               {/* Front side */}
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>

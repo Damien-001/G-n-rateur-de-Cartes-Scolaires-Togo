@@ -107,6 +107,9 @@ export default function App({ session, onLogout }: AppProps) {
   const [isAdminView, setIsAdminView] = useState(isSuperAdminUser);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        return false;
+      }
       const saved = localStorage.getItem('cardschool_school_sidebar_open');
       return saved !== null ? saved === 'true' : true;
     } catch {

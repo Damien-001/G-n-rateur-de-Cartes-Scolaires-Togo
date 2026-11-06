@@ -31,7 +31,7 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = React.memo(({
         className={`absolute top-4 right-4 w-5.5 h-5.5 rounded-full border flex items-center justify-center transition-all duration-200 ${
           isSelected
             ? 'bg-emerald-600 border-emerald-600 text-white scale-100 opacity-100'
-            : 'bg-white border-gray-300 opacity-70 md:opacity-0 md:group-hover:opacity-100 scale-90'
+            : 'bg-white border-gray-300 opacity-80 xl:opacity-0 xl:group-hover:opacity-100 scale-90'
         }`}
       >
         {isSelected && (
@@ -41,7 +41,7 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = React.memo(({
         )}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-3.5 sm:gap-4 min-w-0">
         {/* Double Bezel for Photo */}
         <div className={`w-16 h-20 rounded-xl overflow-hidden border flex-shrink-0 transition-all duration-200 ${
           isSelected ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-gray-100 bg-gray-50'
@@ -59,29 +59,29 @@ export const StudentCardItem: React.FC<StudentCardItemProps> = React.memo(({
           <h3 className="font-bold text-gray-900 group-hover:text-emerald-800 transition-colors duration-200 truncate">
             {student.lastName} {student.firstName}
           </h3>
-          <p className="text-sm text-gray-500 font-semibold">{student.className}</p>
-          <p className="text-xs text-emerald-800 font-extrabold mt-2 bg-emerald-50/50 w-max px-2.5 py-0.5 rounded-full border border-emerald-100/50 letter-spacing-wide">
+          <p className="text-sm text-gray-500 font-semibold truncate">{student.className}</p>
+          <p className="text-xs text-emerald-800 font-extrabold mt-2 bg-emerald-50/50 inline-block max-w-full truncate px-2.5 py-0.5 rounded-full border border-emerald-100/50 letter-spacing-wide">
             {student.matricule}
           </p>
         </div>
       </div>
 
-      {/* Edit and Delete Actions - Visible on mobile touch, hover on desktop */}
+      {/* Edit and Delete Actions - Always visible on mobile & tablet touch screens */}
       <div
-        className="mt-3 flex items-center justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
+        className="mt-3 flex items-center justify-end gap-1 opacity-100 xl:opacity-60 xl:group-hover:opacity-100 transition-opacity duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={() => onEdit(student)}
           title="Modifier"
-          className="p-2 md:p-1.5 text-gray-500 md:text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer active:scale-90"
+          className="p-2 xl:p-1.5 text-gray-600 xl:text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer active:scale-90"
         >
           <Edit2 className="w-4 h-4" />
         </button>
         <button
           onClick={() => onDelete(student.id)}
           title="Supprimer"
-          className="p-2 md:p-1.5 text-gray-500 md:text-gray-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors cursor-pointer active:scale-90"
+          className="p-2 xl:p-1.5 text-gray-600 xl:text-gray-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors cursor-pointer active:scale-90"
         >
           <Trash2 className="w-4 h-4" />
         </button>

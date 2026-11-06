@@ -444,9 +444,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             <span className="text-xs font-bold uppercase tracking-wider">SukuPass Togo • Éducation 2026</span>
           </motion.div>
 
-          <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.15]">
+          <motion.h1 variants={itemVariants} className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.15]">
             SukuPass — Les badges scolaires{' '}
-            <span className="inline-block relative min-w-[260px] sm:min-w-[340px]">
+            <span className="inline-block relative">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={heroPhraseIndex}
@@ -541,7 +541,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
 
           {/* Cards Showcase Container */}
-          <div className="flex flex-col gap-5 items-center relative">
+          <div className="flex flex-col gap-4 sm:gap-5 items-center relative scale-[0.86] sm:scale-100 origin-center max-w-full">
             {/* Front Card with subtle floating & laser scan line */}
             <motion.div
               animate={{ y: [0, -8, 0], rotateZ: [-0.6, 0.6, -0.6] }}

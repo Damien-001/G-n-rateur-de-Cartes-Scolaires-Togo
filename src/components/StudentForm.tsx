@@ -369,17 +369,17 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 transition-all duration-300">
-      <div className="double-bezel-outer w-full max-w-6xl overflow-hidden shadow-2xl">
-        <div className="double-bezel-inner flex flex-col md:flex-row overflow-hidden max-h-[92vh]">
-          <div className="flex-1 min-w-0 overflow-y-auto max-h-[92vh] md:max-h-none bg-white">
+      <div className="double-bezel-outer w-full max-w-3xl lg:max-w-6xl overflow-hidden shadow-2xl">
+        <div className="double-bezel-inner flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden max-h-[92vh]">
+          <div className="flex-1 min-w-0 lg:overflow-y-auto lg:max-h-[92vh] bg-white">
             {/* Form Header */}
-            <div className="px-5 sm:px-6 lg:px-8 py-5 border-b border-gray-100/70 flex justify-between items-center bg-white sticky top-0 z-10">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-gray-100/70 flex justify-between items-center bg-white sticky top-0 z-10">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 shrink-0 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100/50">
                   <User className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-gray-900 tracking-tight leading-tight">
+                  <h2 className="text-sm sm:text-base font-bold text-gray-900 tracking-tight leading-tight">
                     {student ? "Modifier les informations de l'élève" : "Ajouter un nouvel élève"}
                   </h2>
                   <p className="text-[11px] text-gray-400 font-medium mt-0.5">Saisie des informations de la carte d'identité scolaire</p>
@@ -388,7 +388,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
               <button 
                 type="button"
                 onClick={onCancel} 
-                className="md:hidden p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 shrink-0"
+                className="lg:hidden p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -755,27 +755,28 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
         </form>
       </div>
 
-      {/* Preview Section */}
-      <div className="hidden md:flex flex-col md:w-[345px] lg:w-[410px] shrink-0 bg-gray-50/50 md:p-4 lg:p-8 items-center justify-start overflow-y-auto relative border-l border-gray-100 max-h-[92vh]">
+      {/* Preview Section — Affiché en bas sur mobile/tablette portrait, et à droite sur grand écran (lg+) */}
+      <div className="flex flex-col w-full lg:w-[400px] xl:w-[420px] shrink-0 bg-gray-50/70 p-4 sm:p-6 lg:p-8 items-center justify-start lg:overflow-y-auto relative border-t lg:border-t-0 lg:border-l border-gray-100 lg:max-h-[92vh]">
         <button 
+          type="button"
           onClick={onCancel} 
-          className="absolute top-4 right-4 p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer z-10"
+          className="hidden lg:flex absolute top-4 right-4 p-2 hover:bg-gray-150 rounded-full transition-colors text-gray-400 hover:text-gray-600 cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
         
-        <div className="text-center mb-4 lg:mb-6 pt-4 lg:pt-6">
+        <div className="text-center mb-3 lg:mb-6 pt-1 lg:pt-6">
           <span className="text-[10px] font-extrabold text-emerald-800 tracking-[0.2em] uppercase bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/50">
             Aperçu en temps réel
           </span>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Les modifications apparaissent instantanément</p>
+          <p className="text-xs text-gray-400 mt-1.5 font-medium">Les modifications apparaissent instantanément</p>
         </div>
 
-        <div className="flex flex-col gap-4 lg:gap-6 items-center w-full py-2 lg:py-4 shrink-0">
+        <div className="flex flex-col md:flex-row lg:flex-col gap-3 sm:gap-4 lg:gap-6 items-center justify-center w-full py-1 lg:py-4 shrink-0 overflow-x-auto">
           {/* Recto */}
-          <div className="flex flex-col items-center gap-1 w-full">
+          <div className="flex flex-col items-center gap-1">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recto (Face)</span>
-            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.88] lg:scale-95 origin-center bg-white">
+            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.85] sm:scale-90 lg:scale-95 origin-center bg-white">
               <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
                 <IDCard student={previewStudent} schoolInfo={schoolInfo} showCuttingMarks={false} />
               </div>
@@ -783,9 +784,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           </div>
 
           {/* Verso */}
-          <div className="flex flex-col items-center gap-1 w-full">
+          <div className="flex flex-col items-center gap-1">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Verso (Dos)</span>
-            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.88] lg:scale-95 origin-center bg-white">
+            <div className="p-2 lg:p-2.5 bg-gray-100/60 rounded-2xl border border-gray-250/55 shadow-sm scale-[0.85] sm:scale-90 lg:scale-95 origin-center bg-white">
               <div className="rounded-xl overflow-hidden shadow-md border border-gray-300 bg-white shrink-0">
                 <IDCardBack student={previewStudent} schoolInfo={schoolInfo} />
               </div>
@@ -793,7 +794,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
           </div>
         </div>
 
-        <div className="mt-2 lg:mt-4 px-4 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-[280px] w-full shrink-0">
+        <div className="mt-2 lg:mt-4 px-4 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-100/40 max-w-md lg:max-w-[280px] w-full shrink-0">
           <p className="text-[10px] text-emerald-850 font-bold leading-relaxed text-center">
             Note : Les dimensions réelles de la carte (85x54mm) seront respectées lors de l'impression.
           </p>
