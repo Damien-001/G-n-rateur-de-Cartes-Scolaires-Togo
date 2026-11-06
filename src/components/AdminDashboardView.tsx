@@ -63,7 +63,8 @@ import {
   ChevronDown,
   Star,
   EyeOff,
-  PlusCircle
+  PlusCircle,
+  Upload
 } from 'lucide-react';
 import { parseVideoSource, isGooglePhotosUrl } from '../lib/videoHelper';
 import {
@@ -91,7 +92,8 @@ import {
   deleteSchoolByAdmin,
   activateSchoolDirectly,
   createPreassignedLicenseForSchool,
-  purgeOrphanLicenseKeys
+  purgeOrphanLicenseKeys,
+  uploadPlatformAsset
 } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
@@ -861,6 +863,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
   };
 
+  const [isUploadingDemoVideo, setIsUploadingDemoVideo] = useState(false);
+  const [isUploadingDemoPoster, setIsUploadingDemoPoster] = useState(false);
+
   // Mise à jour immédiate des champs vidéo avec cache local instantané
   const updateVideoSettingsField = (field: 'demoVideoUrl' | 'demoVideoTitle' | 'demoVideoPoster', val: string) => {
     setPlatformSettings(prev => {
@@ -868,6 +873,59 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       savePlatformSettings(updated);
       return updated;
     });
+  };
+
+  // Téléversement direct d'un fichier vidéo (.mp4, .webm, .mov) depuis l'appareil
+  const handleUploadDemoVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      setSettingsToast({ type: 'error', message: 'La vidéo dépasse la limite de 50 Mo. Pour une vidéo plus lourde, utilisez YouTube ou Google Drive.' });
+      setTimeout(() => setSettingsToast(null), 5000);
+      e.target.value = '';
+      return;
+    }
+
+    setIsUploadingDemoVideo(true);
+    try {
+      const publicUrl = await uploadPlatformAsset(file, 'videos');
+      updateVideoSettingsField('demoVideoUrl', publicUrl);
+      playAdminChime();
+      setVideoSaveSuccess(true);
+      setSettingsToast({ type: 'success', message: 'Vidéo téléversée et publiée sur la landing page avec succès !' });
+      setTimeout(() => {
+        setVideoSaveSuccess(false);
+        setSettingsToast(null);
+      }, 4500);
+    } catch (err: any) {
+      console.error('Erreur upload vidéo:', err);
+      setSettingsToast({ type: 'error', message: err?.message || 'Erreur lors du téléversement de la vidéo.' });
+      setTimeout(() => setSettingsToast(null), 5000);
+    } finally {
+      setIsUploadingDemoVideo(false);
+      e.target.value = '';
+    }
+  };
+
+  // Téléversement direct d'une image miniature (poster) depuis l'appareil
+  const handleUploadDemoPosterFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDemoPoster(true);
+    try {
+      const publicUrl = await uploadPlatformAsset(file, 'posters');
+      updateVideoSettingsField('demoVideoPoster', publicUrl);
+      playAdminChime();
+      setSettingsToast({ type: 'success', message: 'Image de couverture téléversée avec succès !' });
+      setTimeout(() => setSettingsToast(null), 4000);
+    } catch (err: any) {
+      console.error('Erreur upload miniature:', err);
+      setSettingsToast({ type: 'error', message: err?.message || 'Erreur lors du téléversement de la miniature.' });
+      setTimeout(() => setSettingsToast(null), 5000);
+    } finally {
+      setIsUploadingDemoPoster(false);
+      e.target.value = '';
+    }
   };
 
   // Enregistrement dédié et instantané de la vidéo de présentation
@@ -3321,57 +3379,82 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         </div>
 
                         <div className="space-y-4 pt-1">
-                          {/* Video URL */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                              Lien de la Vidéo (URL)
-                            </label>
+                          {/* Video URL + Upload Fichier Direct */}
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Lien de la Vidéo (URL) ou Fichier Direct
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="file"
+                                  id="admin-demo-video-upload"
+                                  accept="video/mp4,video/webm,video/quicktime,video/*"
+                                  onChange={handleUploadDemoVideoFile}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="admin-demo-video-upload"
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer ${
+                                    isUploadingDemoVideo
+                                      ? 'bg-slate-200 text-slate-500 pointer-events-none'
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  }`}
+                                >
+                                  {isUploadingDemoVideo ? (
+                                    <>
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                                      <span>Téléversement en cours...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Importer une vidéo (.MP4 / WebM)</span>
+                                    </>
+                                  )}
+                                </label>
+                              </div>
+                            </div>
                             <div className="relative">
                               <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                               <input
                                 type="url"
                                 value={platformSettings.demoVideoUrl || ''}
                                 onChange={e => updateVideoSettingsField('demoVideoUrl', e.target.value)}
-                                placeholder="Ex: https://www.youtube.com/watch?v=... ou https://drive.google.com/... ou https://.../video.mp4"
+                                placeholder="Collez un lien YouTube, Google Drive, Vimeo, Loom ou importez un fichier .MP4 ci-dessus"
                                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                               />
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 font-medium pt-0.5">
                               <span className="font-bold text-slate-600">Plateformes supportées :</span>
                               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">YouTube (Recommandé)</span>
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">Import direct .MP4 / WebM</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Google Drive</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Loom</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Vimeo</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Fichier .MP4 / WebM</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Dailymotion / Streamable</span>
                             </div>
                           </div>
 
-                          {/* Alerte spécifique Google Photos */}
+                          {/* Alerte spécifique Google Photos avec bouton d'import direct */}
                           {isGooglePhotosUrl(platformSettings.demoVideoUrl) && (
-                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-2.5">
-                              <div className="flex items-center gap-2 font-black text-xs text-amber-900">
-                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                                <span>Lien Google Photos détecté — Non intégrable directement</span>
+                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 font-black text-xs text-amber-900">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                  <span>Lien Google Photos détecté — Utilisez l'import direct ci-dessous</span>
+                                </div>
+                                <label
+                                  htmlFor="admin-demo-video-upload"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-xs cursor-pointer transition-all"
+                                >
+                                  <Upload className="w-3.5 h-3.5" />
+                                  <span>Téléverser votre vidéo (.MP4) depuis l'appareil</span>
+                                </label>
                               </div>
                               <p className="text-[11px] leading-relaxed text-amber-900/90 font-medium">
-                                Google bloque automatiquement la lecture de ses photos et vidéos sur des sites web externes pour des raisons de confidentialité et de sécurité (en-tête de restriction <code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">SAMEORIGIN</code>). Votre vidéo restera invisible pour les visiteurs avec ce lien.
+                                Google Photos bloque la lecture sur les sites externes (<code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">SAMEORIGIN</code>). Téléchargez simplement votre vidéo depuis Google Photos sur votre appareil puis cliquez sur <strong>« Téléverser votre vidéo (.MP4) »</strong> ci-dessus, ou utilisez un lien <strong>YouTube / Google Drive</strong>.
                               </p>
-                              <div className="bg-white/90 rounded-xl p-3.5 border border-amber-200 space-y-2 text-[11px] text-slate-800">
-                                <p className="font-black text-amber-950 text-xs">
-                                  Comment faire fonctionner votre vidéo en 2 minutes :
-                                </p>
-                                <ol className="list-decimal list-inside space-y-1.5 font-medium">
-                                  <li>
-                                    <strong className="text-emerald-700">Option 1 (Recommandée & Gratuite) — YouTube :</strong> Téléversez votre vidéo sur YouTube, réglez la visibilité sur <strong>« Non répertoriée »</strong> (personne ne peut la trouver par recherche, seuls les visiteurs de SukuPass la verront), puis collez le lien YouTube ici.
-                                  </li>
-                                  <li>
-                                    <strong className="text-emerald-700">Option 2 — Google Drive :</strong> Déposez la vidéo sur votre Google Drive, clic droit &gt; <em>Partager</em> &gt; sélectionnez <strong>« Tous les utilisateurs disposant du lien »</strong> (Lecteur), puis collez le lien de partage ici.
-                                  </li>
-                                  <li>
-                                    <strong className="text-emerald-700">Option 3 — Fichier direct :</strong> Un fichier direct hébergé se terminant par <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-[10px]">.mp4</code>.
-                                  </li>
-                                </ol>
-                              </div>
                             </div>
                           )}
 
@@ -3392,14 +3475,45 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
                           {/* Video Poster Image (Optional) */}
                           <div className="space-y-1.5">
-                            <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                              Image de Couverture / Miniature (Optionnel)
-                            </label>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                Image de Couverture / Miniature (Optionnel)
+                              </label>
+                              <div>
+                                <input
+                                  type="file"
+                                  id="admin-demo-poster-upload"
+                                  accept="image/*"
+                                  onChange={handleUploadDemoPosterFile}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="admin-demo-poster-upload"
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border ${
+                                    isUploadingDemoPoster
+                                      ? 'bg-slate-100 text-slate-400 border-slate-200 pointer-events-none'
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  {isUploadingDemoPoster ? (
+                                    <>
+                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                      <span>Envoi...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-3 h-3 text-slate-500" />
+                                      <span>Importer une image</span>
+                                    </>
+                                  )}
+                                </label>
+                              </div>
+                            </div>
                             <input
                               type="url"
                               value={platformSettings.demoVideoPoster || ''}
                               onChange={e => updateVideoSettingsField('demoVideoPoster', e.target.value)}
-                              placeholder="Ex: https://.../image-miniature.jpg"
+                              placeholder="Ex: https://.../image-miniature.jpg ou importez une image ci-dessus"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 outline-none text-xs font-bold text-slate-900 focus:border-emerald-500 bg-slate-50/50"
                             />
                             <p className="text-[10px] text-slate-400 font-medium">Image affichée sur le lecteur avant le démarrage de la vidéo</p>

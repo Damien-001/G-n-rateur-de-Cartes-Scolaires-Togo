@@ -497,6 +497,29 @@ export async function uploadImage(
   }
 }
 
+export async function uploadPlatformAsset(
+  file: File,
+  folder: 'videos' | 'posters'
+): Promise<string> {
+  const rawExt = (file.name.split('.').pop() ?? (folder === 'videos' ? 'mp4' : 'jpg')).toLowerCase();
+  const safeExt = rawExt.replace(/[^a-z0-9]/g, '') || (folder === 'videos' ? 'mp4' : 'jpg');
+  const path = `platform/${folder}/demo-${Date.now()}.${safeExt}`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, {
+      upsert: true,
+      contentType: file.type || (folder === 'videos' ? 'video/mp4' : 'image/jpeg')
+    });
+
+  if (error) {
+    throw new Error(error.message || "Échec du téléversement sur le stockage cloud.");
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export function dataUrlToFile(dataUrl: string, filename: string): File {
   const [header, base64] = dataUrl.split(',');
   const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg';
