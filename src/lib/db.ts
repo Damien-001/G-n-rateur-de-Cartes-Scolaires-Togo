@@ -391,8 +391,21 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
 }
 
 export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<void> {
+  // Préserver le statut d'abonnement/quota le plus récent en cache local (évite qu'un debounce écrase une activation Admin)
+  const latestLocal = getStoredSchoolInfo(userId);
+  const mergedInfo: SchoolInfo = {
+    ...info,
+    subscriptionPlan: (latestLocal?.subscriptionPlan && latestLocal.subscriptionPlan !== info.subscriptionPlan && info.subscriptionPlan === 'free')
+      ? latestLocal.subscriptionPlan
+      : (info.subscriptionPlan ?? latestLocal?.subscriptionPlan ?? 'free'),
+    subscriptionExpiresAt: info.subscriptionExpiresAt || latestLocal?.subscriptionExpiresAt || '',
+    customQuota: (latestLocal?.customQuota && latestLocal.customQuota !== 15 && (!info.customQuota || info.customQuota === 15))
+      ? latestLocal.customQuota
+      : (info.customQuota ?? latestLocal?.customQuota ?? 15),
+  };
+
   // 1. Sauvegarde locale immédiate
-  setStoredSchoolInfo(userId, info);
+  setStoredSchoolInfo(userId, mergedInfo);
 
   // Ne jamais tenter d'écrire dans Supabase si userId n'est pas un UUID valide (ex: admin, invité démo)
   if (!isValidUuid(userId)) {
@@ -402,7 +415,7 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
   if (!isAppOnline()) {
     enqueueSyncAction(userId, {
       type: 'save_school_info',
-      payload: info
+      payload: mergedInfo
     });
     return;
   }
@@ -410,19 +423,19 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
   try {
     const row: DbSchoolInfo = {
       user_id: userId,
-      name: info.name,
-      logo_url: info.logoUrl || null,
-      signature_url: info.signatureUrl || null,
-      stamp_url: info.stampUrl || null,
+      name: mergedInfo.name,
+      logo_url: mergedInfo.logoUrl || null,
+      signature_url: mergedInfo.signatureUrl || null,
+      stamp_url: mergedInfo.stampUrl || null,
       card_colors: {
-        ...(info.cardColors ?? DEFAULT_CARD_COLORS),
-        schoolType: info.schoolType,
-        location: info.location,
-        phone: info.phone,
-        subscriptionPlan: info.subscriptionPlan ?? 'free',
-        subscriptionExpiresAt: info.subscriptionExpiresAt ?? '',
-        region: info.region ?? 'Grand Lomé',
-        customQuota: info.customQuota ?? 15,
+        ...(mergedInfo.cardColors ?? DEFAULT_CARD_COLORS),
+        schoolType: mergedInfo.schoolType,
+        location: mergedInfo.location,
+        phone: mergedInfo.phone,
+        subscriptionPlan: mergedInfo.subscriptionPlan ?? 'free',
+        subscriptionExpiresAt: mergedInfo.subscriptionExpiresAt ?? '',
+        region: mergedInfo.region ?? 'Grand Lomé',
+        customQuota: mergedInfo.customQuota ?? 15,
       } as any,
       updated_at: new Date().toISOString(),
     };
@@ -1167,11 +1180,12 @@ export async function updateSchoolSubscription(
     }
   } catch { }
 
-  // 3. Émettre les événements globaux immédiatement (0ms) pour une réactivité instantanée
+  // 3. Émettre les événements globaux immédiatement (0ms) + Broadcast WebSocket (<50ms) vers l'école
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: plan, subscriptionExpiresAt: expiresAt } }));
-    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan, expiresAt } }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { userId: schoolUserId, plan, expiresAt, schoolName: cleanName } }));
   }
+  broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, schoolName: cleanName, timestamp });
 
   // 4. Synchronisation Supabase et journal en arrière-plan sans bloquer l'UI
   const backgroundSync = async () => {
@@ -1198,6 +1212,8 @@ export async function updateSchoolSubscription(
       };
 
       await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+      // Re-broadcast after DB commit so any newly connected peer receives the update
+      broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, schoolName: cleanName, timestamp });
     } catch (err) {
       console.warn('updateSchoolSubscription Supabase error:', err);
     }
@@ -1421,12 +1437,16 @@ export async function updateSchoolCustomQuota(
     }
   } catch { }
 
-  // 3. Émettre l'événement temps-réel immédiatement (0ms)
+  // 3. Émettre l'événement temps-réel immédiatement (0ms) + Broadcast WebSocket (<50ms) vers l'école
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_school_registered', {
       detail: { userId: schoolUserId, customQuota: newQuota }
     }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', {
+      detail: { userId: schoolUserId, customQuota: newQuota, schoolName: cleanName }
+    }));
   }
+  broadcastSchoolStatusLive({ userId: schoolUserId, customQuota: newQuota, schoolName: cleanName, timestamp });
 
   // 4. Synchronisation Supabase en arrière-plan sans bloquer
   const syncRemote = async () => {
@@ -1452,6 +1472,7 @@ export async function updateSchoolCustomQuota(
       };
 
       await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+      broadcastSchoolStatusLive({ userId: schoolUserId, customQuota: newQuota, schoolName: cleanName, timestamp });
       await saveAdminLog(schoolUserId, 'Quota Mis à Jour', `Nouveau quota attribué : ${newQuota} cartes`, cleanName);
     } catch (e: any) {
       console.warn('updateSchoolCustomQuota background sync error:', e);
@@ -1995,12 +2016,13 @@ export async function activateSchoolDirectly(
       );
     } catch { }
 
-    // 6. Émettre les événements globaux pour rafraîchissement temps réel
+    // 6. Émettre les événements globaux + Broadcast WebSocket (<50ms) pour rafraîchissement temps réel sans rechargement
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: 'pro', subscriptionExpiresAt: expiresAtStr } }));
-      window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
+      window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { userId: schoolUserId, plan: 'pro', expiresAt: expiresAtStr, schoolName: cleanName } }));
       window.dispatchEvent(new CustomEvent('cardschool_licenses_updated', { detail: keys }));
     }
+    broadcastSchoolStatusLive({ userId: schoolUserId, plan: 'pro', expiresAt: expiresAtStr, schoolName: cleanName, timestamp: nowIso });
 
     return {
       success: true,
@@ -2196,9 +2218,10 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
   );
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId } }));
-    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { plan: 'pro', expiresAt: expiresAtStr } }));
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', { detail: { userId: schoolUserId, subscriptionPlan: 'pro', subscriptionExpiresAt: expiresAtStr } }));
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', { detail: { userId: schoolUserId, plan: 'pro', expiresAt: expiresAtStr, schoolName } }));
   }
+  broadcastSchoolStatusLive({ userId: schoolUserId, plan: 'pro', expiresAt: expiresAtStr, schoolName, timestamp: foundKey.usedAt });
 
   return {
     success: true,
@@ -2246,7 +2269,101 @@ function emitIncomingChatMessage(incomingMsg: ChatMessage) {
   }
 }
 
-/** Initialize the shared WebSocket Broadcast + Postgres Changes + BroadcastChannel bus for <50ms chat delivery */
+export interface LiveSchoolStatusPayload {
+  userId: string;
+  plan?: 'free' | 'pro' | 'suspended';
+  expiresAt?: string;
+  customQuota?: number;
+  schoolName?: string;
+  timestamp?: string;
+}
+
+function applyIncomingSchoolStatusUpdate(payload: LiveSchoolStatusPayload) {
+  if (!payload || !payload.userId) return;
+  const nowIso = payload.timestamp || new Date().toISOString();
+
+  // 1. Update local school cache
+  try {
+    const localKey = 'cartes_togo_school_' + payload.userId;
+    const localRaw = localStorage.getItem(localKey);
+    if (localRaw) {
+      const parsed = JSON.parse(localRaw);
+      if (payload.plan !== undefined) parsed.subscriptionPlan = payload.plan;
+      if (payload.expiresAt !== undefined) parsed.subscriptionExpiresAt = payload.expiresAt;
+      if (payload.customQuota !== undefined) parsed.customQuota = payload.customQuota;
+      parsed.updatedAt = nowIso;
+      localStorage.setItem(localKey, JSON.stringify(parsed));
+    }
+  } catch { }
+
+  // 2. Update registered schools registry
+  try {
+    const registered = getRegisteredSchoolsRegistry();
+    const existing = registered.find(s => s.userId === payload.userId);
+    if (existing) {
+      if (payload.plan !== undefined) existing.subscriptionPlan = payload.plan;
+      if (payload.expiresAt !== undefined) existing.subscriptionExpiresAt = payload.expiresAt;
+      if (payload.customQuota !== undefined) existing.customQuota = payload.customQuota;
+      existing.updatedAt = nowIso;
+      saveRegisteredSchoolRegistry(existing);
+    }
+  } catch { }
+
+  // 3. Emit instant DOM events for both School App and Admin Dashboard
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cardschool_subscription_updated', {
+      detail: payload
+    }));
+    window.dispatchEvent(new CustomEvent('cardschool_school_registered', {
+      detail: {
+        userId: payload.userId,
+        subscriptionPlan: payload.plan,
+        subscriptionExpiresAt: payload.expiresAt,
+        customQuota: payload.customQuota
+      }
+    }));
+  }
+}
+
+export function broadcastSchoolStatusLive(payload: LiveSchoolStatusPayload) {
+  try {
+    if (localBroadcastBus) {
+      localBroadcastBus.postMessage({ __event: 'school_status_updated', payload });
+    }
+  } catch { }
+
+  try {
+    ensureLiveChatBus();
+    if (liveChatChannel && liveChatChannelReady) {
+      liveChatChannel.send({
+        type: 'broadcast',
+        event: 'school_status_updated',
+        payload
+      }).catch(() => { });
+    }
+  } catch { }
+}
+
+export function broadcastPlatformSettingsLive(settings: PlatformSettings) {
+  try {
+    if (localBroadcastBus) {
+      localBroadcastBus.postMessage({ __event: 'platform_settings_updated', payload: settings });
+    }
+  } catch { }
+
+  try {
+    ensureLiveChatBus();
+    if (liveChatChannel && liveChatChannelReady) {
+      liveChatChannel.send({
+        type: 'broadcast',
+        event: 'platform_settings_updated',
+        payload: settings
+      }).catch(() => { });
+    }
+  } catch { }
+}
+
+/** Initialize the shared WebSocket Broadcast + Postgres Changes + BroadcastChannel bus for <50ms chat & account status delivery */
 export function ensureLiveChatBus(): void {
   if (typeof window === 'undefined') return;
 
@@ -2254,7 +2371,12 @@ export function ensureLiveChatBus(): void {
     try {
       localBroadcastBus = new BroadcastChannel('sukupass_live_chat_bus');
       localBroadcastBus.onmessage = (ev) => {
-        if (ev?.data && ev.data.id) {
+        if (!ev?.data) return;
+        if (ev.data.__event === 'school_status_updated' && ev.data.payload) {
+          applyIncomingSchoolStatusUpdate(ev.data.payload as LiveSchoolStatusPayload);
+        } else if (ev.data.__event === 'platform_settings_updated' && ev.data.payload) {
+          window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', { detail: ev.data.payload }));
+        } else if (ev.data.id && ev.data.schoolId) {
           emitIncomingChatMessage(ev.data as ChatMessage);
         }
       };
@@ -2276,6 +2398,23 @@ export function ensureLiveChatBus(): void {
           emitIncomingChatMessage(msg);
         }
       })
+      .on('broadcast', { event: 'school_status_updated' }, (payload: any) => {
+        const data = (payload?.payload || payload) as LiveSchoolStatusPayload;
+        if (data && data.userId) {
+          applyIncomingSchoolStatusUpdate(data);
+        }
+      })
+      .on('broadcast', { event: 'platform_settings_updated' }, (payload: any) => {
+        const settings = (payload?.payload || payload) as PlatformSettings;
+        if (settings && typeof settings === 'object') {
+          try {
+            const jsonStr = JSON.stringify(settings);
+            localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, jsonStr);
+            localStorage.setItem('cartes_togo_platform_settings', jsonStr);
+          } catch { }
+          window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', { detail: settings }));
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload: any) => {
         const row = payload?.new as any;
         if (row && row.school_id) {
@@ -2290,6 +2429,30 @@ export function ensureLiveChatBus(): void {
             status: row.status || 'sent',
           };
           emitIncomingChatMessage(incomingMsg);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'school_info' }, (payload: any) => {
+        const row = payload?.new as any;
+        if (row && row.user_id) {
+          if (row.user_id === PLATFORM_SETTINGS_SYSTEM_USER_ID && row.card_colors) {
+            window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated'));
+            return;
+          }
+          if (row.user_id === LICENSE_KEYS_SYSTEM_USER_ID) {
+            window.dispatchEvent(new CustomEvent('cardschool_licenses_updated'));
+            return;
+          }
+          const colors = typeof row.card_colors === 'string'
+            ? (() => { try { return JSON.parse(row.card_colors); } catch { return {}; } })()
+            : (row.card_colors || {});
+          applyIncomingSchoolStatusUpdate({
+            userId: row.user_id,
+            plan: colors.subscriptionPlan,
+            expiresAt: colors.subscriptionExpiresAt,
+            customQuota: colors.customQuota,
+            schoolName: row.name,
+            timestamp: row.updated_at
+          });
         }
       })
       .subscribe((status: string) => {
@@ -2966,12 +3129,13 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     console.warn('savePlatformSettings localStorage error:', err);
   }
 
-  // 2. Émission live instantanée (0ms) pour actualisation immédiate de la Landing Page et de l'Admin
+  // 2. Émission live instantanée (0ms) + Broadcast WebSocket (<50ms) pour actualisation immédiate de la Landing Page et des Écoles
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', {
       detail: settingsToSave
     }));
   }
+  broadcastPlatformSettingsLive(settingsToSave);
 
   // 3. Synchronisation distante
   try {

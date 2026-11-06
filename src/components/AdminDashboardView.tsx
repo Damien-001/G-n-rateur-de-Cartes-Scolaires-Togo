@@ -100,7 +100,10 @@ import {
   createPreassignedLicenseForSchool,
   purgeOrphanLicenseKeys,
   uploadPlatformAsset,
-  ensureLiveChatBus
+  ensureLiveChatBus,
+  getRegisteredSchoolsRegistry,
+  getLocalLicenseKeys,
+  CHAT_MESSAGES_STORAGE_KEY
 } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { isAppOnline } from '../lib/offlineStorage';
@@ -141,7 +144,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onLogout,
   onSwitchToSchoolView
 }) => {
-  const [schools, setSchools] = useState<AdminSchoolDetail[]>([]);
+  const [schools, setSchools] = useState<AdminSchoolDetail[]>(() => {
+    try {
+      return getRegisteredSchoolsRegistry();
+    } catch {
+      return [];
+    }
+  });
   const [totalStudents, setTotalStudents] = useState<number>(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
@@ -164,7 +173,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       return next;
     });
   };
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      return getRegisteredSchoolsRegistry().length === 0;
+    } catch {
+      return true;
+    }
+  });
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'schools' | 'payments' | 'licenses' | 'pricing' | 'analytics' | 'settings' | 'logs'>('overview');
   const activeSubTabRef = useRef(activeSubTab);
   useEffect(() => {
@@ -193,14 +208,27 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [isSubmittingNewSchool, setIsSubmittingNewSchool] = useState(false);
 
   // License keys state
-  const [licenseKeys, setLicenseKeys] = useState<LicenseKey[]>([]);
+  const [licenseKeys, setLicenseKeys] = useState<LicenseKey[]>(() => {
+    try {
+      return getLocalLicenseKeys();
+    } catch {
+      return [];
+    }
+  });
   const [keyFilter, setKeyFilter] = useState<'all' | 'available' | 'used' | 'suspended'>('all');
   const [newKeyTargetSchool, setNewKeyTargetSchool] = useState('');
   const [newKeyNote, setNewKeyNote] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Chat & Payment proofs state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedSchoolChatId, setSelectedSchoolChatId] = useState<string | null>(null);
   const [adminReplyText, setAdminReplyText] = useState('');
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -312,9 +340,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   useEffect(() => {
     ensureLiveChatBus();
-    loadData();
+    const hasInitialCache = getRegisteredSchoolsRegistry().length > 0;
+    loadData(hasInitialCache);
 
     const handleDataChanged = () => {
+      loadData(true);
+    };
+
+    const handleLiveSchoolSubscriptionUpdate = (e: any) => {
+      const detail = e?.detail;
+      if (detail && detail.userId) {
+        setSchools(prev => prev.map(s => {
+          if (s.userId !== detail.userId) return s;
+          return {
+            ...s,
+            subscriptionPlan: detail.plan ?? detail.subscriptionPlan ?? s.subscriptionPlan,
+            subscriptionExpiresAt: detail.expiresAt ?? detail.subscriptionExpiresAt ?? s.subscriptionExpiresAt,
+            customQuota: detail.customQuota ?? s.customQuota
+          };
+        }));
+      }
       loadData(true);
     };
 
@@ -361,23 +406,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     // Live school registration event handler
     const handleSchoolRegistered = (e: any) => {
       const school = e.detail;
-      if (school && school.userId !== 'admin-super-user-id') {
-        playAdminChime();
-        setNewAccountNotification({
-          id: school.userId || Date.now().toString(),
-          name: school.name || 'Nouvel Établissement',
-          schoolType: school.schoolType || 'Établissement',
-          location: school.location || 'Togo',
-          managerEmail: school.managerEmail || school.email || '',
-          managerName: school.managerName || '',
-          time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      if (school && school.userId && school.userId !== 'admin-super-user-id' && school.name) {
+        setSchools(prev => {
+          const alreadyKnown = prev.some(s => s.userId === school.userId);
+          if (!alreadyKnown) {
+            playAdminChime();
+            setNewAccountNotification({
+              id: school.userId || Date.now().toString(),
+              name: school.name || 'Nouvel Établissement',
+              schoolType: school.schoolType || 'Établissement',
+              location: school.location || 'Togo',
+              managerEmail: school.managerEmail || school.email || '',
+              managerName: school.managerName || '',
+              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            });
+            setUnreadNewAccountsCount(c => c + 1);
+          }
+          return prev;
         });
-        setUnreadNewAccountsCount(prev => prev + 1);
         fetchAllSchools().then(setSchools).catch(() => { });
       }
     };
     window.addEventListener('cardschool_school_registered', handleSchoolRegistered);
     window.addEventListener('cardschool_school_registered', handleDataChanged);
+    window.addEventListener('cardschool_subscription_updated', handleLiveSchoolSubscriptionUpdate);
     window.addEventListener('cardschool_school_deleted', handleDataChanged);
     window.addEventListener('cardschool_audit_log_added', handleDataChanged);
     window.addEventListener('cardschool_platform_settings_updated', handleDataChanged);
@@ -457,6 +509,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     return () => {
       window.removeEventListener('cardschool_school_registered', handleSchoolRegistered);
       window.removeEventListener('cardschool_school_registered', handleDataChanged);
+      window.removeEventListener('cardschool_subscription_updated', handleLiveSchoolSubscriptionUpdate);
       window.removeEventListener('cardschool_school_deleted', handleDataChanged);
       window.removeEventListener('cardschool_audit_log_added', handleDataChanged);
       window.removeEventListener('cardschool_platform_settings_updated', handleDataChanged);

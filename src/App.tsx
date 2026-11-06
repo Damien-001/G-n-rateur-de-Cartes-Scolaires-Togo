@@ -35,8 +35,8 @@ import {
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid } from './lib/db';
-import { setStoredSchoolInfo } from './lib/offlineStorage';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
+import { setStoredSchoolInfo, getStoredSchoolInfo, getStoredStudents, isAppOnline } from './lib/offlineStorage';
 import { recordPageView } from './lib/analytics';
 import { formatDateDisplay } from './lib/utils';
 import { startInactivityTimer, stopInactivityTimer } from './lib/inactivity';
@@ -59,6 +59,25 @@ const SchoolSettingsView = React.lazy(() => import('./components/SchoolSettingsV
 const CardDesignView = React.lazy(() => import('./components/CardDesignView').then(m => ({ default: m.CardDesignView })));
 const AdminDashboardView = React.lazy(() => import('./components/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
 
+const playSchoolStatusChime = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+    gain.gain.setValueAtTime(0.14, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.42);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.44);
+  } catch { }
+};
 
 interface AppProps {
   session: Session;
@@ -66,24 +85,47 @@ interface AppProps {
 }
 
 export default function App({ session, onLogout }: AppProps) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(() => ({
-    ...DEFAULT_SCHOOL_INFO,
-    name: session.schoolName
-      ? session.schoolName.toUpperCase()
-      : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : ''),
-    schoolType: session.schoolType || 'Lycée',
-    location: session.location || '',
-    phone: session.phone || '',
-  }));
+  const [students, setStudents] = useState<Student[]>(() => {
+    try {
+      return session.userId ? getStoredStudents(session.userId) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(() => {
+    try {
+      const cached = session.userId ? getStoredSchoolInfo(session.userId) : null;
+      if (cached) return cached;
+    } catch { }
+    return {
+      ...DEFAULT_SCHOOL_INFO,
+      name: session.schoolName
+        ? session.schoolName.toUpperCase()
+        : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : ''),
+      schoolType: session.schoolType || 'Lycée',
+      location: session.location || '',
+      phone: session.phone || '',
+    };
+  });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSchoolSettingsOpen, setIsSchoolSettingsOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    try {
+      if (session.userId && getStoredSchoolInfo(session.userId)) return false;
+    } catch { }
+    return true;
+  });
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [liveStatusToast, setLiveStatusToast] = useState<{
+    type: 'pro' | 'quota' | 'suspended' | 'reactivated';
+    title: string;
+    message: string;
+  } | null>(null);
+  const skipNextSchoolSaveRef = useRef<boolean>(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [printMode, setPrintMode] = useState<'recto' | 'recto-verso'>('recto');
   const [cardsPerPage, setCardsPerPage] = useState<8 | 10>(10);
@@ -396,26 +438,28 @@ export default function App({ session, onLogout }: AppProps) {
     }
   };
 
-  // ── Chargement initial depuis Supabase ──────────────────────────────────────
+  // ── Chargement initial depuis Supabase (Stale-While-Revalidate 0ms) ─────────
   useEffect(() => {
     const loadData = async () => {
-      // Si c'est le super-admin, ne pas charger ni créer d'école élève
       if (isSuperAdminUser) {
         setLoading(false);
         return;
       }
 
-      setLoading(true);
+      const hasCached = Boolean(session.userId && getStoredSchoolInfo(session.userId));
+      if (!hasCached) {
+        setLoading(true);
+      }
       setLoadingTimeout(false);
       const startTime = performance.now();
 
-      // Timeout de 15 secondes pour connexions lentes
-      loadingTimer.current = setTimeout(() => {
-        setLoadingTimeout(true);
-      }, 15000);
+      if (!hasCached) {
+        loadingTimer.current = setTimeout(() => {
+          setLoadingTimeout(true);
+        }, 15000);
+      }
 
       try {
-        // Charger school_info et students en PARALLÈLE (élimine la cascade réseau)
         const [fetchedSchool, fetchedStudents] = await Promise.all([
           fetchSchoolInfo(session.userId),
           fetchStudents(session.userId)
@@ -425,6 +469,7 @@ export default function App({ session, onLogout }: AppProps) {
             fetchedSchool.name = (session.schoolName || session.fullName).toUpperCase();
             saveSchoolInfo(fetchedSchool, session.userId).catch(() => { });
           }
+          skipNextSchoolSaveRef.current = true;
           setSchoolInfo(fetchedSchool);
           registerSchoolRecord({
             ...fetchedSchool,
@@ -452,6 +497,7 @@ export default function App({ session, onLogout }: AppProps) {
             phone: session.phone || '',
             subscriptionPlan: 'free',
           };
+          skipNextSchoolSaveRef.current = true;
           setSchoolInfo(initialInfo);
           saveSchoolInfo(initialInfo, session.userId).catch(() => { });
           registerSchoolRecord({
@@ -469,16 +515,16 @@ export default function App({ session, onLogout }: AppProps) {
           ).catch(() => { });
         }
 
-        // Affecter les étudiants chargés en parallèle
         setStudents(fetchedStudents);
 
         const endTime = performance.now();
-        console.log(`🚀 Chargement total en ${(endTime - startTime).toFixed(0)}ms`);
+        console.log(`🚀 Synchronisation initiale en ${(endTime - startTime).toFixed(0)}ms`);
       } catch (error) {
         console.error('Erreur chargement données:', error);
-        // Continuer même en cas d'erreur
-        setSchoolInfo(DEFAULT_SCHOOL_INFO);
-        setStudents([]);
+        if (!hasCached) {
+          setSchoolInfo(DEFAULT_SCHOOL_INFO);
+          setStudents([]);
+        }
       } finally {
         if (loadingTimer.current) clearTimeout(loadingTimer.current);
         setLoading(false);
@@ -493,55 +539,154 @@ export default function App({ session, onLogout }: AppProps) {
     };
   }, [session.userId]);
 
-  // ── Écouteur temps-réel des activations et mises à jour d'abonnement ───────────
+  // ── Écouteur temps-réel (<50ms WebSocket + Postgres Changes + Heartbeat 3s) ──
   useEffect(() => {
-    // Si c'est l'admin, ne pas écouter les changements d'abonnement d'école
     if (isSuperAdminUser) {
       return;
     }
 
-    const handleSubscriptionChange = (e: any) => {
-      if (e?.detail?.plan) {
-        setSchoolInfo(prev => ({
+    ensureLiveChatBus();
+
+    const applyRemoteUpdate = (incoming: {
+      plan?: 'free' | 'pro' | 'suspended';
+      expiresAt?: string;
+      customQuota?: number;
+    }) => {
+      setSchoolInfo(prev => {
+        const nextPlan = incoming.plan !== undefined ? incoming.plan : prev.subscriptionPlan;
+        const nextExpires = incoming.expiresAt !== undefined ? incoming.expiresAt : prev.subscriptionExpiresAt;
+        const nextQuota = incoming.customQuota !== undefined ? incoming.customQuota : prev.customQuota;
+
+        const planChanged = nextPlan !== prev.subscriptionPlan;
+        const expiresChanged = nextExpires !== prev.subscriptionExpiresAt;
+        const quotaChanged = nextQuota !== undefined && nextQuota !== (prev.customQuota || 15);
+
+        if (!planChanged && !expiresChanged && !quotaChanged) {
+          return prev;
+        }
+
+        if (planChanged) {
+          playSchoolStatusChime();
+          if (nextPlan === 'pro') {
+            setLiveStatusToast({
+              type: 'pro',
+              title: '🎉 Compte PRO Illimité Activé en Direct !',
+              message: `Votre abonnement PRO vient d'être activé instantanément${nextExpires ? ` jusqu'au ${nextExpires}` : ''}. Toutes les limites sont levées !`
+            });
+          } else if (nextPlan === 'suspended') {
+            setLiveStatusToast({
+              type: 'suspended',
+              title: '⚠️ Compte Suspendu',
+              message: 'Votre accès vient d\'être suspendu par l\'administration.'
+            });
+          } else if (nextPlan === 'free' && prev.subscriptionPlan === 'suspended') {
+            setLiveStatusToast({
+              type: 'reactivated',
+              title: '✅ Compte Réactivé',
+              message: 'Votre accès vient d\'être rétabli par l\'administration.'
+            });
+          }
+          setTimeout(() => setLiveStatusToast(null), 8000);
+        } else if (quotaChanged && nextQuota) {
+          playSchoolStatusChime();
+          setLiveStatusToast({
+            type: 'quota',
+            title: '✨ Quota Mis à Jour en Direct !',
+            message: `Votre quota de cartes gratuites est désormais de ${nextQuota} élèves.`
+          });
+          setTimeout(() => setLiveStatusToast(null), 7000);
+        }
+
+        const updated: SchoolInfo = {
           ...prev,
-          subscriptionPlan: e.detail.plan,
-          subscriptionExpiresAt: e.detail.expiresAt || prev.subscriptionExpiresAt
-        }));
-      } else {
+          subscriptionPlan: nextPlan,
+          subscriptionExpiresAt: nextExpires,
+          customQuota: nextQuota ?? prev.customQuota
+        };
+        skipNextSchoolSaveRef.current = true;
+        setStoredSchoolInfo(session.userId, updated);
+        return updated;
+      });
+    };
+
+    const handleSubscriptionChange = (e: any) => {
+      const detail = e?.detail;
+      if (detail && detail.userId && detail.userId !== session.userId) {
+        return;
+      }
+      if (detail && (detail.plan !== undefined || detail.subscriptionPlan !== undefined || detail.customQuota !== undefined)) {
+        applyRemoteUpdate({
+          plan: detail.plan ?? detail.subscriptionPlan,
+          expiresAt: detail.expiresAt ?? detail.subscriptionExpiresAt,
+          customQuota: detail.customQuota
+        });
+      } else if (isValidUuid(session.userId)) {
         fetchSchoolInfo(session.userId).then(s => {
-          if (s) setSchoolInfo(s);
+          if (s) {
+            applyRemoteUpdate({
+              plan: s.subscriptionPlan,
+              expiresAt: s.subscriptionExpiresAt,
+              customQuota: s.customQuota
+            });
+          }
         }).catch(() => { });
       }
     };
 
+    const checkRemoteSchoolStatus = () => {
+      if (!isAppOnline() || !isValidUuid(session.userId)) return;
+      fetchSchoolInfo(session.userId).then(s => {
+        if (s) {
+          applyRemoteUpdate({
+            plan: s.subscriptionPlan,
+            expiresAt: s.subscriptionExpiresAt,
+            customQuota: s.customQuota
+          });
+        }
+      }).catch(() => { });
+    };
+
     const handleStorageChange = (e: StorageEvent) => {
-      // Ne réagir que si la clé modifiée concerne spécifiquement l'école actuelle
       if (e?.key && !e.key.includes(session.userId) && !e.key.includes('subscription')) {
         return;
       }
-      if (!isValidUuid(session.userId)) {
-        return;
+      checkRemoteSchoolStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkRemoteSchoolStatus();
       }
-      fetchSchoolInfo(session.userId).then(s => {
-        if (s) setSchoolInfo(s);
-      }).catch(() => { });
     };
 
     window.addEventListener('cardschool_subscription_updated', handleSubscriptionChange);
     window.addEventListener('cardschool_school_registered', handleSubscriptionChange);
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', checkRemoteSchoolStatus);
+    window.addEventListener('online', checkRemoteSchoolStatus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Heartbeat léger toutes les 3s pour garantir l'instantanéité même derrière un pare-feu bloquant WebSocket
+    const heartbeat = setInterval(checkRemoteSchoolStatus, 3000);
 
     return () => {
       window.removeEventListener('cardschool_subscription_updated', handleSubscriptionChange);
       window.removeEventListener('cardschool_school_registered', handleSubscriptionChange);
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', checkRemoteSchoolStatus);
+      window.removeEventListener('online', checkRemoteSchoolStatus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(heartbeat);
     };
-  }, [session.userId, session.email]);
+  }, [session.userId, session.email, isSuperAdminUser]);
 
   // ── Sauvegarde school_info avec debounce (évite trop d'appels) ──────────────
   useEffect(() => {
     if (loading) return;
-    // Ne jamais auto-sauvegarder sur Supabase pour le super-admin ou un compte local non-UUID
+    if (skipNextSchoolSaveRef.current) {
+      skipNextSchoolSaveRef.current = false;
+      return;
+    }
     if (isSuperAdminUser || !isValidUuid(session.userId)) {
       if (session.userId && !isValidUuid(session.userId)) {
         setStoredSchoolInfo(session.userId, schoolInfo);
@@ -555,7 +700,7 @@ export default function App({ session, onLogout }: AppProps) {
         .catch(err => {
           console.error('Erreur sauvegarde school info:', err);
         });
-    }, 2000);
+    }, 1200);
     return () => {
       if (schoolInfoSaveTimer.current) clearTimeout(schoolInfoSaveTimer.current);
     };
@@ -1769,6 +1914,34 @@ export default function App({ session, onLogout }: AppProps) {
             </button>
           </div>
         </header>
+        {/* Bandeau temps-réel d'activation PRO / mise à jour de quota */}
+        {liveStatusToast && (
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[110] px-5 py-4 rounded-2xl flex items-start sm:items-center justify-between gap-4 shadow-2xl no-print border max-w-lg w-[calc(100%-2rem)] animate-fadeIn ${
+            liveStatusToast.type === 'pro' || liveStatusToast.type === 'reactivated'
+              ? 'bg-emerald-600 text-white border-emerald-400/40 shadow-emerald-950/20'
+              : liveStatusToast.type === 'quota'
+                ? 'bg-teal-600 text-white border-teal-400/40 shadow-teal-950/20'
+                : 'bg-red-600 text-white border-red-400/40 shadow-red-950/20'
+          }`}>
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-black tracking-tight">{liveStatusToast.title}</p>
+                <p className="text-[11px] sm:text-xs text-white/90 font-medium mt-0.5 leading-snug">{liveStatusToast.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setLiveStatusToast(null)}
+              className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors shrink-0 cursor-pointer"
+              title="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Bandeau d'avertissement inactivité */}
         {showInactivityWarning && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 text-white px-6 py-3.5 rounded-2xl flex items-center justify-between shadow-xl shadow-amber-950/10 no-print border border-amber-400/20 max-w-md w-full animate-bounce-once">

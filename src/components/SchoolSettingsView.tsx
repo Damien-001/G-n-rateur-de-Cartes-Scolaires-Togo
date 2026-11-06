@@ -76,9 +76,11 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
     };
 
     const handleSubscriptionUpdate = (e: any) => {
-      if (e?.detail?.plan) {
-        const newPlan = e.detail.plan;
-        const newExp = e.detail.expiresAt || schoolInfo.subscriptionExpiresAt;
+      const detail = e?.detail;
+      if (detail?.userId && detail.userId !== session.userId) return;
+      if (detail?.plan) {
+        const newPlan = detail.plan;
+        const newExp = detail.expiresAt || schoolInfo.subscriptionExpiresAt;
         if (schoolInfo.subscriptionPlan !== newPlan || schoolInfo.subscriptionExpiresAt !== newExp) {
           onSaveSchoolInfo({
             ...schoolInfo,
@@ -102,7 +104,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
       window.removeEventListener('storage', refreshSettings);
       window.removeEventListener('focus', refreshSettings);
     };
-  }, [schoolInfo, onSaveSchoolInfo]);
+  }, [schoolInfo, onSaveSchoolInfo, session.userId]);
 
   // Simulation parameters for SaaS
   const isPlanExpired = schoolInfo.subscriptionPlan === 'pro' && !!schoolInfo.subscriptionExpiresAt && new Date(schoolInfo.subscriptionExpiresAt).getTime() < Date.now();
@@ -146,9 +148,6 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
           subscriptionPlan: 'pro',
           subscriptionExpiresAt: expStr
         });
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       } else {
         setLicenseFeedback({ type: 'error', message: res.message });
       }
