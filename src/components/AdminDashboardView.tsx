@@ -66,7 +66,13 @@ import {
   PlusCircle,
   Upload
 } from 'lucide-react';
-import { parseVideoSource, isGooglePhotosUrl } from '../lib/videoHelper';
+import {
+  parseVideoSource,
+  isGooglePhotosUrl,
+  isPrivateGooglePhotosUrl,
+  isSharedGooglePhotosUrl,
+  resolveGooglePhotosSharedUrl
+} from '../lib/videoHelper';
 import {
   fetchAllSchools,
   fetchAllStudentsCount,
@@ -865,6 +871,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   const [isUploadingDemoVideo, setIsUploadingDemoVideo] = useState(false);
   const [isUploadingDemoPoster, setIsUploadingDemoPoster] = useState(false);
+  const [isResolvingGooglePhotos, setIsResolvingGooglePhotos] = useState(false);
+
+  // Extraction automatique du flux direct depuis un lien partagé Google Photos (photos.app.goo.gl / photos.google.com/share)
+  const handleResolveGooglePhotosUrl = async (rawShareUrl: string) => {
+    if (!isSharedGooglePhotosUrl(rawShareUrl)) return;
+    setIsResolvingGooglePhotos(true);
+    try {
+      const resolved = await resolveGooglePhotosSharedUrl(rawShareUrl);
+      if (resolved?.videoUrl) {
+        setPlatformSettings(prev => {
+          const updated = {
+            ...prev,
+            demoVideoUrl: resolved.videoUrl,
+            demoVideoPoster: prev.demoVideoPoster || resolved.posterUrl || ''
+          };
+          savePlatformSettings(updated);
+          return updated;
+        });
+        playAdminChime();
+        setVideoSaveSuccess(true);
+        setSettingsToast({ type: 'success', message: 'Lien Google Photos partagé converti en flux vidéo direct avec succès !' });
+        setTimeout(() => {
+          setVideoSaveSuccess(false);
+          setSettingsToast(null);
+        }, 4500);
+      } else {
+        setSettingsToast({ type: 'error', message: "Impossible d'extraire la vidéo depuis ce lien Google Photos. Vérifiez que le partage public est activé ou importez le fichier .MP4." });
+        setTimeout(() => setSettingsToast(null), 5000);
+      }
+    } finally {
+      setIsResolvingGooglePhotos(false);
+    }
+  };
 
   // Mise à jour immédiate des champs vidéo avec cache local instantané
   const updateVideoSettingsField = (field: 'demoVideoUrl' | 'demoVideoTitle' | 'demoVideoPoster', val: string) => {
@@ -873,6 +912,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       savePlatformSettings(updated);
       return updated;
     });
+    if (field === 'demoVideoUrl' && isSharedGooglePhotosUrl(val)) {
+      handleResolveGooglePhotosUrl(val);
+    }
   };
 
   // Téléversement direct d'un fichier vidéo (.mp4, .webm, .mov) depuis l'appareil
@@ -3429,32 +3471,55 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               <span className="font-bold text-slate-600">Plateformes supportées :</span>
                               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">YouTube (Recommandé)</span>
                               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">Import direct .MP4 / WebM</span>
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md text-[9px] border border-emerald-200">Google Photos (Lien partagé)</span>
                               <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Google Drive</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Loom</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Vimeo</span>
-                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Dailymotion / Streamable</span>
+                              <span className="px-2 py-0.5 bg-slate-100 rounded-md font-mono text-[9px]">Loom / Vimeo</span>
                             </div>
                           </div>
 
-                          {/* Alerte spécifique Google Photos avec bouton d'import direct */}
+                          {/* Gestion intelligente des liens Google Photos (Privé /photo/ vs Partagé photos.app.goo.gl) */}
                           {isGooglePhotosUrl(platformSettings.demoVideoUrl) && (
-                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 font-black text-xs text-amber-900">
-                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                                  <span>Lien Google Photos détecté — Utilisez l'import direct ci-dessous</span>
+                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 text-amber-950 space-y-2.5">
+                              {isSharedGooglePhotosUrl(platformSettings.demoVideoUrl) ? (
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 font-black text-xs text-amber-900">
+                                    <RefreshCw className={`w-4 h-4 text-emerald-600 shrink-0 ${isResolvingGooglePhotos ? 'animate-spin' : ''}`} />
+                                    <span>
+                                      {isResolvingGooglePhotos
+                                        ? 'Extraction automatique de la vidéo Google Photos en cours...'
+                                        : 'Lien de partage Google Photos détecté'}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={isResolvingGooglePhotos}
+                                    onClick={() => handleResolveGooglePhotosUrl(platformSettings.demoVideoUrl || '')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-xs cursor-pointer transition-all disabled:opacity-50"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Extraire la vidéo maintenant</span>
+                                  </button>
                                 </div>
-                                <label
-                                  htmlFor="admin-demo-video-upload"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-xs cursor-pointer transition-all"
-                                >
-                                  <Upload className="w-3.5 h-3.5" />
-                                  <span>Téléverser votre vidéo (.MP4) depuis l'appareil</span>
-                                </label>
-                              </div>
-                              <p className="text-[11px] leading-relaxed text-amber-900/90 font-medium">
-                                Google Photos bloque la lecture sur les sites externes (<code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">SAMEORIGIN</code>). Téléchargez simplement votre vidéo depuis Google Photos sur votre appareil puis cliquez sur <strong>« Téléverser votre vidéo (.MP4) »</strong> ci-dessus, ou utilisez un lien <strong>YouTube / Google Drive</strong>.
-                              </p>
+                              ) : (
+                                <>
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 font-black text-xs text-amber-900">
+                                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                      <span>Lien Google Photos privé (/photo/...) — Utilisez le bouton « Partager » dans Google Photos</span>
+                                    </div>
+                                    <label
+                                      htmlFor="admin-demo-video-upload"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-xs cursor-pointer transition-all"
+                                    >
+                                      <Upload className="w-3.5 h-3.5" />
+                                      <span>Ou importer le fichier .MP4</span>
+                                    </label>
+                                  </div>
+                                  <p className="text-[11px] leading-relaxed text-amber-900/90 font-medium">
+                                    Le lien <code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">photos.google.com/photo/...</code> est l'adresse privée de votre compte (invisible pour les visiteurs). Pour que Google Photos fonctionne : ouvrez la vidéo dans Google Photos, cliquez sur <strong>Partager &gt; Créer un lien</strong> (qui donne un lien <code className="px-1.5 py-0.5 bg-amber-100 rounded font-mono text-[10px]">https://photos.app.goo.gl/...</code>) et collez-le ici !
+                                  </p>
+                                </>
+                              )}
                             </div>
                           )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   Sparkles, 
@@ -10,7 +10,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { parseVideoSource } from '../lib/videoHelper';
+import { parseVideoSource, isSharedGooglePhotosUrl, resolveGooglePhotosSharedUrl } from '../lib/videoHelper';
 
 interface LandingVideoSectionProps {
   videoUrl?: string;
@@ -26,7 +26,25 @@ export const LandingVideoSection: React.FC<LandingVideoSectionProps> = ({
   onStartAuth
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const videoSource = parseVideoSource(videoUrl);
+  const [resolvedGPhotoUrl, setResolvedGPhotoUrl] = useState<string | null>(null);
+  const [resolvedGPhotoPoster, setResolvedGPhotoPoster] = useState<string | null>(null);
+
+  useEffect(() => {
+    setResolvedGPhotoUrl(null);
+    setResolvedGPhotoPoster(null);
+    if (videoUrl && isSharedGooglePhotosUrl(videoUrl)) {
+      resolveGooglePhotosSharedUrl(videoUrl).then(res => {
+        if (res?.videoUrl) {
+          setResolvedGPhotoUrl(res.videoUrl);
+          if (res.posterUrl) setResolvedGPhotoPoster(res.posterUrl);
+        }
+      });
+    }
+  }, [videoUrl]);
+
+  const effectiveVideoUrl = resolvedGPhotoUrl || videoUrl;
+  const effectivePoster = videoPoster || resolvedGPhotoPoster || undefined;
+  const videoSource = parseVideoSource(effectiveVideoUrl);
 
   const displayTitle = videoTitle?.trim() || "Découvrez SukuPass en action — Les badges scolaires en quelques clics";
 
@@ -103,11 +121,11 @@ export const LandingVideoSection: React.FC<LandingVideoSectionProps> = ({
               {videoSource && !videoSource.isUnsupported ? (
                 // 1. EMBED (YouTube, Vimeo, Loom, Google Drive)
                 videoSource.embedUrl ? (
-                  !isPlaying && videoPoster ? (
+                  !isPlaying && effectivePoster ? (
                     // Custom poster with click-to-play overlay
                     <div className="relative w-full h-full group cursor-pointer" onClick={() => setIsPlaying(true)}>
                       <img 
-                        src={videoPoster} 
+                        src={effectivePoster} 
                         alt="Miniature vidéo de présentation" 
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -127,10 +145,10 @@ export const LandingVideoSection: React.FC<LandingVideoSectionProps> = ({
                     />
                   )
                 ) : (
-                  // 2. DIRECT VIDEO FILE (mp4, webm, Supabase Storage, etc.)
+                  // 2. DIRECT VIDEO FILE (mp4, webm, Supabase Storage, Google Photos stream, etc.)
                   <video
                     src={videoSource.directUrl}
-                    poster={videoPoster || undefined}
+                    poster={effectivePoster}
                     controls
                     playsInline
                     className="w-full h-full object-contain"

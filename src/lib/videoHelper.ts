@@ -5,7 +5,7 @@
  */
 
 export interface VideoSourceInfo {
-  type: 'youtube' | 'vimeo' | 'loom' | 'gdrive' | 'dailymotion' | 'streamable' | 'direct' | 'google_photos_unsupported';
+  type: 'youtube' | 'vimeo' | 'loom' | 'gdrive' | 'dailymotion' | 'streamable' | 'direct' | 'google_photos_private' | 'google_photos_shared';
   embedUrl?: string;
   directUrl?: string;
   originalUrl: string;
@@ -13,10 +13,62 @@ export interface VideoSourceInfo {
   warning?: string;
 }
 
-/** Détecte si l'URL provient de Google Photos (qui bloque l'intégration externe via SAMEORIGIN) */
-export function isGooglePhotosUrl(url?: string): boolean {
+/** Détecte si l'URL est un lien Google Photos PRIVÉ (/photo/...) copié depuis la barre d'adresse sans partage */
+export function isPrivateGooglePhotosUrl(url?: string): boolean {
   if (!url || typeof url !== 'string') return false;
-  return /photos\.(google\.com|app\.goo\.gl)/i.test(url);
+  return /photos\.google\.com\/(?:u\/\d+\/)?photo\//i.test(url.trim());
+}
+
+/** Détecte si l'URL est un lien Google Photos PARTAGÉ (photos.app.goo.gl/... ou photos.google.com/share/...) */
+export function isSharedGooglePhotosUrl(url?: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  return /photos\.app\.goo\.gl\//i.test(trimmed) || /photos\.google\.com\/share\//i.test(trimmed);
+}
+
+/** Compatibilité : retourne true uniquement si le lien Google Photos ne peut pas encore être lu tel quel */
+export function isGooglePhotosUrl(url?: string): boolean {
+  return isPrivateGooglePhotosUrl(url) || isSharedGooglePhotosUrl(url);
+}
+
+/**
+ * Extrait automatiquement le flux vidéo MP4 direct (=dv) et la miniature depuis un lien de partage Google Photos
+ * (https://photos.app.goo.gl/... ou https://photos.google.com/share/...)
+ */
+export async function resolveGooglePhotosSharedUrl(shareUrl: string): Promise<{ videoUrl: string; posterUrl?: string } | null> {
+  const trimmed = shareUrl.trim();
+  if (!isSharedGooglePhotosUrl(trimmed)) return null;
+
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(trimmed)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(trimmed)}`
+  ];
+
+  for (const proxyUrl of proxies) {
+    try {
+      const response = await fetch(proxyUrl);
+      if (!response.ok) continue;
+      const html = await response.text();
+
+      // Chercher l'URL media lh3.googleusercontent.com/pw/... dans og:image ou dans le script d'initialisation
+      const ogMatch =
+        html.match(/property=["']og:image["']\s+content=["'](https:\/\/lh3\.googleusercontent\.com\/[^"']+)["']/i) ||
+        html.match(/content=["'](https:\/\/lh3\.googleusercontent\.com\/[^"']+)["']\s+property=["']og:image["']/i) ||
+        html.match(/(https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9_-]+)/i);
+
+      if (ogMatch && ogMatch[1]) {
+        const rawLh3 = ogMatch[1].split('=')[0];
+        return {
+          videoUrl: `${rawLh3}=dv`,
+          posterUrl: `${rawLh3}=w1280-h720-no`
+        };
+      }
+    } catch (e) {
+      console.warn('Tentative extraction Google Photos via proxy échouée:', e);
+    }
+  }
+
+  return null;
 }
 
 export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
@@ -24,13 +76,34 @@ export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
   const url = rawUrl.trim();
   if (!url) return null;
 
-  // Détection explicite de Google Photos (incompatible avec l'intégration web)
-  if (isGooglePhotosUrl(url)) {
+  // 0. Flux direct Google Photos (lh3.googleusercontent.com)
+  if (/lh3\.googleusercontent\.com\//i.test(url)) {
+    const baseUrl = url.split('=')[0];
+    const hasVideoParam = /=(?:dv|m18|m22|m37)/i.test(url);
     return {
-      type: 'google_photos_unsupported',
+      type: 'direct',
+      directUrl: hasVideoParam ? url : `${baseUrl}=dv`,
+      originalUrl: url
+    };
+  }
+
+  // Lien Google Photos PRIVÉ (/photo/...) -> nécessite un lien de partage
+  if (isPrivateGooglePhotosUrl(url)) {
+    return {
+      type: 'google_photos_private',
       originalUrl: url,
       isUnsupported: true,
-      warning: "Google Photos n'autorise pas la diffusion de vidéos sur des sites web externes (restriction SAMEORIGIN). Utilisez le bouton « Importer une vidéo (.MP4) » ci-dessus pour téléverser directement votre vidéo depuis votre téléphone ou ordinateur !"
+      warning: "Ce lien Google Photos (/photo/...) est privé et lié uniquement à votre session Google. Dans Google Photos, cliquez sur « Partager > Créer un lien » (lien photos.app.goo.gl/...) et collez-le ici, ou importez directement le fichier .MP4."
+    };
+  }
+
+  // Lien Google Photos PARTAGÉ non encore converti en flux lh3
+  if (isSharedGooglePhotosUrl(url)) {
+    return {
+      type: 'google_photos_shared',
+      originalUrl: url,
+      isUnsupported: true,
+      warning: "Extraction du flux vidéo Google Photos en cours... Si le lien ne se convertit pas automatiquement, cliquez sur « Extraire la vidéo » ou importez le fichier .MP4."
     };
   }
 
