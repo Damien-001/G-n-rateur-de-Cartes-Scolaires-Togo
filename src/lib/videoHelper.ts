@@ -31,12 +31,21 @@ export function isGooglePhotosUrl(url?: string): boolean {
   return isPrivateGooglePhotosUrl(url);
 }
 
+const SUKUPASS_HOSTED_DEMO_VIDEO = 'https://ptmigsqqamaizizjkspo.supabase.co/storage/v1/object/public/school-assets/platform/videos/sukupass-demo.mp4';
+const SUKUPASS_HOSTED_DEMO_POSTER = 'https://ptmigsqqamaizizjkspo.supabase.co/storage/v1/object/public/school-assets/platform/posters/sukupass-demo-poster.jpg';
+
 /**
  * Extrait automatiquement le flux vidéo MP4 direct (=m22) et la miniature depuis un lien de partage Google Photos
  * via notre endpoint serveur local /api/resolve-video (aucune erreur CORS)
  */
 export async function resolveGooglePhotosSharedUrl(shareUrl: string): Promise<{ videoUrl: string; posterUrl?: string } | null> {
   const trimmed = shareUrl.trim();
+  if (/Bv4gZ1B7XjgD3Pwd9|AF1QipMHC3hjOxa6XECHD5VeyBJZO55lu-7flKuC4E9s/i.test(trimmed)) {
+    return {
+      videoUrl: SUKUPASS_HOSTED_DEMO_VIDEO,
+      posterUrl: SUKUPASS_HOSTED_DEMO_POSTER
+    };
+  }
   if (!isSharedGooglePhotosUrl(trimmed)) return null;
 
   try {
@@ -60,6 +69,14 @@ export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const url = rawUrl.trim();
   if (!url) return null;
+
+  if (/Bv4gZ1B7XjgD3Pwd9|AF1QipMHC3hjOxa6XECHD5VeyBJZO55lu-7flKuC4E9s/i.test(url)) {
+    return {
+      type: 'direct',
+      directUrl: SUKUPASS_HOSTED_DEMO_VIDEO,
+      originalUrl: url
+    };
+  }
 
   // 0. Flux direct Google Photos (lh3.googleusercontent.com)
   if (/lh3\.googleusercontent\.com\//i.test(url)) {
