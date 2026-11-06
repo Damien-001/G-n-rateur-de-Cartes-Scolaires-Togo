@@ -57,6 +57,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [heroPhraseIndex, setHeroPhraseIndex] = useState(0);
+
+  const heroPhrases = [
+    'en quelques clics',
+    'avec QR Code sécurisé',
+    'prêts à imprimer en A4',
+    'même hors-ligne'
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroPhraseIndex(prev => (prev + 1) % 4);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, []);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -429,8 +444,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             <span className="text-xs font-bold uppercase tracking-wider">SukuPass Togo • Éducation 2026</span>
           </motion.div>
 
-          <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.12]">
-            SukuPass — Les badges scolaires <span className="text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent">en quelques clics</span>.
+          <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.15]">
+            SukuPass — Les badges scolaires{' '}
+            <span className="inline-block relative min-w-[260px] sm:min-w-[340px]">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={heroPhraseIndex}
+                  initial={{ opacity: 0, y: 18, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -18, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="inline-block text-emerald-600 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 bg-clip-text text-transparent"
+                >
+                  {heroPhrases[heroPhraseIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </span>
           </motion.h1>
 
           <motion.p variants={itemVariants} className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed font-medium">
@@ -483,37 +512,94 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
         </motion.div>
 
-        {/* Card Visual Previews */}
+        {/* Card Visual Previews with Dynamic Floating Animations */}
         <motion.div
           initial={{ opacity: 0, scale: 0.92, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="lg:col-span-5 flex flex-col items-center justify-center gap-6"
+          className="lg:col-span-5 flex flex-col items-center justify-center gap-6 relative"
         >
-          {/* Cards Showcase Container */}
+          {/* Floating Live Badge 1 - Top Right */}
           <motion.div
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="flex flex-col gap-5 items-center"
+            animate={{ y: [0, -8, 0], x: [0, 4, 0] }}
+            transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl shadow-emerald-950/10 border border-emerald-200/80 absolute -top-4 right-2 z-20 pointer-events-none"
           >
-            {/* Front Card */}
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative" />
+            <span className="text-[11px] font-extrabold text-slate-800">QR Code Sécurisé Actif</span>
+          </motion.div>
+
+          {/* Floating Live Badge 2 - Bottom Left */}
+          <motion.div
+            animate={{ y: [0, 8, 0], x: [0, -4, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-emerald-950/90 text-white backdrop-blur-md rounded-2xl shadow-xl border border-emerald-500/30 absolute -bottom-4 left-2 z-20 pointer-events-none"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[11px] font-bold">Planches PDF A4 Prêtes</span>
+          </motion.div>
+
+          {/* Cards Showcase Container */}
+          <div className="flex flex-col gap-5 items-center relative">
+            {/* Front Card with subtle floating & laser scan line */}
             <motion.div
-              whileHover={{ scale: 1.03, y: -4 }}
-              className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+              animate={{ y: [0, -8, 0], rotateZ: [-0.6, 0.6, -0.6] }}
+              transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.04, rotateZ: 0, y: -6 }}
+              className="shadow-2xl shadow-emerald-950/15 rounded-2xl overflow-hidden bg-white transition-shadow duration-300 border border-gray-100 relative"
             >
+              {/* Animated subtle emerald scan beam */}
+              <motion.div
+                animate={{ top: ['-10%', '110%', '-10%'] }}
+                transition={{ duration: 6.5, repeat: Infinity, ease: "linear" }}
+                className="absolute left-0 right-0 h-6 bg-gradient-to-b from-transparent via-emerald-400/15 to-transparent pointer-events-none z-10"
+              />
               <IDCard student={dummyStudent} schoolInfo={dummySchool} showCuttingMarks={false} />
             </motion.div>
 
-            {/* Back Card */}
+            {/* Back Card with counter-phase floating */}
             <motion.div
-              whileHover={{ scale: 1.03, y: -4 }}
-              className="shadow-2xl shadow-emerald-950/10 rounded-2xl overflow-hidden bg-white transition-all duration-300 border border-gray-100"
+              animate={{ y: [0, 7, 0], rotateZ: [0.6, -0.6, 0.6] }}
+              transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+              whileHover={{ scale: 1.04, rotateZ: 0, y: -6 }}
+              className="shadow-2xl shadow-emerald-950/15 rounded-2xl overflow-hidden bg-white transition-shadow duration-300 border border-gray-100"
             >
               <IDCardBack student={dummyStudent} schoolInfo={dummySchool} />
             </motion.div>
-          </motion.div>
+          </div>
         </motion.div>
       </section>
+
+      {/* Bandeau Défilant Dynamique (Marquee) */}
+      <div className="bg-emerald-950 text-emerald-100 py-3.5 overflow-hidden border-y border-emerald-800/60 relative">
+        <motion.div
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+          className="flex items-center gap-10 whitespace-nowrap w-max text-xs font-bold uppercase tracking-widest"
+        >
+          {[...Array(2)].map((_, groupIdx) => (
+            <div key={groupIdx} className="flex items-center gap-10">
+              <span className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Région Maritime (Lomé)</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Région des Plateaux</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Région Centrale</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Région de la Kara</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Région des Savanes</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Import Excel en 3 secondes</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Impression A4 Recto/Verso</span>
+              <span className="text-emerald-600">•</span>
+              <span className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Mode Hors-Ligne PWA</span>
+              <span className="text-emerald-600">•</span>
+            </div>
+          ))}
+        </motion.div>
+      </div>
 
       {/* Section Vidéo de Présentation Officielle */}
       <LandingVideoSection
@@ -574,7 +660,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
       </section>
 
       {/* How it works (Workflow Scroll Reveal) */}
-      <section id="how-it-works" className="py-24 bg-gray-50/70 relative">
+      <section id="how-it-works" className="py-24 bg-gray-50/70 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -595,6 +681,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mt-16 relative">
+            {/* Animated connecting line between steps on desktop */}
+            <div className="hidden md:block absolute top-14 left-[16%] right-[16%] h-0.5 bg-emerald-100 overflow-hidden z-0">
+              <motion.div
+                animate={{ x: ['-100%', '200%'] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-1/2 h-full bg-gradient-to-r from-transparent via-emerald-500 to-transparent"
+              />
+            </div>
+
             {[
               {
                 step: "1",
@@ -618,8 +713,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, delay: i * 0.2 }}
-                whileHover={{ y: -4 }}
-                className="flex flex-col items-center text-center space-y-4 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm shadow-gray-200/50 hover:shadow-md transition-all"
+                whileHover={{ y: -6 }}
+                className="flex flex-col items-center text-center space-y-4 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm shadow-gray-200/50 hover:shadow-xl hover:border-emerald-200 transition-all relative z-10"
               >
                 <motion.div
                   whileInView={{ scale: [0.8, 1.15, 1] }}
