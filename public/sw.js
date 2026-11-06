@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `cartes-togo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `cartes-togo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `cartes-togo-fonts-${CACHE_VERSION}`;
@@ -45,8 +45,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignorer les requêtes non-GET et les extensions Chrome
-  if (request.method !== 'GET' || url.protocol.startsWith('chrome-extension')) {
+  // Ignorer les requêtes non-GET, les appels API (/api/) et les extensions Chrome
+  if (request.method !== 'GET' || url.protocol.startsWith('chrome-extension') || url.pathname.startsWith('/api/')) {
     return;
   }
 
@@ -142,11 +142,4 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-
-  // Requêtes par défaut
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      return cachedResponse || fetch(request);
-    })
-  );
 });

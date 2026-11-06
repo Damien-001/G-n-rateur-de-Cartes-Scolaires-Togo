@@ -26,46 +26,31 @@ export function isSharedGooglePhotosUrl(url?: string): boolean {
   return /photos\.app\.goo\.gl\//i.test(trimmed) || /photos\.google\.com\/share\//i.test(trimmed);
 }
 
-/** Compatibilité : retourne true uniquement si le lien Google Photos ne peut pas encore être lu tel quel */
+/** Retourne true uniquement si le lien Google Photos est un lien privé (/photo/...) non partagé */
 export function isGooglePhotosUrl(url?: string): boolean {
-  return isPrivateGooglePhotosUrl(url) || isSharedGooglePhotosUrl(url);
+  return isPrivateGooglePhotosUrl(url);
 }
 
 /**
- * Extrait automatiquement le flux vidéo MP4 direct (=dv) et la miniature depuis un lien de partage Google Photos
- * (https://photos.app.goo.gl/... ou https://photos.google.com/share/...)
+ * Extrait automatiquement le flux vidéo MP4 direct (=m22) et la miniature depuis un lien de partage Google Photos
+ * via notre endpoint serveur local /api/resolve-video (aucune erreur CORS)
  */
 export async function resolveGooglePhotosSharedUrl(shareUrl: string): Promise<{ videoUrl: string; posterUrl?: string } | null> {
   const trimmed = shareUrl.trim();
   if (!isSharedGooglePhotosUrl(trimmed)) return null;
 
-  const proxies = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(trimmed)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(trimmed)}`
-  ];
-
-  for (const proxyUrl of proxies) {
-    try {
-      const response = await fetch(proxyUrl);
-      if (!response.ok) continue;
-      const html = await response.text();
-
-      // Chercher l'URL media lh3.googleusercontent.com/pw/... dans og:image ou dans le script d'initialisation
-      const ogMatch =
-        html.match(/property=["']og:image["']\s+content=["'](https:\/\/lh3\.googleusercontent\.com\/[^"']+)["']/i) ||
-        html.match(/content=["'](https:\/\/lh3\.googleusercontent\.com\/[^"']+)["']\s+property=["']og:image["']/i) ||
-        html.match(/(https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9_-]+)/i);
-
-      if (ogMatch && ogMatch[1]) {
-        const rawLh3 = ogMatch[1].split('=')[0];
-        return {
-          videoUrl: `${rawLh3}=dv`,
-          posterUrl: `${rawLh3}=w1280-h720-no`
-        };
-      }
-    } catch (e) {
-      console.warn('Tentative extraction Google Photos via proxy échouée:', e);
+  try {
+    const response = await fetch(`/api/resolve-video?url=${encodeURIComponent(trimmed)}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data?.ok && data?.videoUrl) {
+      return {
+        videoUrl: data.videoUrl,
+        posterUrl: data.posterUrl
+      };
     }
+  } catch (e) {
+    console.warn('Info: résolution directe via /api/resolve-video:', e);
   }
 
   return null;
@@ -82,7 +67,16 @@ export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
     const hasVideoParam = /=(?:dv|m18|m22|m37)/i.test(url);
     return {
       type: 'direct',
-      directUrl: hasVideoParam ? url : `${baseUrl}=dv`,
+      directUrl: hasVideoParam ? url : `${baseUrl}=m22`,
+      originalUrl: url
+    };
+  }
+
+  // Lien Google Photos PARTAGÉ (photos.app.goo.gl/... ou photos.google.com/share/...) -> Lecture directe via notre route /api/resolve-video
+  if (isSharedGooglePhotosUrl(url)) {
+    return {
+      type: 'direct',
+      directUrl: `/api/resolve-video?stream=1&url=${encodeURIComponent(url)}`,
       originalUrl: url
     };
   }
@@ -94,16 +88,6 @@ export function parseVideoSource(rawUrl?: string): VideoSourceInfo | null {
       originalUrl: url,
       isUnsupported: true,
       warning: "Ce lien Google Photos (/photo/...) est privé et lié uniquement à votre session Google. Dans Google Photos, cliquez sur « Partager > Créer un lien » (lien photos.app.goo.gl/...) et collez-le ici, ou importez directement le fichier .MP4."
-    };
-  }
-
-  // Lien Google Photos PARTAGÉ non encore converti en flux lh3
-  if (isSharedGooglePhotosUrl(url)) {
-    return {
-      type: 'google_photos_shared',
-      originalUrl: url,
-      isUnsupported: true,
-      warning: "Extraction du flux vidéo Google Photos en cours... Si le lien ne se convertit pas automatiquement, cliquez sur « Extraire la vidéo » ou importez le fichier .MP4."
     };
   }
 
