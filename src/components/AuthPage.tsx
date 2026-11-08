@@ -95,21 +95,21 @@ const TESTIMONIALS: TestimonialItem[] = [
     author: "Mme Akossiwa Mensah",
     role: "Censeure & Responsable Pédagogique",
     school: "Complexe Scolaire La Référence • Lomé, Togo",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=82",
+    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=1200&q=82",
   },
   {
     quote: "« L'import Excel et le mode hors-ligne nous ont fait gagner deux semaines de travail au secrétariat. Les planches A4 Recto/Verso tombent au millimètre près. »",
     author: "M. Koffi Adanou",
     role: "Proviseur",
     school: "Lycée Moderne • Kpalimé, Région des Plateaux",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=82",
+    image: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&w=1200&q=82",
   },
   {
     quote: "« Le QR Code anti-fraude et les couleurs nationales rassurent immédiatement les parents d'élèves lors des examens officiels. Un vrai standard professionnel. »",
     author: "M. Essohanam Tchakondo",
     role: "Directeur Administratif",
     school: "Groupe Scolaire Excellence • Kara, Togo",
-    image: "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=1200&q=82",
+    image: "https://images.unsplash.com/photo-1567057420215-0afa9aa9253a?auto=format&fit=crop&w=1200&q=82",
   },
 ];
 

@@ -39,7 +39,7 @@ const dummyStudent = {
   birthDate: '2008-09-12',
   birthPlace: 'Kpalimé',
   examCenter: 'Lycée de Tokoin',
-  photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  photoUrl: 'https://images.unsplash.com/photo-1617056239820-8ce90ba48193?w=150&h=150&auto=format&fit=crop&crop=faces&q=80',
 };
 
 const dummySchool = {
