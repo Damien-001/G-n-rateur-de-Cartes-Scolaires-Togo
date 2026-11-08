@@ -278,31 +278,7 @@ export async function computeVisitorStats(totalRegisteredSchools: number = 0): P
 
   // 1. Récupération des visites réelles enregistrées sur le Cloud Supabase
   if (isAppOnline()) {
-    // 1.A. Depuis admin_logs (support universel)
-    try {
-      const { data: cloudLogs, error } = await supabase
-        .from('admin_logs')
-        .select('*')
-        .eq('action', 'PAGE_VISIT')
-        .order('created_at', { ascending: false })
-        .limit(1000);
-
-      if (!error && cloudLogs) {
-        for (const row of cloudLogs) {
-          try {
-            if (row.details) {
-              const v: PageVisit = JSON.parse(row.details);
-              if (v && v.visitorId) {
-                const id = v.id || row.id;
-                visitsMap.set(id, v);
-              }
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-
-    // 1.B. Depuis la table dédiée app_visits si présente
+    // 1.A. Depuis la table dédiée app_visits (Priorité #1 : directe, légère et rapide ~500ms)
     try {
       const { data: dedicatedData, error: dedErr } = await supabase
         .from('app_visits')
@@ -310,7 +286,7 @@ export async function computeVisitorStats(totalRegisteredSchools: number = 0): P
         .order('created_at', { ascending: false })
         .limit(1000);
 
-      if (!dedErr && dedicatedData) {
+      if (!dedErr && dedicatedData && dedicatedData.length > 0) {
         for (const r of dedicatedData) {
           const id = r.id?.toString() || `db_${r.created_at}`;
           visitsMap.set(id, {
@@ -324,6 +300,28 @@ export async function computeVisitorStats(totalRegisteredSchools: number = 0): P
             referrer: r.referrer,
             timestamp: r.created_at
           });
+        }
+      } else {
+        // Fallback secours : si app_visits est vide, vérifier admin_logs
+        const { data: cloudLogs, error } = await supabase
+          .from('admin_logs')
+          .select('*')
+          .eq('action', 'PAGE_VISIT')
+          .order('created_at', { ascending: false })
+          .limit(500);
+
+        if (!error && cloudLogs) {
+          for (const row of cloudLogs) {
+            try {
+              if (row.details) {
+                const v: PageVisit = JSON.parse(row.details);
+                if (v && v.visitorId) {
+                  const id = v.id || row.id;
+                  visitsMap.set(id, v);
+                }
+              }
+            } catch {}
+          }
         }
       }
     } catch {}

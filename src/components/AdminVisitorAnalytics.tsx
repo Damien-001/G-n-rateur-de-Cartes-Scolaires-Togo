@@ -34,8 +34,8 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
-  const loadStats = async () => {
-    setIsLoading(true);
+  const loadStats = async (isInitial = false) => {
+    if (isInitial && !stats) setIsLoading(true);
     try {
       const data = await computeVisitorStats(totalRegisteredSchools);
       setStats(data);
@@ -47,11 +47,21 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
   };
 
   useEffect(() => {
-    loadStats();
+    // 0. Initialisation immédiate sans attendre le réseau si cache local présent
+    const local = localStorage.getItem('cardschool_visitor_analytics_visits');
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          computeVisitorStats(totalRegisteredSchools).then(setStats).catch(() => {});
+        }
+      } catch {}
+    }
+    loadStats(true);
 
     // 1. Écouter les visites locales (sur la même session)
     const handleNewVisit = () => {
-      loadStats();
+      loadStats(false);
     };
     window.addEventListener('cardschool_new_visit_recorded', handleNewVisit);
 
@@ -61,10 +71,17 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
+        table: 'app_visits'
+      }, () => {
+        loadStats(false);
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'admin_logs',
         filter: 'action=eq.PAGE_VISIT'
       }, () => {
-        loadStats();
+        loadStats(false);
       })
       .subscribe();
 
@@ -252,7 +269,7 @@ export const AdminVisitorAnalytics: React.FC<AdminVisitorAnalyticsProps> = ({
               {stats.conversionRate}%
             </h3>
             <p className="text-xs text-amber-800 font-bold">
-              Visiteurs $\rightarrow$ Écoles inscrites
+              Visiteurs → Écoles inscrites
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
