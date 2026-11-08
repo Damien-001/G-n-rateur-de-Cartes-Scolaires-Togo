@@ -1202,8 +1202,13 @@ export async function clearAllLocalSchoolsCache(): Promise<number> {
       localStorage.removeItem(k);
     }
 
+    // Vider les anciens messages de chat locaux
+    localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY);
+    localStorage.removeItem(CHAT_MESSAGES_STORAGE_KEY_ALT);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: 'all' }));
+      window.dispatchEvent(new CustomEvent('cardschool_chat_message_received', { detail: null }));
     }
   } catch (err) {
     console.warn('clearAllLocalSchoolsCache error:', err);
@@ -1287,6 +1292,22 @@ export async function syncAndCleanOrphanSchoolsWithDatabase(): Promise<{
     for (const k of orphanKeys) {
       localStorage.removeItem(k);
     }
+
+    // Nettoyer également les messages de chat orphelins
+    try {
+      const purgeChatStorage = (storageKey: string) => {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter(m => m && m.schoolId && validDbUserIds.has(m.schoolId));
+            localStorage.setItem(storageKey, JSON.stringify(cleaned));
+          }
+        }
+      };
+      purgeChatStorage(CHAT_MESSAGES_STORAGE_KEY);
+      purgeChatStorage(CHAT_MESSAGES_STORAGE_KEY_ALT);
+    } catch { }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: 'sync' }));

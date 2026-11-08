@@ -1253,8 +1253,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const pendingReceiptsCount = chatMessages.filter(m => m.attachmentUrl && m.status !== 'validated').length;
   const unreadSchoolMessagesCount = chatMessages.filter(m => m.senderRole === 'school').length;
 
-  // Build unified sorted conversations list
+  // Build unified sorted conversations list — UNIQUEMENT pour les écoles réellement existantes
   const conversationsMap = new Map<string, { schoolId: string; schoolName: string; plan?: string; lastMessage?: ChatMessage; unvalidatedReceipt?: boolean; phone?: string; location?: string }>();
+  const activeSchoolIds = new Set(schools.map(s => s.userId));
 
   schools.forEach(sch => {
     const schMsgs = chatMessages.filter(m => m.schoolId === sch.userId);
@@ -1271,8 +1272,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
   });
 
+  // Ne rattacher un message que si l'école fait partie de la liste active des écoles
   chatMessages.forEach(msg => {
-    if (msg.schoolId && !conversationsMap.has(msg.schoolId)) {
+    if (msg.schoolId && activeSchoolIds.has(msg.schoolId) && !conversationsMap.has(msg.schoolId)) {
       const schMsgs = chatMessages.filter(m => m.schoolId === msg.schoolId);
       const lastMsg = schMsgs[schMsgs.length - 1];
       const hasUnvalidatedReceipt = schMsgs.some(m => m.attachmentUrl && m.status !== 'validated');
