@@ -1117,11 +1117,16 @@ export async function clearAllLocalSchoolsCache(): Promise<number> {
     // Vider le registre
     localStorage.removeItem(REGISTERED_SCHOOLS_KEY);
 
-    // Scanner et supprimer tout ce qui commence par cartes_togo_school_ ou cartes_togo_students_
+    // Scanner et supprimer tout ce qui commence par cartes_togo_school_, cartes_togo_students_, ou anciens jetons auth
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.startsWith('cartes_togo_school_') || k.startsWith('cartes_togo_students_') || k.startsWith('cartes_togo_sync_queue_'))) {
+      if (k && (
+        k.startsWith('cartes_togo_school_') ||
+        k.startsWith('cartes_togo_students_') ||
+        k.startsWith('cartes_togo_sync_queue_') ||
+        (k.startsWith('sb-') && k.endsWith('-auth-token'))
+      )) {
         keysToRemove.push(k);
       }
     }
@@ -1136,6 +1141,93 @@ export async function clearAllLocalSchoolsCache(): Promise<number> {
     console.warn('clearAllLocalSchoolsCache error:', err);
   }
   return count;
+}
+
+/**
+ * Synchronise et vérifie la liste avec la base de données Supabase réelle :
+ * Seuls les établissements présents dans la base Supabase actuelle sont conservés.
+ * Tout établissement absent de la base Supabase est automatiquement purgé du cache local.
+ */
+export async function syncAndCleanOrphanSchoolsWithDatabase(): Promise<{
+  activeInDbCount: number;
+  purgedLocalCount: number;
+}> {
+  let activeInDbCount = 0;
+  let purgedLocalCount = 0;
+
+  try {
+    // 1. Récupérer les identifiants d'écoles réellement présents dans la nouvelle base Supabase
+    const { data: dbSchools, error } = await supabase
+      .from('school_info')
+      .select('user_id');
+
+    if (error) {
+      console.warn('syncAndCleanOrphanSchoolsWithDatabase Supabase query error:', error.message);
+      return { activeInDbCount: 0, purgedLocalCount: 0 };
+    }
+
+    const validDbUserIds = new Set<string>();
+    if (dbSchools) {
+      for (const row of dbSchools) {
+        if (row.user_id && isValidUuid(row.user_id)) {
+          validDbUserIds.add(row.user_id);
+        }
+      }
+    }
+    activeInDbCount = validDbUserIds.size;
+
+    // 2. Vérifier le registre local
+    const registered = getRegisteredSchoolsRegistry();
+    const remainingRegistry: AdminSchoolDetail[] = [];
+    for (const school of registered) {
+      if (school.userId && validDbUserIds.has(school.userId)) {
+        remainingRegistry.push(school);
+      } else if (school.userId) {
+        purgedLocalCount++;
+        addDeletedSchoolBlacklist(school.userId);
+        localStorage.removeItem('cartes_togo_school_' + school.userId);
+        localStorage.removeItem('cartes_togo_students_' + school.userId);
+        localStorage.removeItem('cartes_togo_sync_queue_' + school.userId);
+      }
+    }
+    localStorage.setItem(REGISTERED_SCHOOLS_KEY, JSON.stringify(remainingRegistry));
+
+    // 3. Nettoyer les clés de localStorage orphelines
+    const orphanKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith('cartes_togo_school_')) {
+        const uid = key.replace('cartes_togo_school_', '');
+        if (!validDbUserIds.has(uid)) {
+          orphanKeys.push(key);
+          orphanKeys.push('cartes_togo_students_' + uid);
+          orphanKeys.push('cartes_togo_sync_queue_' + uid);
+        }
+      } else if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+          const uid = parsed?.user?.id || parsed?.currentSession?.user?.id;
+          if (uid && !validDbUserIds.has(uid) && uid !== 'admin-super-user-id') {
+            orphanKeys.push(key);
+          }
+        } catch { }
+      }
+    }
+
+    for (const k of orphanKeys) {
+      localStorage.removeItem(k);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: 'sync' }));
+    }
+  } catch (err) {
+    console.warn('syncAndCleanOrphanSchoolsWithDatabase error:', err);
+  }
+
+  return { activeInDbCount, purgedLocalCount };
 }
 
 /** Create or provision a school directly by super-admin */

@@ -97,6 +97,7 @@ import {
   createSchoolByAdmin,
   deleteSchoolByAdmin,
   clearAllLocalSchoolsCache,
+  syncAndCleanOrphanSchoolsWithDatabase,
   activateSchoolDirectly,
   createPreassignedLicenseForSchool,
   purgeOrphanLicenseKeys,
@@ -772,6 +773,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         console.error('handleDeleteSchool error:', err);
         loadData();
       });
+    }
+  };
+
+  // Synchroniser et nettoyer automatiquement les écoles avec la base de données Supabase
+  const handleSyncWithDatabase = async () => {
+    setIsLoading(true);
+    try {
+      const res = await syncAndCleanOrphanSchoolsWithDatabase();
+      await loadData();
+      if (res.purgedLocalCount > 0) {
+        setSettingsToast({
+          type: 'success',
+          message: `Vérification terminée : ${res.purgedLocalCount} ancienne(s) école(s) absente(s) de la base de données ont été supprimée(s). (${res.activeInDbCount} active(s))`
+        });
+      } else {
+        setSettingsToast({
+          type: 'success',
+          message: `Synchronisation réussie : toutes les ${res.activeInDbCount} école(s) affichée(s) correspondent exactement à votre base de données Supabase.`
+        });
+      }
+      setTimeout(() => setSettingsToast(null), 4000);
+    } catch (err) {
+      console.error('handleSyncWithDatabase error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1872,11 +1898,20 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       Ajouter un Établissement
                     </button>
                     <button
-                      onClick={exportSchoolsToCSV(filteredSchools)}
+                      onClick={() => exportSchoolsToCSV(filteredSchools)}
                       className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
                     >
                       <Download className="w-3.5 h-3.5" />
                       CSV
+                    </button>
+                    <button
+                      onClick={handleSyncWithDatabase}
+                      disabled={isLoading}
+                      className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 disabled:opacity-50"
+                      title="Vérifie la base de données Supabase et supprime automatiquement les anciennes écoles absentes"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                      Vérifier & Synchroniser BD
                     </button>
                     {filteredSchools.length > 0 && (
                       <button
@@ -1885,7 +1920,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         title="Vider toutes les anciennes écoles du cache local"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Vider Anciennes Écoles
+                        Vider Tout
                       </button>
                     )}
                     <button
