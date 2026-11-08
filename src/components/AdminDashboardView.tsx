@@ -96,6 +96,7 @@ import {
   sanitizePricingPlans,
   createSchoolByAdmin,
   deleteSchoolByAdmin,
+  clearAllLocalSchoolsCache,
   activateSchoolDirectly,
   createPreassignedLicenseForSchool,
   purgeOrphanLicenseKeys,
@@ -771,6 +772,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         console.error('handleDeleteSchool error:', err);
         loadData();
       });
+    }
+  };
+
+  // Clear all local schools cache
+  const handleClearAllSchoolsCache = async () => {
+    if (window.confirm("⚠️ VIDER TOUTES LES ANCIENNES ÉCOLES EN CACHE ?\n\nCette action va effacer les écoles enregistrées en local de l'ancienne base de données pour repartir sur une console 100% propre avec votre nouvelle base Supabase.\n\nConfirmer ?")) {
+      setIsLoading(true);
+      try {
+        await clearAllLocalSchoolsCache();
+        await loadData();
+        setSettingsToast({
+          type: 'success',
+          message: 'Cache local des anciennes écoles entièrement réinitialisé.'
+        });
+        setTimeout(() => setSettingsToast(null), 3000);
+      } catch (err) {
+        console.error('handleClearAllSchoolsCache error:', err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -1851,12 +1872,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       Ajouter un Établissement
                     </button>
                     <button
-                      onClick={() => exportSchoolsToCSV(filteredSchools)}
+                      onClick={exportSchoolsToCSV(filteredSchools)}
                       className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
                     >
                       <Download className="w-3.5 h-3.5" />
                       CSV
                     </button>
+                    {filteredSchools.length > 0 && (
+                      <button
+                        onClick={handleClearAllSchoolsCache}
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                        title="Vider toutes les anciennes écoles du cache local"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Vider Anciennes Écoles
+                      </button>
+                    )}
                     <button
                       onClick={loadData}
                       className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer shrink-0 active:scale-95"

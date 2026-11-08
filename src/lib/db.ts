@@ -1100,6 +1100,44 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
   return true;
 }
 
+/** Nettoie complètement le cache local des anciennes écoles (pour repartir à neuf lors d'un changement de base Supabase) */
+export async function clearAllLocalSchoolsCache(): Promise<number> {
+  let count = 0;
+  try {
+    const registered = getRegisteredSchoolsRegistry();
+    count = registered.length;
+    for (const s of registered) {
+      if (s.userId) {
+        addDeletedSchoolBlacklist(s.userId);
+        localStorage.removeItem('cartes_togo_school_' + s.userId);
+        localStorage.removeItem('cartes_togo_students_' + s.userId);
+        localStorage.removeItem('cartes_togo_sync_queue_' + s.userId);
+      }
+    }
+    // Vider le registre
+    localStorage.removeItem(REGISTERED_SCHOOLS_KEY);
+
+    // Scanner et supprimer tout ce qui commence par cartes_togo_school_ ou cartes_togo_students_
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('cartes_togo_school_') || k.startsWith('cartes_togo_students_') || k.startsWith('cartes_togo_sync_queue_'))) {
+        keysToRemove.push(k);
+      }
+    }
+    for (const k of keysToRemove) {
+      localStorage.removeItem(k);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cardschool_school_deleted', { detail: 'all' }));
+    }
+  } catch (err) {
+    console.warn('clearAllLocalSchoolsCache error:', err);
+  }
+  return count;
+}
+
 /** Create or provision a school directly by super-admin */
 export async function createSchoolByAdmin(data: {
   name: string;
