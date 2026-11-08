@@ -722,6 +722,22 @@ export function getDeletedSchoolsBlacklist(): Set<string> {
   return new Set();
 }
 
+export function clearDeletedSchoolsBlacklist(): void {
+  try {
+    localStorage.removeItem(DELETED_SCHOOLS_KEY);
+  } catch { }
+}
+
+export function removeDeletedSchoolBlacklist(userId: string): void {
+  try {
+    const list = getDeletedSchoolsBlacklist();
+    if (list.has(userId)) {
+      list.delete(userId);
+      localStorage.setItem(DELETED_SCHOOLS_KEY, JSON.stringify(Array.from(list)));
+    }
+  } catch { }
+}
+
 export function addDeletedSchoolBlacklist(userId: string) {
   const list = getDeletedSchoolsBlacklist();
   list.add(userId);
@@ -877,7 +893,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     }
   } catch { }
 
-  // 1. Charger depuis Supabase school_info (Vrais comptes réels)
+  // 1. Charger depuis Supabase school_info (Vrais comptes réels de la base active)
   try {
     const { data: schoolsData, error: schoolsError } = await supabase
       .from('school_info')
@@ -886,8 +902,14 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
 
     if (!schoolsError && schoolsData) {
       for (const row of (schoolsData as DbSchoolInfo[])) {
-        if (isSystemId(row.user_id) || deletedBlacklist.has(row.user_id)) continue;
+        if (isSystemId(row.user_id)) continue;
         if (row.name && (row.name.startsWith('SYSTEM_') || row.name === 'SYSTEM_PLATFORM_SETTINGS' || row.name === 'SYSTEM_LICENSE_KEYS_REGISTRY')) continue;
+
+        // Si l'école est bien vivante et présente dans la base active, la dé-blacklister au cas où elle y figurait
+        if (deletedBlacklist.has(row.user_id)) {
+          removeDeletedSchoolBlacklist(row.user_id);
+          deletedBlacklist.delete(row.user_id);
+        }
 
         const baseInfo = dbToSchoolInfo(row);
         const dbCount = studentCountMap.get(row.user_id) || 0;
@@ -1148,11 +1170,13 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
 export async function clearAllLocalSchoolsCache(): Promise<number> {
   let count = 0;
   try {
+    // Vider également la blacklist pour éviter de bloquer une école légitime
+    clearDeletedSchoolsBlacklist();
+
     const registered = getRegisteredSchoolsRegistry();
     count = registered.length;
     for (const s of registered) {
       if (s.userId) {
-        addDeletedSchoolBlacklist(s.userId);
         localStorage.removeItem('cartes_togo_school_' + s.userId);
         localStorage.removeItem('cartes_togo_students_' + s.userId);
         localStorage.removeItem('cartes_togo_sync_queue_' + s.userId);
