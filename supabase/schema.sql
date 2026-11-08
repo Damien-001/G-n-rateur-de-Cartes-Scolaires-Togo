@@ -11,7 +11,7 @@
 -- 1. TABLE : school_info (Informations des Établissements Scolaires)
 CREATE TABLE IF NOT EXISTS public.school_info (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       TEXT,
+  user_id       TEXT UNIQUE,
   name          TEXT NOT NULL DEFAULT 'ÉCOLE NATIONALE DU TOGO',
   logo_url      TEXT,
   signature_url TEXT,
@@ -28,6 +28,16 @@ ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS signature_url TEXT;
 ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS stamp_url TEXT;
 ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS card_colors JSONB;
 ALTER TABLE public.school_info ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+-- Contrainte UNIQUE impérative sur user_id (permet l'upsert on_conflict)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'school_info_user_id_unique'
+  ) THEN
+    ALTER TABLE public.school_info ADD CONSTRAINT school_info_user_id_unique UNIQUE (user_id);
+  END IF;
+END $$;
 
 -- 2. TABLE : students (Élèves & Cartes Scolaires)
 CREATE TABLE IF NOT EXISTS public.students (

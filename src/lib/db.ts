@@ -447,17 +447,38 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await Promise.race([
-      supabase
+    // Sauvegarde résiliente : vérifie l'existence avant d'insérer ou mettre à jour
+    let saveError: any = null;
+    try {
+      const { data: existing } = await supabase
         .from('school_info')
-        .upsert(row, { onConflict: 'user_id' }),
-      new Promise<{ error: any }>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), 6000)
-      )
-    ]);
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-    if (error) {
-      console.warn('saveSchoolInfo error (queued for sync):', error.message);
+      if (existing?.id) {
+        const { error: updErr } = await supabase
+          .from('school_info')
+          .update(row)
+          .eq('user_id', userId);
+        saveError = updErr;
+      } else {
+        const { error: insErr } = await supabase
+          .from('school_info')
+          .insert(row);
+        if (insErr) {
+          const { error: upErr } = await supabase
+            .from('school_info')
+            .upsert(row, { onConflict: 'user_id' });
+          saveError = upErr;
+        }
+      }
+    } catch (dbErr: any) {
+      saveError = dbErr;
+    }
+
+    if (saveError) {
+      console.warn('saveSchoolInfo error (queued for sync):', saveError.message || saveError);
       enqueueSyncAction(userId, {
         type: 'save_school_info',
         payload: info
@@ -791,9 +812,32 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
       updated_at: school.updatedAt || new Date().toISOString(),
     };
 
-    await supabase.from('school_info').upsert(row, { onConflict: 'user_id' });
+    // Sauvegarde ultra-robuste : vérifie d'abord si la ligne existe déjà
+    const { data: existingRow } = await supabase
+      .from('school_info')
+      .select('id')
+      .eq('user_id', school.userId)
+      .maybeSingle();
+
+    if (existingRow?.id) {
+      const { error: updateErr } = await supabase
+        .from('school_info')
+        .update(row)
+        .eq('user_id', school.userId);
+      if (updateErr) {
+        console.warn('registerSchoolRecord Supabase update error:', updateErr);
+      }
+    } else {
+      const { error: insertErr } = await supabase
+        .from('school_info')
+        .insert(row);
+      if (insertErr) {
+        console.warn('registerSchoolRecord Supabase insert error, trying upsert:', insertErr);
+        await supabase.from('school_info').upsert(row, { onConflict: 'user_id' });
+      }
+    }
   } catch (err) {
-    console.warn('registerSchoolRecord Supabase upsert error:', err);
+    console.warn('registerSchoolRecord Supabase persistence error:', err);
   }
 
   // 3. Émettre l'événement pour mise à jour immédiate des composants
