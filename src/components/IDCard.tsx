@@ -373,10 +373,10 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
         }}>
           <div>
             {/* Student Name field */}
-            <div style={{ marginBottom: 4 }}>
-              <div style={labelStyle}>Noms et Prénoms</div>
+            <div style={{ marginBottom: 3 }}>
+              <div style={labelStyle}>Nom</div>
               <div style={{
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: '900',
                 color: '#0f172a',
                 textTransform: 'uppercase',
@@ -385,7 +385,20 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
               }}>
-                {student.lastName} {student.firstName}
+                {student.lastName}
+              </div>
+              <div style={{ ...labelStyle, marginTop: 2 }}>Prénoms</div>
+              <div style={{
+                fontSize: 9.5,
+                fontWeight: '800',
+                color: '#1e293b',
+                textTransform: 'uppercase',
+                lineHeight: 1.1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {student.firstName}
               </div>
             </div>
 
