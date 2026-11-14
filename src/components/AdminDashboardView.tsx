@@ -3317,7 +3317,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Section 0: Passerelle de Paiement Universelle en Ligne (Lien de paiement & Webhook) */}
+                {/* Section 0: Passerelle de Paiement Universelle en Ligne (Activation & Webhook) */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-6 space-y-4 bg-white border-2 border-emerald-100">
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -3328,14 +3328,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-                              Passerelle de Paiement Universelle en Ligne
+                              Passerelle de Paiement & Webhook Automatique
                             </h3>
                             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              PayGate • FedaPay • CinetPay • Wave • Carte
+                              PayGate • FedaPay • CinetPay • Wave • Stripe
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                            Créez un lien de paiement sur l'agrégateur de votre choix, collez-le ici pour permettre aux écoles de régler en ligne directement.
+                            Permet l'activation instantanée et automatique des forfaits scolaires dès validation du paiement.
                           </p>
                         </div>
                       </div>
@@ -3354,37 +3354,32 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       </label>
                     </div>
 
+                    {/* Notice indiquant où configurer les liens par forfait */}
+                    <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0">
+                          🔗
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-emerald-950">
+                            Liens de paiement configurés par formule
+                          </p>
+                          <p className="text-[11px] text-emerald-800/90 font-medium">
+                            Chaque forfait (15 000, 30 000 FCFA, etc.) a son propre lien défini dans l'onglet <strong>Tarifs Vitrine</strong>.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('pricing')}
+                        className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black rounded-lg transition-colors cursor-pointer shrink-0 self-start sm:self-auto flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Gérer les Liens des Forfaits</span>
+                      </button>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                      {/* Gateway Name / Button Title */}
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                          Titre du bouton de paiement pour les écoles
-                        </label>
-                        <input
-                          type="text"
-                          value={platformSettings.paymentGatewayName || ''}
-                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentGatewayName: e.target.value }))}
-                          placeholder="Ex: Payer en Ligne (T-Money, Flooz, Carte bancaire)"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                        />
-                        <p className="text-[10px] text-slate-400">Texte affiché sur le bouton cliquable par l'établissement.</p>
-                      </div>
-
-                      {/* Payment Link URL */}
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
-                          Lien de Paiement en Ligne (Payment Link URL)
-                        </label>
-                        <input
-                          type="url"
-                          value={platformSettings.paymentGatewayUrl || ''}
-                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentGatewayUrl: e.target.value }))}
-                          placeholder="Ex: https://paygateglobal.com/pay/... ou https://fedapay.com/pay/..."
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-emerald-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                        />
-                        <p className="text-[10px] text-slate-400">Collez le lien de paiement généré sur votre tableau de bord PayGate, FedaPay, CinetPay, etc.</p>
-                      </div>
-
                       {/* Webhook Secret Key */}
                       <div className="space-y-1.5">
                         <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
@@ -3397,7 +3392,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           placeholder="Ex: whsec_xxxxxxxxxxxxxxxxxxxx"
                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-medium focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
                         />
-                        <p className="text-[10px] text-slate-400">Clé secrète fournie par votre passerelle pour authentifier les notifications webhook.</p>
+                        <p className="text-[10px] text-slate-400">Optionnel mais recommandé : permet de vérifier l'authenticité des requêtes envoyées par votre passerelle.</p>
                       </div>
 
                       {/* Application Webhook URL to copy */}
