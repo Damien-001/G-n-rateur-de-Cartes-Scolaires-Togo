@@ -11,6 +11,9 @@ import {
   ChevronRight,
   Activity,
   Layers,
+  CreditCard,
+  Zap,
+  Globe,
   FileDown,
   ArrowUp,
   Menu,
@@ -503,15 +506,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
             )}
           </motion.div>
 
-          {/* Mobile Money Visuals */}
+          {/* Modes de Règlements Disponibles */}
           <motion.div variants={itemVariants} className="pt-6 space-y-2.5">
-            <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">Paiements Locaux UEMOA Supportés</p>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">
+                Paiements Sécurisés & Instantanés
+              </p>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Activation Immédiate
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
                 <Smartphone className="w-4 h-4 text-emerald-600" /> T-Money (Togo)
               </span>
-              <span className="text-sm font-bold text-gray-700 flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
-                <Smartphone className="w-4 h-4 text-emerald-600" /> Flooz / Moov (Togo)
+              <span className="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
+                <Smartphone className="w-4 h-4 text-emerald-600" /> Flooz / Moov
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs hover:border-emerald-300 transition-colors">
+                <CreditCard className="w-4 h-4 text-emerald-600" /> Cartes Bancaires (Visa/Mastercard)
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-emerald-800 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
+                <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Passerelle en Ligne Sécurisée
               </span>
             </div>
           </motion.div>
@@ -883,7 +899,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartAuth, onStartOf
               },
               {
                 q: "Comment payer mon abonnement au Togo ?",
-                a: "Vous pouvez régler votre abonnement annuel directement par T-Money ou Moov Money (Flooz). Dès que le paiement est validé en quelques secondes sur notre passerelle locale, votre compte passe instantanément en illimité."
+                a: "Vous pouvez régler votre forfait directement en ligne via notre passerelle sécurisée par T-Money, Moov Money (Flooz) ou Carte bancaire (Visa/Mastercard) pour une activation immédiate. Le transfert direct vers nos numéros officiels avec envoi de reçu dans le chat est également disponible."
               },
               {
                 q: "Les photos des élèves sont-elles en sécurité ?",
