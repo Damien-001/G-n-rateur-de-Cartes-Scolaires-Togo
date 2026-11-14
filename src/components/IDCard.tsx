@@ -185,16 +185,16 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
       {/* Official Togo Flag Strip separator with diagonal security lines overlay */}
       <div style={{
         display: 'flex',
-        height: 4,
+        height: 6.5,
         width: '100%',
         position: 'relative',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
         zIndex: 2,
       }}>
         {/* Red Canton with white star */}
         <div style={{
-          width: 24,
-          height: 4,
+          width: 26,
+          height: 6.5,
           backgroundColor: '#d21034',
           position: 'relative',
           display: 'flex',
@@ -202,14 +202,14 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
           justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <svg viewBox="0 0 10 10" width="3.2" height="3.2" fill="#ffffff">
+          <svg viewBox="0 0 10 10" width="4.8" height="4.8" fill="#ffffff">
             <polygon points="5,1 6,4 9,4 7,6 8,9 5,7 2,9 3,6 1,4 4,4" />
           </svg>
         </div>
         {/* 5 Alternating stripes */}
         <div style={{
           flex: 1,
-          height: 4,
+          height: 6.5,
           display: 'flex',
           flexDirection: 'column',
         }}>
