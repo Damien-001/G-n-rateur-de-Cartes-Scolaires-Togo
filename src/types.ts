@@ -179,6 +179,8 @@ export interface LandingPricingPlan {
   buttonText: string;
   buttonAction: 'signup' | 'contact' | 'custom_url';
   buttonUrl?: string;
+  paymentUrl?: string; // Lien de paiement spécifique à ce forfait (ex: lien PayGate/FedaPay 15 000 ou 30 000)
+  durationDays?: number; // Durée de validité de l'abonnement en jours (ex: 365 pour 1 an, 180 pour 6 mois)
   isPopular?: boolean;
   enabled?: boolean;
 }

@@ -119,8 +119,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // Calculer la date d'expiration (+365 jours = 1 an)
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    // Récupérer la durée demandée par le forfait (par défaut 365 jours si non spécifié)
+    const durationDaysParam = req.query?.duration_days || metadata.duration_days || metadata.durationDays || payload.duration_days;
+    const durationDays = durationDaysParam ? Math.max(1, parseInt(durationDaysParam) || 365) : 365;
+
+    // Calculer la date d'expiration
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
     // 5. Mettre à jour school_info dans Supabase (Passage en PRO)
     const { data: currentSchool } = await supabase

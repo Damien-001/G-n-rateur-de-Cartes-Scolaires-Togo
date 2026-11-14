@@ -3154,6 +3154,8 @@ export function sanitizePricingPlans(plans: any): LandingPricingPlan[] {
     buttonText: p.buttonText || "S'abonner",
     buttonAction: p.buttonAction || 'signup',
     buttonUrl: p.buttonUrl || '',
+    paymentUrl: p.paymentUrl || '',
+    durationDays: p.durationDays ? Number(p.durationDays) : 365,
     isPopular: Boolean(p.isPopular),
     enabled: p.enabled === false || (p.enabled as any) === 'false' || (p.enabled as any) === 0 || (p.enabled as any) === '0' ? false : true
   }));
