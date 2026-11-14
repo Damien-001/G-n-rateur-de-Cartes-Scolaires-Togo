@@ -372,48 +372,56 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
           zIndex: 1,
         }}>
           <div>
-            {/* Student Name field */}
-            <div style={{ marginBottom: 3 }}>
-              <div style={labelStyle}>Nom</div>
-              <div style={{
-                fontSize: 10,
-                fontWeight: '900',
-                color: '#0f172a',
-                textTransform: 'uppercase',
-                lineHeight: 1.1,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {student.lastName}
+            {/* Top row: Name/Surname on left, Class on right */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1.1fr',
+              gap: '4px 6px',
+              marginBottom: 4,
+            }}>
+              {/* Left: Nom & Prénoms */}
+              <div>
+                <div style={labelStyle}>Nom</div>
+                <div style={{
+                  fontSize: 10,
+                  fontWeight: '900',
+                  color: '#0f172a',
+                  textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {student.lastName}
+                </div>
+                <div style={{ ...labelStyle, marginTop: 2 }}>Prénoms</div>
+                <div style={{
+                  fontSize: 9.5,
+                  fontWeight: '800',
+                  color: '#1e293b',
+                  textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {student.firstName}
+                </div>
               </div>
-              <div style={{ ...labelStyle, marginTop: 2 }}>Prénoms</div>
-              <div style={{
-                fontSize: 9.5,
-                fontWeight: '800',
-                color: '#1e293b',
-                textTransform: 'uppercase',
-                lineHeight: 1.1,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {student.firstName}
+
+              {/* Right: Classe */}
+              <div>
+                <div style={labelStyle}>Classe</div>
+                <div style={valueStyle}>{student.className}</div>
               </div>
             </div>
 
-            {/* Inner Grid */}
+            {/* Bottom details grid: Centre d'examen, Date & Lieu de naissance */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1.1fr',
               gap: '4px 6px',
             }}>
-              {/* Classe */}
-              <div>
-                <div style={labelStyle}>Classe</div>
-                <div style={valueStyle}>{student.className}</div>
-              </div>
-              
               {/* Centre d'examen */}
               <div>
                 <div style={labelStyle}>Centre d'examen</div>
@@ -428,12 +436,6 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 </div>
               </div>
 
-              {/* Date de naissance */}
-              <div>
-                <div style={labelStyle}>Né(e) le</div>
-                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
-              </div>
-              
               {/* Lieu de naissance */}
               <div>
                 <div style={labelStyle}>À (Lieu)</div>
@@ -446,6 +448,12 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 }} title={student.birthPlace || '----'}>
                   {student.birthPlace || '----'}
                 </div>
+              </div>
+
+              {/* Date de naissance */}
+              <div>
+                <div style={labelStyle}>Né(e) le</div>
+                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
               </div>
             </div>
           </div>
