@@ -179,19 +179,16 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
       `}</style>
 
       {/* Full-screen wrapper */}
-      <div className="min-h-screen bg-[#e8edf3] flex items-center justify-center p-3 sm:p-6 font-sans">
+      <div className="min-h-screen bg-[#e8edf3] flex items-center justify-center p-0 sm:p-4 lg:p-8 font-sans">
         
         {/* Split-screen card */}
-        <div
-          className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-12 shadow-2xl shadow-slate-900/15 overflow-hidden rounded-[20px] sm:rounded-[28px]"
-          style={{ minHeight: 'clamp(540px, 88vh, 720px)' }}
-        >
+        <div className="w-full max-w-[1220px] min-h-screen sm:min-h-[720px] bg-white sm:rounded-[28px] shadow-[0_24px_80px_rgba(15,23,42,0.09)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 border border-slate-200/80">
 
           {/* ── LEFT PANEL: Form ──────────────────────────────────────────────── */}
-          <div className="lg:col-span-6 bg-white flex flex-col">
+          <div className="lg:col-span-6 flex flex-col justify-between p-6 sm:p-10 xl:p-14 bg-white relative">
 
             {/* Top brand bar */}
-            <div className="flex items-center gap-3 px-8 pt-8 pb-4">
+            <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-700 shrink-0">
                 <IconShield size={18} color="#047857" />
               </div>
@@ -202,7 +199,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             </div>
 
             {/* Form area — vertically centered */}
-            <div className="flex-1 flex flex-col justify-center px-8 pb-4">
+            <div className="w-full max-w-[380px] mx-auto my-8 transition-all duration-300">
 
               {/* Heading */}
               <div className="mb-7">
@@ -304,7 +301,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             </div>
 
             {/* Footer legal bar */}
-            <div className="border-t border-slate-100 px-8 py-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-medium">
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                 © {new Date().getFullYear()} SukuPass · Togo
               </p>
@@ -324,7 +321,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
 
           {/* ── RIGHT PANEL: Dark Admin Panel ────────────────────────────────── */}
           <div
-            className="lg:col-span-6 relative hidden lg:flex flex-col overflow-hidden"
+            className="lg:col-span-6 relative hidden lg:flex flex-col justify-between p-6 sm:p-8 xl:p-10 min-h-[460px] lg:min-h-full overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #0b251c 0%, #064e3b 50%, #0f172a 100%)' }}
           >
             {/* Background photo overlay */}
@@ -349,7 +346,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             <div className="absolute bottom-0 left-0 w-56 h-56 bg-emerald-700/15 rounded-full blur-3xl pointer-events-none" />
 
             {/* Top badge */}
-            <div className="relative z-10 flex items-center gap-2.5 px-8 pt-8">
+            <div className="relative z-10 flex items-center justify-between gap-2">
               <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
                 <IconShield size={16} color="white" />
               </div>
@@ -360,7 +357,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             </div>
 
             {/* Center content */}
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 text-center">
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center py-6 text-center">
               {/* Animated shield icon */}
               <div
                 className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
@@ -395,7 +392,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onAuth, onBackTo
             </div>
 
             {/* Bottom frosted-glass info card */}
-            <div className="relative z-10 m-6">
+            <div className="relative z-10 mt-auto">
               <div
                 className="rounded-2xl p-5"
                 style={{
