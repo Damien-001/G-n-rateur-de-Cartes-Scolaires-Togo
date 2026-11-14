@@ -257,6 +257,12 @@ export interface PlatformSettings {
   whatsappNumber: string;
   officeAddress?: string;
 
+  // Passerelle de paiement en ligne Universelle (PayGate, FedaPay, CinetPay, Wave, etc.)
+  paymentGatewayEnabled?: boolean;
+  paymentGatewayName?: string;
+  paymentGatewayUrl?: string;
+  paymentWebhookSecret?: string;
+
   // Passerelle de paiement automatique FedaPay (T-Money, Flooz, Cartes)
   fedapayEnabled?: boolean;
   fedapayPublicKey?: string;
@@ -290,6 +296,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   supportPhone: '+228 90 00 00 00',
   whatsappNumber: '+228 90 00 00 00',
   officeAddress: 'Lomé, Togo',
+  paymentGatewayEnabled: false,
+  paymentGatewayName: 'Paiement en Ligne (T-Money, Flooz, Carte)',
+  paymentGatewayUrl: '',
+  paymentWebhookSecret: '',
   fedapayEnabled: false,
   fedapayPublicKey: '',
   fedapayEnvironment: 'sandbox',

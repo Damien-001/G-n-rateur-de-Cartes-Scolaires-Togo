@@ -3278,6 +3278,122 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
 
+                {/* Section 0: Passerelle de Paiement Universelle en Ligne (Lien de paiement & Webhook) */}
+                <div className="double-bezel-outer">
+                  <div className="double-bezel-inner p-6 space-y-4 bg-white border-2 border-emerald-100">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                              Passerelle de Paiement Universelle en Ligne
+                            </h3>
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              PayGate • FedaPay • CinetPay • Wave • Carte
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                            Créez un lien de paiement sur l'agrégateur de votre choix, collez-le ici pour permettre aux écoles de régler en ligne directement.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Toggle Enable */}
+                      <label className="flex items-center gap-2.5 cursor-pointer select-none px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={platformSettings.paymentGatewayEnabled ?? false}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentGatewayEnabled: e.target.checked }))}
+                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-black text-slate-800">
+                          {platformSettings.paymentGatewayEnabled ? '✅ Passerelle Activée' : '⚪ Passerelle Désactivée'}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                      {/* Gateway Name / Button Title */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          Titre du bouton de paiement pour les écoles
+                        </label>
+                        <input
+                          type="text"
+                          value={platformSettings.paymentGatewayName || ''}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentGatewayName: e.target.value }))}
+                          placeholder="Ex: Payer en Ligne (T-Money, Flooz, Carte bancaire)"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                        />
+                        <p className="text-[10px] text-slate-400">Texte affiché sur le bouton cliquable par l'établissement.</p>
+                      </div>
+
+                      {/* Payment Link URL */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          Lien de Paiement en Ligne (Payment Link URL)
+                        </label>
+                        <input
+                          type="url"
+                          value={platformSettings.paymentGatewayUrl || ''}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentGatewayUrl: e.target.value }))}
+                          placeholder="Ex: https://paygateglobal.com/pay/... ou https://fedapay.com/pay/..."
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-emerald-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                        />
+                        <p className="text-[10px] text-slate-400">Collez le lien de paiement généré sur votre tableau de bord PayGate, FedaPay, CinetPay, etc.</p>
+                      </div>
+
+                      {/* Webhook Secret Key */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          Clé Secrète Webhook (Webhook Secret / Token)
+                        </label>
+                        <input
+                          type="text"
+                          value={platformSettings.paymentWebhookSecret || ''}
+                          onChange={e => setPlatformSettings(prev => ({ ...prev, paymentWebhookSecret: e.target.value }))}
+                          placeholder="Ex: whsec_xxxxxxxxxxxxxxxxxxxx"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-medium focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                        />
+                        <p className="text-[10px] text-slate-400">Clé secrète fournie par votre passerelle pour authentifier les notifications webhook.</p>
+                      </div>
+
+                      {/* Application Webhook URL to copy */}
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                          URL Webhook de votre application (À copier chez l'agrégateur)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={typeof window !== 'undefined' ? `${window.location.origin}/api/payment-webhook` : 'https://sukupass.tg/api/payment-webhook'}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-600 select-all outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${window.location.origin}/api/payment-webhook`;
+                              navigator.clipboard.writeText(url);
+                              setSettingsToast({ type: 'success', message: 'URL Webhook copiée dans le presse-papier !' });
+                              setTimeout(() => setSettingsToast(null), 3000);
+                            }}
+                            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                            title="Copier l'URL Webhook"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copier</span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Renseignez cette URL dans la section "Webhooks" de votre agrégateur pour activer automatiquement les comptes dès le paiement reçu.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Section 0: Information Paiement Direct Mobile Money */}
                 <div className="double-bezel-outer">
                   <div className="double-bezel-inner p-5 space-y-3 bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-white">

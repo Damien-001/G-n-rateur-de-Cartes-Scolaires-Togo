@@ -102,6 +102,10 @@ ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_email TEXT
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_phone TEXT DEFAULT '+228 90 00 00 00';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS whatsapp_number TEXT DEFAULT '+228 90 00 00 00';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS office_address TEXT DEFAULT 'Lomé, Togo — Quartier Administratif';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_gateway_enabled BOOLEAN DEFAULT false;
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_gateway_name TEXT DEFAULT 'Paiement en Ligne (T-Money, Flooz, Carte)';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_gateway_url TEXT DEFAULT '';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_webhook_secret TEXT DEFAULT '';
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS payment_instructions TEXT;
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS support_notice TEXT;
 ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS demo_video_url TEXT DEFAULT '';

@@ -525,6 +525,33 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
                       </div>
                     </div>
 
+                    {/* Universal Online Payment Gateway Banner if enabled */}
+                    {platformSettings.paymentGatewayEnabled && platformSettings.paymentGatewayUrl && (
+                      <div className="p-4.5 bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/60 rounded-2xl border-2 border-emerald-300 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
+                            Paiement Immédiat ⚡
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-800">
+                            T-Money • Flooz • Carte bancaire
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                          Réglez votre licence directement en ligne en quelques secondes sans transfert manuel :
+                        </p>
+                        <a
+                          href={`${platformSettings.paymentGatewayUrl}${platformSettings.paymentGatewayUrl.includes('?') ? '&' : '?'}school_id=${encodeURIComponent(schoolInfo.userId || '')}&school_name=${encodeURIComponent(schoolInfo.name || '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer active:scale-98 transition-all uppercase tracking-wider"
+                        >
+                          <Zap className="w-4 h-4 text-amber-300" />
+                          <span>{platformSettings.paymentGatewayName || 'Payer en Ligne Sécurisé (T-Money, Flooz, Carte)'}</span>
+                          <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                        </a>
+                      </div>
+                    )}
+
                     {/* Instructions banner if any */}
                     {platformSettings.paymentInstructions && (
                       <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-xs text-emerald-950 font-medium leading-relaxed flex items-start gap-2">
