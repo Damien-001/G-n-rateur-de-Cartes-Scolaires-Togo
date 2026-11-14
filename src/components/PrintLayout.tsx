@@ -103,7 +103,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'flex-start',
-              padding: cardsPerPage === 10 ? '30px 22px' : '65px 22px', // Adjust margin for vertical centering
+              padding: cardsPerPage === 10 ? '16px 22px' : '65px 22px', // Centrage vertical pour 10 cartes
               boxSizing: 'border-box',
               position: 'relative',
               pageBreakAfter: 'always',
@@ -113,7 +113,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gridTemplateRows: `repeat(${rows}, auto)`,
-              gap: '20px 22px',
+              gap: cardsPerPage === 10 ? '16px 22px' : '20px 22px',
             }}>
               {pageStudents.map((student) => (
                 <div key={`front-${student.id}`} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -121,7 +121,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
                 </div>
               ))}
               {Array.from({ length: cardsPerPage - pageStudents.length }).map((_, i) => (
-                <div key={`empty-front-${i}`} style={{ width: 350, height: 198, visibility: 'hidden' }} />
+                <div key={`empty-front-${i}`} style={{ width: 350, height: 205, visibility: 'hidden' }} />
               ))}
             </div>
           </div>
@@ -148,7 +148,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'flex-start',
-              padding: cardsPerPage === 10 ? '30px 22px' : '65px 22px',
+              padding: cardsPerPage === 10 ? '16px 22px' : '65px 22px',
               boxSizing: 'border-box',
               position: 'relative',
               pageBreakAfter: 'always',
@@ -158,14 +158,14 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gridTemplateRows: `repeat(${rows}, auto)`,
-              gap: '20px 22px',
+              gap: cardsPerPage === 10 ? '16px 22px' : '20px 22px',
             }}>
               {backStudents.map((student, i) => (
                 <div key={`back-slot-${i}`} style={{ display: 'flex', justifyContent: 'center' }}>
                   {student ? (
                     <IDCardBack student={student} schoolInfo={schoolInfo} />
                   ) : (
-                    <div style={{ width: 350, height: 198, visibility: 'hidden' }} />
+                    <div style={{ width: 350, height: 205, visibility: 'hidden' }} />
                   )}
                 </div>
               ))}

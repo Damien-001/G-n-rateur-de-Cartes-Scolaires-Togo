@@ -21,7 +21,7 @@ export const IDCardBack: React.FC<IDCardBackProps> = React.memo(({ student, scho
     <div
       style={{
         width: 350,
-        height: 198,
+        height: 205,
         position: 'relative',
         backgroundColor: '#ffffff',
         borderRadius: 8,
