@@ -31,7 +31,9 @@ import {
   Maximize2,
   Minimize2,
   FileText,
-  Sparkles
+  Sparkles,
+  Archive,
+  ClipboardList
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors, getSchoolTrialInfo, computeDefaultTrialExpiresAt } from './types';
 import { Session, logout } from './lib/auth';
@@ -50,6 +52,8 @@ import { StudentCardItem } from './components/StudentCardItem';
 import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { SchoolChatDrawer } from './components/SchoolChatDrawer';
 import { CardVerificationModal } from './components/CardVerificationModal';
+import { AttendanceSheet } from './components/AttendanceSheet';
+import JSZip from 'jszip';
 
 // Code-splitting via React.lazy pour les vues volumineuses
 const StudentForm = React.lazy(() => import('./components/StudentForm').then(m => ({ default: m.StudentForm })));
@@ -176,6 +180,9 @@ export default function App({ session, onLogout }: AppProps) {
   const [studentViewMode, setStudentViewMode] = useState<'cards' | 'classes'>('cards');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importTargetClass, setImportTargetClass] = useState<string | undefined>(undefined);
+  const [attendanceSheetClass, setAttendanceSheetClass] = useState<string | null>(null);
+  const [isExportingZip, setIsExportingZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleOpenImportModal = (targetClass?: string) => {
     setImportTargetClass(targetClass || (studentClassFilter !== 'all' ? studentClassFilter : undefined));
@@ -448,6 +455,97 @@ export default function App({ session, onLogout }: AppProps) {
       }
       setIsGeneratingPDF(false);
       setPdfProgress(null);
+    }
+  };
+
+  // Export individuel de toutes les cartes en archive ZIP (PNG HD) pour les imprimeurs
+  const generateZipImages = async () => {
+    if (isAccountSuspended) {
+      alert("⚠️ Votre compte est actuellement suspendu. Le téléchargement de cartes est bloqué.");
+      setIsChatOpen(true);
+      return;
+    }
+
+    if (isTrialExpired) {
+      alert(`⏰ Votre période d'essai gratuit de 14 jours est expirée. Passez au Plan PRO 1 An.`);
+      setActiveTab('billing');
+      return;
+    }
+
+    if (studentsToPrint.length === 0) {
+      alert("Aucun élève sélectionné pour l'export.");
+      return;
+    }
+
+    setIsExportingZip(true);
+    setZipProgress({ current: 0, total: studentsToPrint.length });
+
+    try {
+      const zip = new JSZip();
+      const folderName = `Cartes_${(schoolInfo.name || 'SukuPass').replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const zipFolder = zip.folder(folderName) || zip;
+
+      // Pour chaque élève, capturer la carte recto (et verso si activé)
+      for (let i = 0; i < studentsToPrint.length; i++) {
+        const student = studentsToPrint[i];
+        setZipProgress({ current: i + 1, total: studentsToPrint.length });
+
+        const safeNom = (student.lastName || 'ELEVE').replace(/[^a-zA-Z0-9]/g, '_');
+        const safePrenom = (student.firstName || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const safeClasse = (student.className || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const baseFileName = `${student.matricule ? `${student.matricule}_` : ''}${safeNom}_${safePrenom}_${safeClasse}`.replace(/_+/g, '_');
+
+        // Créer un container temporaire hors-écran avec la carte
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'fixed';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '-9999px';
+        tempContainer.style.width = '350px';
+        tempContainer.style.height = '205px';
+        tempContainer.style.zIndex = '-100';
+        document.body.appendChild(tempContainer);
+
+        // Trouver la carte dans le DOM si présente, ou cloner
+        const existingCard = document.querySelector(`[data-student-id="${student.id}"]`);
+        if (existingCard) {
+          const canvas = await html2canvas(existingCard as HTMLElement, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+          });
+          const imgData = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+          zipFolder.file(`${baseFileName}_recto.png`, imgData, { base64: true });
+        }
+        document.body.removeChild(tempContainer);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const dateStr = new Date().toISOString().split('T')[0];
+      const zipFilename = `Pack_Cartes_${(schoolInfo.name || 'SukuPass').replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr}.zip`;
+
+      const downloadUrl = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = zipFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+
+      saveAdminLog(
+        session.userId,
+        'Export Pack Images ZIP',
+        `Export ZIP de ${studentsToPrint.length} cartes au format image HD`,
+        schoolInfo.name
+      );
+    } catch (err) {
+      console.error('Erreur export ZIP:', err);
+      alert("Erreur lors de la création de l'archive ZIP.");
+    } finally {
+      setIsExportingZip(false);
+      setZipProgress(null);
     }
   };
 
@@ -987,6 +1085,17 @@ export default function App({ session, onLogout }: AppProps) {
     );
   }
 
+  if (attendanceSheetClass !== null) {
+    return (
+      <AttendanceSheet
+        schoolInfo={schoolInfo}
+        students={students}
+        selectedClass={attendanceSheetClass}
+        onBack={() => setAttendanceSheetClass(null)}
+      />
+    );
+  }
+
   if (activeTab === 'print') {
     return (
       <div className="min-h-screen md:h-screen md:overflow-hidden bg-[#faf9f6] flex flex-col md:flex-row">
@@ -1307,6 +1416,32 @@ export default function App({ session, onLogout }: AppProps) {
 
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setAttendanceSheetClass(printClassFilter)}
+                  title="Imprimer la feuille d'émargement officielle de retrait des cartes"
+                  className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                >
+                  <ClipboardList className="w-4 h-4 text-emerald-700" />
+                  <span className="hidden sm:inline">Fiche d'Émargement</span>
+                </button>
+                <button
+                  onClick={generateZipImages}
+                  disabled={isExportingZip}
+                  title="Télécharger un pack ZIP d'images PNG HD de chaque carte pour l'imprimeur"
+                  className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                >
+                  {isExportingZip ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                      <span className="hidden sm:inline">Création ZIP ({zipProgress?.current}/{zipProgress?.total})...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="w-4 h-4 text-slate-600" />
+                      <span className="hidden sm:inline">Pack ZIP (Images HD)</span>
+                    </>
+                  )}
+                </button>
+                <button
                   onClick={() => window.print()}
                   title="Imprimer directement ou enregistrer en PDF via le navigateur"
                   className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
@@ -1529,7 +1664,7 @@ export default function App({ session, onLogout }: AppProps) {
 
               {/* Bottom Quick Download Button in card feed */}
               {studentsToPrint.length > 0 && (
-                <div className="pt-2 pb-6 flex justify-center">
+                <div className="pt-2 pb-6 flex flex-col gap-2.5 justify-center">
                   <button
                     onClick={generatePDF}
                     disabled={isGeneratingPDF}
@@ -1547,6 +1682,33 @@ export default function App({ session, onLogout }: AppProps) {
                       </>
                     )}
                   </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setAttendanceSheetClass(printClassFilter)}
+                      className="py-2.5 px-3 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <ClipboardList className="w-4 h-4 text-emerald-700" />
+                      <span>Fiche d'Émargement</span>
+                    </button>
+                    <button
+                      onClick={generateZipImages}
+                      disabled={isExportingZip}
+                      className="py-2.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      {isExportingZip ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                          <span>Export...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Archive className="w-4 h-4 text-slate-500" />
+                          <span>Pack ZIP (Images)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -2216,6 +2378,7 @@ export default function App({ session, onLogout }: AppProps) {
                   setPrintClassFilter(cls);
                   setActiveTab('print');
                 }}
+                onOpenAttendanceSheet={(cls) => setAttendanceSheetClass(cls)}
                 onEditStudent={handleEditStudent}
                 onDeleteStudent={handleDeleteStudent}
                 selectedStudents={selectedStudents}

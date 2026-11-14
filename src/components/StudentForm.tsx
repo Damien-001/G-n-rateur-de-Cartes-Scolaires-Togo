@@ -660,8 +660,14 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                           <SwitchCamera className="w-4 h-4" />
                         </button>
                       )}
-                      <div className="absolute inset-3 border border-dashed border-white/20 rounded-xl pointer-events-none flex items-center justify-center">
-                        <p className="text-[8px] text-white/50 uppercase tracking-[0.2em] font-bold">Cadrer le visage</p>
+                      {/* Guide de cadrage officiel photo d'identité (ovale tête & épaules) */}
+                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-3">
+                        <div className="w-28 h-36 border-2 border-emerald-400/90 rounded-[50%] shadow-[0_0_0_9999px_rgba(0,0,0,0.35)] flex flex-col items-center justify-center">
+                          <div className="w-full border-t border-dashed border-emerald-300/40 my-auto" />
+                        </div>
+                        <span className="mt-2 px-2 py-0.5 bg-black/75 text-emerald-300 text-[9px] font-black tracking-wider uppercase rounded-full backdrop-blur-xs">
+                          Visage dans l'ovale
+                        </span>
                       </div>
                     </div>
                     <div className="flex gap-2 w-full max-w-[240px]">

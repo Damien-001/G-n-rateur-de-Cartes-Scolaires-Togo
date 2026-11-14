@@ -20,7 +20,8 @@ import {
   Eye,
   Check,
   UserCheck,
-  UserX
+  UserX,
+  ClipboardList
 } from 'lucide-react';
 
 interface ClassDirectoryViewProps {
@@ -32,6 +33,7 @@ interface ClassDirectoryViewProps {
   onDownloadTemplate: (className: string) => void;
   onExportClassCSV: (className: string) => void;
   onPrintClass: (className: string) => void;
+  onOpenAttendanceSheet?: (className: string) => void;
   onEditStudent: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
   selectedStudents: string[];
@@ -48,6 +50,7 @@ export const ClassDirectoryView: React.FC<ClassDirectoryViewProps> = ({
   onDownloadTemplate,
   onExportClassCSV,
   onPrintClass,
+  onOpenAttendanceSheet,
   onEditStudent,
   onDeleteStudent,
   selectedStudents,
@@ -317,6 +320,17 @@ export const ClassDirectoryView: React.FC<ClassDirectoryViewProps> = ({
                 <Printer className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Imprimer les cartes</span>
               </button>
+
+              {onOpenAttendanceSheet && (
+                <button
+                  onClick={() => onOpenAttendanceSheet(expandedClass)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer active:scale-95"
+                  title="Générer la feuille d'émargement officielle de remise des cartes"
+                >
+                  <ClipboardList className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Fiche d'Émargement</span>
+                </button>
+              )}
 
               <button
                 onClick={() => onExportClassCSV(expandedClass)}
