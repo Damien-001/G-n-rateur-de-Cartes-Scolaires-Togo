@@ -372,15 +372,15 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
           zIndex: 1,
         }}>
           <div>
-            {/* Top row: Name/Surname on left, Class on right */}
+            {/* Grid containing Left Column (Nom, Prénoms, Né(e) le, À (Lieu)) and Right Column (Classe, Centre d'examen) */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1.1fr',
               gap: '4px 6px',
-              marginBottom: 4,
             }}>
-              {/* Left: Nom & Prénoms */}
+              {/* Left Column */}
               <div>
+                {/* Nom */}
                 <div style={labelStyle}>Nom</div>
                 <div style={{
                   fontSize: 10,
@@ -394,6 +394,8 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 }}>
                   {student.lastName}
                 </div>
+
+                {/* Prénoms */}
                 <div style={{ ...labelStyle, marginTop: 2 }}>Prénoms</div>
                 <div style={{
                   fontSize: 9.5,
@@ -407,38 +409,13 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 }}>
                   {student.firstName}
                 </div>
-              </div>
 
-              {/* Right: Classe */}
-              <div>
-                <div style={labelStyle}>Classe</div>
-                <div style={valueStyle}>{student.className}</div>
-              </div>
-            </div>
+                {/* Né(e) le */}
+                <div style={{ ...labelStyle, marginTop: 3 }}>Né(e) le</div>
+                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
 
-            {/* Bottom details grid: Centre d'examen, Date & Lieu de naissance */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1.1fr',
-              gap: '4px 6px',
-            }}>
-              {/* Centre d'examen */}
-              <div>
-                <div style={labelStyle}>Centre d'examen</div>
-                <div style={{
-                  ...valueStyle,
-                  fontSize: 7.5,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }} title={student.examCenter || '----'}>
-                  {student.examCenter || '----'}
-                </div>
-              </div>
-
-              {/* Lieu de naissance */}
-              <div>
-                <div style={labelStyle}>À (Lieu)</div>
+                {/* À (Lieu) */}
+                <div style={{ ...labelStyle, marginTop: 2 }}>À (Lieu)</div>
                 <div style={{
                   ...valueStyle,
                   fontSize: 7.5,
@@ -450,10 +427,23 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                 </div>
               </div>
 
-              {/* Date de naissance */}
+              {/* Right Column */}
               <div>
-                <div style={labelStyle}>Né(e) le</div>
-                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
+                {/* Classe */}
+                <div style={labelStyle}>Classe</div>
+                <div style={valueStyle}>{student.className}</div>
+
+                {/* Centre d'examen */}
+                <div style={{ ...labelStyle, marginTop: 4 }}>Centre d'examen</div>
+                <div style={{
+                  ...valueStyle,
+                  fontSize: 7.5,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }} title={student.examCenter || '----'}>
+                  {student.examCenter || '----'}
+                </div>
               </div>
             </div>
           </div>
