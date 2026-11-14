@@ -176,9 +176,9 @@
       loading.style.display = 'block';
 
       try {
-        // Récupérer les variables d'environnement
-        const supabaseUrl = 'https://yvkevfcfhnnzkrludxaw.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2a2V2ZmNmaG5uemtybHVkeGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MTM2NjMsImV4cCI6MjA5MjE4OTY2M30.Mx8w_acYVl1hG-VEpfB0LTUxKvbgYYBkSw6IZbLBKfI';
+        // Variables anonymisées
+        const supabaseUrl = window.localStorage.getItem('supabase_url') || 'https://votre-projet.supabase.co';
+        const supabaseKey = window.localStorage.getItem('supabase_key') || 'votre-cle-anon';
 
         const supabase = createClient(supabaseUrl, supabaseKey);
 
