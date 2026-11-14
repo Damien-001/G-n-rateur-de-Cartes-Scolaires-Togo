@@ -1,6 +1,7 @@
 import React from 'react';
 import { Student, SchoolInfo, DEFAULT_CARD_COLORS } from '../types';
 import { QRGenerator } from './QRGenerator';
+import { BarcodeGenerator } from './BarcodeGenerator';
 import { formatDateDisplay } from '../lib/utils';
 
 interface IDCardProps {
@@ -461,38 +462,10 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
 
           {/* Secure Barcode area at bottom of details */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <svg viewBox="0 0 100 20" style={{ width: 75, height: 13, opacity: 0.8 }}>
-                <rect x="0" width="2.5" height="20" fill="#000" />
-                <rect x="4" width="1" height="20" fill="#000" />
-                <rect x="6" width="3" height="20" fill="#000" />
-                <rect x="11" width="1" height="20" fill="#000" />
-                <rect x="13" width="2" height="20" fill="#000" />
-                <rect x="16" width="4.5" height="20" fill="#000" />
-                <rect x="22" width="1" height="20" fill="#000" />
-                <rect x="24" width="2" height="20" fill="#000" />
-                <rect x="27" width="3.5" height="20" fill="#000" />
-                <rect x="32" width="1" height="20" fill="#000" />
-                <rect x="34" width="4" height="20" fill="#000" />
-                <rect x="39" width="2" height="20" fill="#000" />
-                <rect x="42" width="1" height="20" fill="#000" />
-                <rect x="44" width="3" height="20" fill="#000" />
-                <rect x="49" width="1" height="20" fill="#000" />
-                <rect x="52" width="2.5" height="20" fill="#000" />
-                <rect x="56" width="4" height="20" fill="#000" />
-                <rect x="61" width="1" height="20" fill="#000" />
-                <rect x="63" width="2" height="20" fill="#000" />
-                <rect x="66" width="3.5" height="20" fill="#000" />
-                <rect x="71" width="1" height="20" fill="#000" />
-                <rect x="73" width="4" height="20" fill="#000" />
-                <rect x="78" width="2" height="20" fill="#000" />
-                <rect x="81" width="1" height="20" fill="#000" />
-                <rect x="83" width="3" height="20" fill="#000" />
-                <rect x="88" width="1.5" height="20" fill="#000" />
-                <rect x="91" width="2" height="20" fill="#000" />
-                <rect x="94" width="4" height="20" fill="#000" />
-                <rect x="99" width="1" height="20" fill="#000" />
-              </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', width: 75, alignItems: 'center' }}>
+              <div style={{ width: '100%', height: 13, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+                <BarcodeGenerator value={student.matricule || '2025-TG-001'} width={0.8} height={13} />
+              </div>
               <div style={{ fontSize: 4.5, color: '#94a3b8', fontFamily: 'monospace', letterSpacing: 0.5, textAlign: 'center', marginTop: 1, lineHeight: 1 }}>
                 * {student.matricule || 'STUDENT'} *
               </div>
@@ -500,7 +473,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             
             {/* Dynamic Security QR Code & Micro Hologram */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <QRGenerator value={student.matricule || 'PREVIEW'} size={25} fgColor="#0f172a" />
+              <QRGenerator value={student.matricule ? `MEPST-TG|${student.matricule}|${student.lastName}|${student.firstName}|${student.className}` : 'PREVIEW'} size={25} fgColor="#0f172a" />
               
               {/* Micro Hologram sticker next to it */}
               <div style={{
