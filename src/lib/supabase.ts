@@ -39,6 +39,7 @@ export interface DbStudent {
   user_id: string;
   first_name: string;
   last_name: string;
+  gender?: string;
   matricule: string;
   class_name: string;
   school_year: string;

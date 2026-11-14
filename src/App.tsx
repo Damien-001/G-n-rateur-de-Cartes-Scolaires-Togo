@@ -192,6 +192,7 @@ export default function App({ session, onLogout }: AppProps) {
     const dataToExport = list.map(s => ({
       nom: s.lastName,
       prenom: s.firstName,
+      sexe: s.gender || '',
       matricule: s.matricule,
       classe: s.className,
       annee_scolaire: s.schoolYear || '2025-2026',
@@ -202,7 +203,7 @@ export default function App({ session, onLogout }: AppProps) {
       date_expiration: formatDateDisplay(s.expirationDate),
     }));
     const csv = Papa.unparse(dataToExport, {
-      columns: ['nom', 'prenom', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
+      columns: ['nom', 'prenom', 'sexe', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
       delimiter: ';',
     });
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -222,6 +223,7 @@ export default function App({ session, onLogout }: AppProps) {
       {
         nom: 'KOFFI',
         prenom: 'Jean',
+        sexe: 'M',
         matricule: '2025-TG-001',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -234,6 +236,7 @@ export default function App({ session, onLogout }: AppProps) {
       {
         nom: 'MENSAH',
         prenom: 'Afi',
+        sexe: 'F',
         matricule: '2025-TG-002',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -246,7 +249,7 @@ export default function App({ session, onLogout }: AppProps) {
     ];
 
     const csv = Papa.unparse(sample, {
-      columns: ['nom', 'prenom', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
+      columns: ['nom', 'prenom', 'sexe', 'matricule', 'classe', 'annee_scolaire', 'date_naissance', 'lieu_naissance', 'centre_examen', 'photo_url', 'date_expiration'],
       delimiter: ';',
     });
 

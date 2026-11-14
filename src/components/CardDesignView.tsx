@@ -26,6 +26,7 @@ const SAMPLE_STUDENT: Student = {
   id: 'sample-id',
   firstName: 'Abla',
   lastName: 'KOFFI',
+  gender: 'F',
   matricule: 'TG-2026-007',
   className: 'Seconde S',
   schoolYear: '2025-2026',

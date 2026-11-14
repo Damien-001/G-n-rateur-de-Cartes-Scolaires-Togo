@@ -2,6 +2,7 @@ export interface Student {
   id: string;
   firstName: string;
   lastName: string;
+  gender?: 'M' | 'F' | 'Masculin' | 'Féminin' | string;
   matricule: string;
   className: string;
   schoolYear: string;

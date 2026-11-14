@@ -24,6 +24,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
   const [formData, setFormData] = useState<Partial<Student>>({
     firstName:  student?.firstName  ?? '',
     lastName:   student?.lastName   ?? '',
+    gender:     student?.gender     ?? 'M',
     matricule:  student?.matricule  ?? '',
     className:  student?.className  ?? (defaultClass || ''),
     schoolYear: student?.schoolYear ?? '2025-2026',
@@ -41,6 +42,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
       setFormData({
         firstName:  student.firstName  ?? '',
         lastName:   student.lastName   ?? '',
+        gender:     student.gender     ?? 'M',
         matricule:  student.matricule  ?? '',
         className:  student.className  ?? (defaultClass || ''),
         schoolYear: student.schoolYear ?? '2025-2026',
@@ -423,6 +425,37 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, schoolInfo, o
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/30 hover:bg-gray-50/70 focus:bg-white focus-brand outline-none transition-all duration-200 text-sm font-medium text-gray-800 placeholder-gray-400"
                   placeholder="Ex: Jean-Luc"
                 />
+              </div>
+
+              {/* Sexe */}
+              <div className="min-w-0">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  <User className="w-3.5 h-3.5 text-gray-400/80 shrink-0" /> Sexe
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, gender: 'M' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                      (formData.gender || 'M') === 'M'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600'
+                        : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Masculin (M)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, gender: 'F' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                      formData.gender === 'F'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600'
+                        : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Féminin (F)
+                  </button>
+                </div>
               </div>
 
               {/* Ligne 2 : Matricule & Classe */}

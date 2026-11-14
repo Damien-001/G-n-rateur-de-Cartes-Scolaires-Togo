@@ -116,6 +116,14 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
           // Normalisation multi-variantes des colonnes
           const lastName = findRowValue(row, ['nom', 'lastname', 'last_name', 'nom_de_famille', 'Nom']);
           const firstName = findRowValue(row, ['prenom', 'prenoms', 'firstname', 'first_name', 'prenom_eleve', 'Prenom']);
+          const rawGender = findRowValue(row, ['sexe', 'gender', 'sex', 'genre', 'Sexe', 'Genre']);
+          let normalizedGender: string | undefined = undefined;
+          if (rawGender) {
+            const g = rawGender.trim().toUpperCase();
+            if (g === 'M' || g.startsWith('MASC') || g.startsWith('HOM') || g.startsWith('GAR')) normalizedGender = 'M';
+            else if (g === 'F' || g.startsWith('FEM') || g.startsWith('FIL')) normalizedGender = 'F';
+            else normalizedGender = rawGender.trim();
+          }
           const matricule = findRowValue(row, ['matricule', 'numero_matricule', 'id_eleve', 'code', 'Matricule']);
           let cls = findRowValue(row, ['classe', 'class', 'classname', 'class_name', 'Classe', 'niveau']);
 
@@ -134,6 +142,7 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
               id: crypto.randomUUID(),
               firstName,
               lastName,
+              gender: normalizedGender,
               matricule: matricule || `MTR-${Math.floor(1000 + Math.random() * 9000)}`,
               className: cls || (importMode === 'specific_class' ? effectiveTargetClass : 'Non définie'),
               schoolYear: findRowValue(row, ['annee_scolaire', 'school_year', 'annee', 'annee_academique']) || '2025-2026',
@@ -184,6 +193,7 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
       {
         nom: 'KOFFI',
         prenom: 'Jean',
+        sexe: 'M',
         matricule: '2025-TG-001',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -196,6 +206,7 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
       {
         nom: 'MENSAH',
         prenom: 'Afi',
+        sexe: 'F',
         matricule: '2025-TG-002',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -208,7 +219,7 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
     ];
 
     const csv = Papa.unparse(sample, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      columns: ['nom','prenom','sexe','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
     });
 

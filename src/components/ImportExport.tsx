@@ -31,6 +31,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       {
         nom: 'KOFFI',
         prenom: 'Jean',
+        sexe: 'M',
         matricule: '2025-TG-001',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -43,6 +44,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       {
         nom: 'MENSAH',
         prenom: 'Afi',
+        sexe: 'F',
         matricule: '2025-TG-002',
         classe: templateClass,
         annee_scolaire: '2025-2026',
@@ -54,7 +56,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
       }
     ];
     const csv = Papa.unparse(template, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      columns: ['nom','prenom','sexe','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
     });
     // BOM UTF-8 pour ouverture correcte dans Microsoft Excel avec accents
@@ -83,6 +85,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
     const dataToExport = studentsToExport.map(s => ({
       nom: s.lastName,
       prenom: s.firstName,
+      sexe: s.gender || '',
       matricule: s.matricule,
       classe: s.className,
       annee_scolaire: s.schoolYear || '2025-2026',
@@ -94,7 +97,7 @@ export const ImportExport: React.FC<ImportExportProps> = ({
     }));
 
     const csv = Papa.unparse(dataToExport, {
-      columns: ['nom','prenom','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
+      columns: ['nom','prenom','sexe','matricule','classe','annee_scolaire','date_naissance','lieu_naissance','centre_examen','photo_url','date_expiration'],
       delimiter: ';',
     });
 

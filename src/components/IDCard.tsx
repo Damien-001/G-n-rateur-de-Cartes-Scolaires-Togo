@@ -441,9 +441,27 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
 
               {/* Right Column */}
               <div>
-                {/* Classe */}
-                <div style={labelStyle}>Classe</div>
-                <div style={valueStyle}>{student.className}</div>
+                {/* Classe & Sexe on same row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={labelStyle}>Classe</div>
+                    <div style={valueStyle}>{student.className}</div>
+                  </div>
+                  <div>
+                    <div style={labelStyle}>Sexe</div>
+                    <div style={{
+                      ...valueStyle,
+                      color: '#0f172a',
+                      fontWeight: '900',
+                      textAlign: 'center',
+                      padding: '0 4px',
+                      borderRadius: 3,
+                      backgroundColor: '#f1f5f9',
+                    }}>
+                      {student.gender ? (student.gender.toUpperCase().startsWith('F') ? 'F' : 'M') : '-'}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Centre d'examen */}
                 <div style={{ ...labelStyle, marginTop: 4 }}>Centre d'examen</div>
@@ -473,7 +491,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
             
             {/* Dynamic Security QR Code & Micro Hologram */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <QRGenerator value={student.matricule ? `MEPST-TG|${student.matricule}|${student.lastName}|${student.firstName}|${student.className}` : 'PREVIEW'} size={25} fgColor="#0f172a" />
+              <QRGenerator value={student.matricule ? `MEPST-TG|${student.matricule}|${student.lastName}|${student.firstName}|${student.gender || 'M'}|${student.className}` : 'PREVIEW'} size={25} fgColor="#0f172a" />
               
               {/* Micro Hologram sticker next to it */}
               <div style={{
@@ -619,6 +637,7 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
     prevProps.student.id === nextProps.student.id &&
     prevProps.student.firstName === nextProps.student.firstName &&
     prevProps.student.lastName === nextProps.student.lastName &&
+    prevProps.student.gender === nextProps.student.gender &&
     prevProps.student.matricule === nextProps.student.matricule &&
     prevProps.student.className === nextProps.student.className &&
     prevProps.student.schoolYear === nextProps.student.schoolYear &&
