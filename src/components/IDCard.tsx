@@ -385,13 +385,13 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
           zIndex: 1,
         }}>
           <div>
-            {/* Grid containing Left Column (Nom, Prénoms, Né(e) le, À (Lieu)) and Right Column (Classe, Centre d'examen) */}
+            {/* Grid containing Left Column and Right Column */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1.1fr',
               gap: '4px 6px',
             }}>
-              {/* Left Column */}
+              {/* Left Column: Nom, Prénoms, Sexe, Né(e) le */}
               <div>
                 {/* Nom */}
                 <div style={labelStyle}>Nom</div>
@@ -422,49 +422,40 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                   {formatFirstName(student.firstName)}
                 </div>
 
-                {/* Né(e) le */}
-                <div style={{ ...labelStyle, marginTop: 3 }}>Né(e) le</div>
-                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
-
-                {/* À (Lieu) */}
-                <div style={{ ...labelStyle, marginTop: 2 }}>À (Lieu)</div>
+                {/* Sexe */}
+                <div style={{ ...labelStyle, marginTop: 2 }}>Sexe</div>
                 <div style={{
                   ...valueStyle,
-                  fontSize: 7.5,
+                  fontSize: 8,
+                }}>
+                  {student.gender ? (student.gender.toUpperCase().startsWith('F') ? 'Féminin' : 'Masculin') : 'Masculin'}
+                </div>
+
+                {/* Né(e) le */}
+                <div style={{ ...labelStyle, marginTop: 2 }}>Né(e) le</div>
+                <div style={valueStyle}>{formatDate(student.birthDate)}</div>
+              </div>
+
+              {/* Right Column: Lieu, Classe, Centre d'examen */}
+              <div>
+                {/* À (Lieu) */}
+                <div style={labelStyle}>À (Lieu)</div>
+                <div style={{
+                  ...valueStyle,
+                  fontSize: 8,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }} title={student.birthPlace || '----'}>
                   {student.birthPlace || '----'}
                 </div>
-              </div>
 
-              {/* Right Column */}
-              <div>
-                {/* Classe & Sexe on same row */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={labelStyle}>Classe</div>
-                    <div style={valueStyle}>{student.className}</div>
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Sexe</div>
-                    <div style={{
-                      ...valueStyle,
-                      color: '#0f172a',
-                      fontWeight: '900',
-                      textAlign: 'center',
-                      padding: '0 4px',
-                      borderRadius: 3,
-                      backgroundColor: '#f1f5f9',
-                    }}>
-                      {student.gender ? (student.gender.toUpperCase().startsWith('F') ? 'F' : 'M') : '-'}
-                    </div>
-                  </div>
-                </div>
+                {/* Classe */}
+                <div style={{ ...labelStyle, marginTop: 2.5 }}>Classe</div>
+                <div style={valueStyle}>{student.className}</div>
 
                 {/* Centre d'examen */}
-                <div style={{ ...labelStyle, marginTop: 4 }}>Centre d'examen</div>
+                <div style={{ ...labelStyle, marginTop: 2.5 }}>Centre d'examen</div>
                 <div style={{
                   ...valueStyle,
                   fontSize: 7.5,
