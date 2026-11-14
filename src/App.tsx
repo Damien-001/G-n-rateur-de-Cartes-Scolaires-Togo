@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors, getSchoolTrialInfo, computeDefaultTrialExpiresAt } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, smartReconcileStudents, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
 import { setStoredSchoolInfo, getStoredSchoolInfo, getStoredStudents, isAppOnline } from './lib/offlineStorage';
 import { recordPageView } from './lib/analytics';
 import { formatDateDisplay } from './lib/utils';
@@ -985,15 +985,25 @@ export default function App({ session, onLogout }: AppProps) {
       return;
     }
     try {
-      const saved = await insertStudents(newStudents, session.userId);
-      setStudents(prev => [...prev, ...saved]);
+      // Réconciliation intelligente : met à jour les informations manquantes des élèves existants et ajoute les nouveaux
+      const reconcileResult = await smartReconcileStudents(newStudents, session.userId, targetClass);
+      setStudents(reconcileResult.total);
+
       if (targetClass) {
         setStudentClassFilter(targetClass);
       }
+
+      // Message clair pour l'utilisateur
+      const summaryMsg = `✅ Importation & synchronisation terminées :\n` +
+        `• ${reconcileResult.added.length} nouvel/nouveaux élève(s) ajouté(s)\n` +
+        `• ${reconcileResult.updated.length} élève(s) mis à jour (informations complétées)\n` +
+        `• ${reconcileResult.unchanged} élève(s) déjà à jour (sans doublon)`;
+      alert(summaryMsg);
+
       saveAdminLog(
         session.userId,
-        'Importation CSV',
-        `${saved.length} élèves importés avec succès`,
+        'Importation Intelligente CSV',
+        `${reconcileResult.added.length} ajoutés, ${reconcileResult.updated.length} mis à jour, ${reconcileResult.unchanged} inchangés`,
         schoolInfo.name
       );
     } catch (err) {

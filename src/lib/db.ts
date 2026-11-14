@@ -210,6 +210,184 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
   }
 }
 
+/** Résultat d'une fusion intelligente lors de l'import Excel / CSV */
+export interface SmartImportResult {
+  updated: Student[];
+  added: Student[];
+  unchanged: number;
+  total: Student[];
+}
+
+/**
+ * Import intelligent & différentiel (Smart Upsert / Reconciliation) :
+ * - Détecte les élèves déjà existants par Matricule OU par Nom + Prénoms (+ Classe).
+ * - Met à jour uniquement les informations nouvelles ou complétées (ex: photo, date de naissance, centre d'examen).
+ * - Préserve les données déjà existantes (comme une photo déjà prise) si le fichier Excel ne la mentionne pas.
+ * - Ajoute les nouveaux élèves sans créer de doublon.
+ */
+export async function smartReconcileStudents(
+  incomingStudents: Student[],
+  userId: string,
+  targetClass?: string
+): Promise<SmartImportResult> {
+  const currentList = getStoredStudents(userId);
+
+  const updatedStudents: Student[] = [];
+  const addedStudents: Student[] = [];
+  let unchangedCount = 0;
+
+  // Création de cartes de recherche rapide pour la détection
+  // 1. Clé Matricule (insensible à la casse)
+  const byMatricule = new Map<string, Student>();
+  // 2. Clé Nom + Prénom (+ Classe)
+  const byFullName = new Map<string, Student>();
+
+  currentList.forEach(s => {
+    if (s.matricule && s.matricule.trim() !== '') {
+      byMatricule.set(s.matricule.trim().toLowerCase(), s);
+    }
+    const cleanKey = `${s.lastName.trim().toLowerCase()}_${s.firstName.trim().toLowerCase()}_${(s.className || '').trim().toLowerCase()}`;
+    byFullName.set(cleanKey, s);
+    // Variété sans classe au cas où la classe change
+    const nameOnlyKey = `${s.lastName.trim().toLowerCase()}_${s.firstName.trim().toLowerCase()}`;
+    if (!byFullName.has(nameOnlyKey)) {
+      byFullName.set(nameOnlyKey, s);
+    }
+  });
+
+  const finalMap = new Map<string, Student>();
+  currentList.forEach(s => finalMap.set(s.id, s));
+
+  incomingStudents.forEach(incoming => {
+    const matriculeKey = incoming.matricule?.trim().toLowerCase() || '';
+    const cleanFullKey = `${incoming.lastName.trim().toLowerCase()}_${incoming.firstName.trim().toLowerCase()}_${(incoming.className || targetClass || '').trim().toLowerCase()}`;
+    const nameOnlyKey = `${incoming.lastName.trim().toLowerCase()}_${incoming.firstName.trim().toLowerCase()}`;
+
+    // Trouver si l'élève existe déjà
+    const existing = (matriculeKey && byMatricule.get(matriculeKey)) ||
+      byFullName.get(cleanFullKey) ||
+      byFullName.get(nameOnlyKey);
+
+    if (existing) {
+      // L'élève EXISTE DÉJÀ : on fusionne intelligemment sans écraser avec des valeurs vides
+      let hasChanges = false;
+      const merged: Student = { ...existing };
+
+      if (incoming.firstName && incoming.firstName.trim() !== '' && incoming.firstName !== existing.firstName) {
+        merged.firstName = incoming.firstName;
+        hasChanges = true;
+      }
+      if (incoming.lastName && incoming.lastName.trim() !== '' && incoming.lastName !== existing.lastName) {
+        merged.lastName = incoming.lastName;
+        hasChanges = true;
+      }
+      if (incoming.gender && incoming.gender !== existing.gender) {
+        merged.gender = incoming.gender;
+        hasChanges = true;
+      }
+      if (incoming.matricule && incoming.matricule.trim() !== '' && incoming.matricule !== existing.matricule) {
+        merged.matricule = incoming.matricule;
+        hasChanges = true;
+      }
+      const targetCls = incoming.className || targetClass;
+      if (targetCls && targetCls.trim() !== '' && targetCls !== existing.className) {
+        merged.className = targetCls;
+        hasChanges = true;
+      }
+      if (incoming.schoolYear && incoming.schoolYear.trim() !== '' && incoming.schoolYear !== existing.schoolYear) {
+        merged.schoolYear = incoming.schoolYear;
+        hasChanges = true;
+      }
+      if (incoming.birthDate && incoming.birthDate.trim() !== '' && incoming.birthDate !== existing.birthDate) {
+        merged.birthDate = normalizeDateToInput(incoming.birthDate) || incoming.birthDate;
+        hasChanges = true;
+      }
+      if (incoming.birthPlace && incoming.birthPlace.trim() !== '' && incoming.birthPlace !== existing.birthPlace) {
+        merged.birthPlace = incoming.birthPlace;
+        hasChanges = true;
+      }
+      if (incoming.examCenter && incoming.examCenter.trim() !== '' && incoming.examCenter !== existing.examCenter) {
+        merged.examCenter = incoming.examCenter;
+        hasChanges = true;
+      }
+      // Photo : ne remplacer que si une nouvelle photo est explicitement fournie dans le fichier
+      if (incoming.photoUrl && incoming.photoUrl.trim() !== '' && incoming.photoUrl !== existing.photoUrl) {
+        merged.photoUrl = incoming.photoUrl;
+        hasChanges = true;
+      }
+      if (incoming.expirationDate && incoming.expirationDate.trim() !== '' && incoming.expirationDate !== existing.expirationDate) {
+        merged.expirationDate = normalizeDateToInput(incoming.expirationDate) || incoming.expirationDate;
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        finalMap.set(existing.id, merged);
+        updatedStudents.push(merged);
+      } else {
+        unchangedCount++;
+      }
+    } else {
+      // NOUVEL ÉLÈVE : on l'ajoute
+      const newStudent: Student = {
+        ...incoming,
+        id: incoming.id || `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        className: incoming.className || targetClass || 'Non définie',
+        birthDate: normalizeDateToInput(incoming.birthDate) || incoming.birthDate,
+        expirationDate: normalizeDateToInput(incoming.expirationDate) || incoming.expirationDate,
+      };
+      finalMap.set(newStudent.id, newStudent);
+      addedStudents.push(newStudent);
+    }
+  });
+
+  const updatedTotalList = Array.from(finalMap.values());
+  setStoredStudents(userId, updatedTotalList);
+
+  // Synchronisation distante avec Supabase
+  if (isValidUuid(userId) && isAppOnline()) {
+    try {
+      // 1. Mettre à jour les élèves modifiés via upsert
+      if (updatedStudents.length > 0) {
+        const updateRows = updatedStudents.map(s => studentToDb(s, userId));
+        await supabase.from('students').upsert(updateRows, { onConflict: 'id' });
+      }
+      // 2. Insérer les nouveaux élèves
+      if (addedStudents.length > 0) {
+        const insertRows = addedStudents.map(s => {
+          const row = studentToDb(s, userId);
+          if (row.id.startsWith('local_')) {
+            delete (row as any).id; // Laisser Supabase générer un UUID si ID local temporaire
+          }
+          return row;
+        });
+        const { data: insertedData, error } = await supabase.from('students').insert(insertRows).select();
+        if (!error && insertedData) {
+          const syncedAdded = (insertedData as DbStudent[]).map(dbToStudent);
+          // Remplacer les IDs locaux par les vrais UUIDs retournés par Supabase
+          const refreshed = updatedTotalList.map(item => {
+            const match = syncedAdded.find(sa => sa.matricule === item.matricule && sa.lastName === item.lastName);
+            return match || item;
+          });
+          setStoredStudents(userId, refreshed);
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Échec synchronisation immédiate Smart Import, mise en attente hors-ligne:', err.message);
+      enqueueSyncAction(userId, {
+        type: 'insert_students_bulk',
+        payload: [...updatedStudents, ...addedStudents]
+      });
+    }
+  }
+
+  return {
+    updated: updatedStudents,
+    added: addedStudents,
+    unchanged: unchangedCount,
+    total: getStoredStudents(userId)
+  };
+}
+
 /** Import en masse depuis CSV (avec support hors-ligne) */
 export async function insertStudents(students: Student[], userId: string): Promise<Student[]> {
   const localList = getStoredStudents(userId);

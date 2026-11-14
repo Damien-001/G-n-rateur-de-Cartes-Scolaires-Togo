@@ -481,7 +481,14 @@ export const ClassImportModal: React.FC<ClassImportModalProps> = ({
 
           {/* Step 3: Live Preview Table (if students parsed) */}
           {parsedStudents.length > 0 && (
-            <div className="space-y-2 animate-fadeIn">
+            <div className="space-y-3 animate-fadeIn">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-900 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>Fusion intelligente active :</strong> les élèves déjà existants (même matricule ou même nom) seront complétés avec les nouvelles données sans créer de doublon. Leurs photos existantes seront préservées.
+                </span>
+              </div>
+
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
                   3. Aperçu des élèves détectés ({parsedStudents.length})
