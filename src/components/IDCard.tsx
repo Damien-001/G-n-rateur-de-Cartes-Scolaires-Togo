@@ -14,6 +14,18 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
     return formatDateDisplay(dateStr);
   };
 
+  const formatFirstName = (name?: string) => {
+    if (!name) return '';
+    return name
+      .trim()
+      .split(/([\s-]+)/)
+      .map(part => {
+        if (/^[\s-]+$/.test(part)) return part;
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      })
+      .join('');
+  };
+
   const colors = { ...DEFAULT_CARD_COLORS, ...schoolInfo.cardColors };
 
   const bgTemplate = colors.bgTemplate || 'guilloche';
@@ -401,13 +413,12 @@ export const IDCard: React.FC<IDCardProps> = React.memo(({ student, schoolInfo, 
                   fontSize: 9.5,
                   fontWeight: '800',
                   color: '#1e293b',
-                  textTransform: 'uppercase',
                   lineHeight: 1.1,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}>
-                  {student.firstName}
+                  {formatFirstName(student.firstName)}
                 </div>
 
                 {/* Né(e) le */}
