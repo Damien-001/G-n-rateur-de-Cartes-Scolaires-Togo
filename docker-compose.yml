@@ -1,0 +1,16 @@
+services:
+  cartes-scolaires:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+        GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+        APP_URL: ${APP_URL:-}
+    container_name: cartes_scolaires_app
+    ports:
+      - "3000:80"
+    restart: always
+    env_file:
+      - .env

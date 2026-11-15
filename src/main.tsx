@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import { AuthPage } from './components/AuthPage.tsx';
-import { AdminLoginPage } from './components/AdminLoginPage.tsx';
-import { LandingPage } from './components/LandingPage.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { onAuthStateChange, getSession, logout, Session } from './lib/auth.ts';
-import { isAppOnline, getCachedSession, setCachedSession } from './lib/offlineStorage.ts';
+import { getCachedSession, setCachedSession } from './lib/offlineStorage.ts';
 import { recordPageView } from './lib/analytics.ts';
 import './index.css';
+
+// Lazy loading des pages principales pour réduire drastiquement la taille du bundle initial sur mobile
+const LandingPage = lazy(() => import('./components/LandingPage.tsx').then(m => ({ default: m.LandingPage })));
+const AuthPage = lazy(() => import('./components/AuthPage.tsx').then(m => ({ default: m.AuthPage })));
+const AdminLoginPage = lazy(() => import('./components/AdminLoginPage.tsx').then(m => ({ default: m.AdminLoginPage })));
+const App = lazy(() => import('./App.tsx'));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3">
+    <div className="w-9 h-9 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+    <p className="text-xs text-slate-500 font-medium">Chargement...</p>
+  </div>
+);
 
 // Monkey-patch global Node DOM methods to prevent browser extensions (like translation tools or password managers) from crashing React.
 if (typeof Node !== 'undefined' && Node.prototype) {
@@ -65,7 +74,11 @@ function Root() {
     return 'landing';
   });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [ready, setReady] = useState(false);
+  // ready est initialisé à true immédiatement pour ne pas bloquer l'interface sur mobile
+  const [ready, setReady] = useState(() => {
+    // Si on a un cache ou qu'on est sur une page publique (landing, auth), on affiche tout de suite
+    return true;
+  });
 
   // Tracking universel d'audience des visiteurs
   useEffect(() => {
@@ -161,81 +174,61 @@ function Root() {
   };
 
   if (!ready) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
-        <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-500 font-medium font-sans">Démarrage de l'application...</p>
-      </div>
-    );
-  }
-
-  if (page === 'landing' && !session) {
-    return (
-      <LandingPage 
-        onStartAuth={(mode) => {
-          setAuthMode(mode === 'signup' ? 'register' : 'login');
-          setPage('auth');
-        }}
-        onStartOfflineMode={handleStartOfflineDemo}
-      />
-    );
-  }
-
-  if (page === 'admin-login' && !session) {
-    return (
-      <AdminLoginPage
-        onAuth={(s) => {
-          setCachedSession(s);
-          setSession(s);
-          setPage('dashboard');
-        }}
-        onBackToLanding={() => {
-          window.history.pushState(null, '', '/');
-          setPage('landing');
-        }}
-      />
-    );
-  }
-
-  if (page === 'auth' && !session) {
-    return (
-      <AuthPage 
-        onAuth={(s) => {
-          setCachedSession(s);
-          setSession(s);
-          setPage('dashboard');
-        }}
-        onBackToHome={() => setPage('landing')}
-        initialMode={authMode}
-      />
-    );
-  }
-
-  // Fallback in case session is null but page states are mismatched
-  if (!session) {
-    return (
-      <LandingPage 
-        onStartAuth={(mode) => {
-          setAuthMode(mode === 'signup' ? 'register' : 'login');
-          setPage('auth');
-        }}
-        onStartOfflineMode={handleStartOfflineDemo}
-      />
-    );
+    return <PageLoader />;
   }
 
   return (
-    <div key={session.userId}>
-      <App 
-        session={session} 
-        onLogout={async () => {
-          await logout();
-          setSession(null);
-          window.history.pushState(null, '', '/');
-          setPage('landing');
-        }} 
-      />
-    </div>
+    <Suspense fallback={<PageLoader />}>
+      {page === 'landing' && !session && (
+        <LandingPage 
+          onStartAuth={(mode) => {
+            setAuthMode(mode === 'signup' ? 'register' : 'login');
+            setPage('auth');
+          }}
+          onStartOfflineMode={handleStartOfflineDemo}
+        />
+      )}
+
+      {page === 'admin-login' && !session && (
+        <AdminLoginPage
+          onAuth={(s) => {
+            setCachedSession(s);
+            setSession(s);
+            setPage('dashboard');
+          }}
+          onBackToLanding={() => {
+            window.history.pushState(null, '', '/');
+            setPage('landing');
+          }}
+        />
+      )}
+
+      {page === 'auth' && !session && (
+        <AuthPage 
+          onAuth={(s) => {
+            setCachedSession(s);
+            setSession(s);
+            setPage('dashboard');
+          }}
+          onBackToHome={() => setPage('landing')}
+          initialMode={authMode}
+        />
+      )}
+
+      {session && (
+        <div key={session.userId}>
+          <App 
+            session={session} 
+            onLogout={async () => {
+              await logout();
+              setSession(null);
+              window.history.pushState(null, '', '/');
+              setPage('landing');
+            }} 
+          />
+        </div>
+      )}
+    </Suspense>
   );
 }
 
