@@ -37,8 +37,7 @@ function dbToStudent(row: DbStudent): Student {
 }
 
 function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created_at' | 'updated_at'> {
-  return {
-    id: student.id,
+  const row: any = {
     user_id: userId,
     first_name: student.firstName || '',
     last_name: student.lastName || '',
@@ -52,6 +51,13 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     photo_url: student.photoUrl || null,
     expiration_date: normalizeDateToInput(student.expirationDate) || student.expirationDate || null,
   };
+
+  // Seuls les vrais UUIDs sont transmis pour la colonne 'id' de Supabase
+  if (student.id && isValidUuid(student.id)) {
+    row.id = student.id;
+  }
+
+  return row;
 }
 
 function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
@@ -173,11 +179,11 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
           matricule: studentToSave.matricule,
           class_name: studentToSave.className,
           school_year: studentToSave.schoolYear,
-          birth_date: studentToSave.birthDate || null,
+          birth_date: normalizeDateToInput(studentToSave.birthDate) || studentToSave.birthDate || null,
           birth_place: studentToSave.birthPlace || null,
           exam_center: studentToSave.examCenter || null,
           photo_url: studentToSave.photoUrl || null,
-          expiration_date: studentToSave.expirationDate || null,
+          expiration_date: normalizeDateToInput(studentToSave.expirationDate) || studentToSave.expirationDate || null,
         })
         .select()
         .single();
@@ -191,14 +197,16 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
       return saved;
     } else {
       const row = studentToDb(studentToSave, userId);
-      const { data, error } = await supabase
-        .from('students')
-        .upsert(row, { onConflict: 'id' })
-        .select()
-        .single();
+      const query = row.id 
+        ? supabase.from('students').upsert(row, { onConflict: 'id' })
+        : supabase.from('students').insert(row);
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
-      return dbToStudent(data as DbStudent);
+      const saved = dbToStudent(data as DbStudent);
+      const refreshedList = getStoredStudents(userId).map(s => s.id === studentToSave.id ? saved : s);
+      setStoredStudents(userId, refreshedList);
+      return saved;
     }
   } catch (error: any) {
     console.warn('⚠️ Échec sauvegarde en ligne (ajouté à la file de synchronisation):', error.message);
@@ -346,17 +354,21 @@ export async function smartReconcileStudents(
   // Synchronisation distante avec Supabase
   if (isValidUuid(userId) && isAppOnline()) {
     try {
-      // 1. Mettre à jour les élèves modifiés via upsert
+      // 1. Mettre à jour les élèves modifiés
       if (updatedStudents.length > 0) {
-        const updateRows = updatedStudents.map(s => studentToDb(s, userId));
-        await supabase.from('students').upsert(updateRows, { onConflict: 'id' });
+        const updateRowsWithUuid = updatedStudents
+          .filter(s => s.id && isValidUuid(s.id))
+          .map(s => studentToDb(s, userId));
+        if (updateRowsWithUuid.length > 0) {
+          await supabase.from('students').upsert(updateRowsWithUuid, { onConflict: 'id' });
+        }
       }
-      // 2. Insérer les nouveaux élèves
+      // 2. Insérer les nouveaux élèves (sans ID ou avec ID local -> Supabase génère l'UUID)
       if (addedStudents.length > 0) {
         const insertRows = addedStudents.map(s => {
           const row = studentToDb(s, userId);
-          if (row.id.startsWith('local_')) {
-            delete (row as any).id; // Laisser Supabase générer un UUID si ID local temporaire
+          if (!row.id || !isValidUuid(row.id)) {
+            delete (row as any).id; // Laisser Supabase générer un UUID valide
           }
           return row;
         });
@@ -772,7 +784,7 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
     try {
       if (action.type === 'upsert_student') {
         const student: Student = action.payload;
-        const isNew = student.id.startsWith('local_');
+        const isNew = !student.id || student.id.startsWith('local_') || !isValidUuid(student.id);
 
         if (isNew) {
           const { data, error } = await supabase
@@ -785,11 +797,11 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
               matricule: student.matricule,
               class_name: student.className,
               school_year: student.schoolYear,
-              birth_date: student.birthDate || null,
+              birth_date: normalizeDateToInput(student.birthDate) || student.birthDate || null,
               birth_place: student.birthPlace || null,
               exam_center: student.examCenter || null,
               photo_url: student.photoUrl || null,
-              expiration_date: student.expirationDate || null,
+              expiration_date: normalizeDateToInput(student.expirationDate) || student.expirationDate || null,
             })
             .select()
             .single();

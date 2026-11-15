@@ -571,6 +571,11 @@ export default function App({ session, onLogout }: AppProps) {
       }
 
       try {
+        // Déclencher la synchronisation des données hors-ligne dès que l'établissement est connecté
+        if (session.userId && isValidUuid(session.userId) && isAppOnline()) {
+          syncOfflineQueue(session.userId).catch(() => {});
+        }
+
         const [fetchedSchool, fetchedStudents] = await Promise.all([
           fetchSchoolInfo(session.userId),
           fetchStudents(session.userId)
