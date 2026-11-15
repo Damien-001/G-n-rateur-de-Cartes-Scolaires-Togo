@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { SchoolInfo, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, getSchoolTrialInfo } from '../types';
 import { Session } from '../lib/auth';
-import { redeemLicenseKey, fetchPlatformSettings } from '../lib/db';
+import { redeemLicenseKey, fetchPlatformSettings, calculateExtendedExpirationDate } from '../lib/db';
 
 interface SchoolSettingsViewProps {
   session: Session;
@@ -142,9 +142,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({
       if (res.success) {
         setLicenseFeedback({ type: 'success', message: res.message });
         setLicenseInputCode('');
-        const nextYear = new Date();
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
-        const expStr = nextYear.toISOString().split('T')[0];
+        const expStr = calculateExtendedExpirationDate(schoolInfo.subscriptionExpiresAt, 12);
         await onSaveSchoolInfo({
           ...schoolInfo,
           subscriptionPlan: 'pro',

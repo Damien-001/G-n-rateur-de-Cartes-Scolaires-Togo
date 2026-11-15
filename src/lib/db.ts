@@ -17,7 +17,26 @@ import {
 
 export { isValidUuid };
 
-// ─── Helpers de conversion ────────────────────────────────────────────────────
+/**
+ * Calcule la nouvelle date d'expiration en prolongeant intelligemment :
+ * - Si l'école a déjà un abonnement actif non expiré, on ajoute les nouveaux mois à la date existante.
+ * - Si l'abonnement est déjà expiré ou inexistant, on ajoute à partir d'aujourd'hui.
+ */
+export function calculateExtendedExpirationDate(currentExpiresAt: string | undefined | null, additionalMonths: number = 12): string {
+  const now = new Date();
+  let baseDate = now;
+
+  if (currentExpiresAt && currentExpiresAt.trim()) {
+    const existingDate = new Date(currentExpiresAt);
+    if (!isNaN(existingDate.getTime()) && existingDate > now) {
+      baseDate = existingDate; // Prolonger à partir de la date future !
+    }
+  }
+
+  const newDate = new Date(baseDate);
+  newDate.setMonth(newDate.getMonth() + additionalMonths);
+  return newDate.toISOString().split('T')[0];
+}
 
 function dbToStudent(row: DbStudent): Student {
   return {
@@ -2338,9 +2357,8 @@ export async function activateSchoolDirectly(
 ): Promise<{ success: boolean; expiresAt: string; licenseCode?: string; message: string }> {
   try {
     const cleanName = (schoolName || 'Établissement').trim();
-    const nextDate = new Date();
-    nextDate.setMonth(nextDate.getMonth() + durationMonths);
-    const expiresAtStr = nextDate.toISOString().split('T')[0];
+    const currentSchool = getStoredSchoolInfo(schoolUserId);
+    const expiresAtStr = calculateExtendedExpirationDate(currentSchool?.subscriptionExpiresAt, durationMonths);
 
     // 1. Mettre à jour l'abonnement de l'établissement en PRO
     const subSuccess = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, cleanName);
@@ -2610,9 +2628,8 @@ export async function redeemLicenseKey(code: string, schoolUserId: string, schoo
   }
 
   const duration = foundKey.durationMonths || 12;
-  const nextDate = new Date();
-  nextDate.setMonth(nextDate.getMonth() + duration);
-  const expiresAtStr = nextDate.toISOString().split('T')[0];
+  const currentSchool = getStoredSchoolInfo(schoolUserId);
+  const expiresAtStr = calculateExtendedExpirationDate(currentSchool?.subscriptionExpiresAt, duration);
 
   const updated = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, schoolName);
   if (!updated) {
@@ -3220,11 +3237,10 @@ export async function sendChatMessage(
   return finalMsg;
 }
 
-/** Validate payment from chat and activate 1-Year PRO plan */
+/** Validate payment from chat and activate / extend 1-Year PRO plan */
 export async function validatePaymentFromChat(schoolId: string, schoolName: string): Promise<boolean> {
-  const nextYear = new Date();
-  nextYear.setFullYear(nextYear.getFullYear() + 1);
-  const expiresAtStr = nextYear.toISOString().split('T')[0];
+  const currentSchool = getStoredSchoolInfo(schoolId);
+  const expiresAtStr = calculateExtendedExpirationDate(currentSchool?.subscriptionExpiresAt, 12);
 
   const upgraded = await updateSchoolSubscription(schoolId, 'pro', expiresAtStr, schoolName);
   if (!upgraded) return false;
@@ -3252,16 +3268,15 @@ export async function validatePaymentFromChat(schoolId: string, schoolName: stri
   return true;
 }
 
-/** Process automated instant payment via FedaPay (T-Money, Flooz, Card) and activate 1-Year PRO plan */
+/** Process automated instant payment via FedaPay (T-Money, Flooz, Card) and activate / extend 1-Year PRO plan */
 export async function processFedaPaySuccessfulPayment(
   schoolUserId: string,
   schoolName: string,
   transactionId: string | number,
   amount: number
 ): Promise<{ success: boolean; expiresAt: string }> {
-  const nextYear = new Date();
-  nextYear.setFullYear(nextYear.getFullYear() + 1);
-  const expiresAtStr = nextYear.toISOString().split('T')[0];
+  const currentSchool = getStoredSchoolInfo(schoolUserId);
+  const expiresAtStr = calculateExtendedExpirationDate(currentSchool?.subscriptionExpiresAt, 12);
 
   const upgraded = await updateSchoolSubscription(schoolUserId, 'pro', expiresAtStr, schoolName);
   if (!upgraded) {
