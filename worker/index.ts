@@ -203,13 +203,32 @@ export default {
           return unauthorized('Email ou mot de passe incorrect.');
         }
 
-        // Créer session (30 jours)
+        // Créer session (30 jours) + charger immédiatement school_info & students en 1 seul aller-retour
         const sessionToken = generateSessionToken();
         const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
-        await env.DB.prepare(
-          `INSERT INTO sessions (id, user_id, token, expires_at)
-           VALUES (?, ?, ?, ?)`
-        ).bind(generateId(), user.id, sessionToken, expiresAt).run();
+
+        const [, schoolInfoRow, studentsRes] = await Promise.all([
+          env.DB.prepare(
+            `INSERT INTO sessions (id, user_id, token, expires_at)
+             VALUES (?, ?, ?, ?)`
+          ).bind(generateId(), user.id, sessionToken, expiresAt).run(),
+          env.DB.prepare('SELECT * FROM school_info WHERE user_id = ?').bind(user.id).first(),
+          env.DB.prepare('SELECT * FROM students WHERE user_id = ? ORDER BY created_at ASC').bind(user.id).all(),
+        ]);
+
+        let parsedSchoolInfo: any = null;
+        if (schoolInfoRow) {
+          let parsedColors = {};
+          try {
+            parsedColors = typeof (schoolInfoRow as any).card_colors === 'string'
+              ? JSON.parse((schoolInfoRow as any).card_colors)
+              : (schoolInfoRow as any).card_colors;
+          } catch { }
+          parsedSchoolInfo = {
+            ...(schoolInfoRow as any),
+            card_colors: parsedColors,
+          };
+        }
 
         return json({
           success: true,
@@ -224,6 +243,8 @@ export default {
             phone: user.phone,
             role: user.role,
           },
+          schoolInfo: parsedSchoolInfo,
+          students: studentsRes?.results || [],
         });
       }
 

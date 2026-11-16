@@ -53,7 +53,6 @@ import { OfflineStatusBanner } from './components/OfflineStatusBanner';
 import { SchoolChatDrawer } from './components/SchoolChatDrawer';
 import { CardVerificationModal } from './components/CardVerificationModal';
 import { AttendanceSheet } from './components/AttendanceSheet';
-import JSZip from 'jszip';
 
 // Code-splitting via React.lazy pour les vues volumineuses
 const StudentForm = React.lazy(() => import('./components/StudentForm').then(m => ({ default: m.StudentForm })));
@@ -480,6 +479,10 @@ export default function App({ session, onLogout }: AppProps) {
     setZipProgress({ current: 0, total: studentsToPrint.length });
 
     try {
+      const [{ default: JSZip }, { default: html2canvas }] = await Promise.all([
+        import('jszip'),
+        import('html2canvas'),
+      ]);
       const zip = new JSZip();
       const folderName = `Cartes_${(schoolInfo.name || 'SukuPass').replace(/[^a-zA-Z0-9]/g, '_')}`;
       const zipFolder = zip.folder(folderName) || zip;
@@ -791,8 +794,12 @@ export default function App({ session, onLogout }: AppProps) {
     window.addEventListener('online', checkRemoteSchoolStatus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Heartbeat léger toutes les 3s pour garantir l'instantanéité même derrière un pare-feu bloquant WebSocket
-    const heartbeat = setInterval(checkRemoteSchoolStatus, 3000);
+    // Heartbeat léger toutes les 15s (uniquement si l'onglet est visible)
+    const heartbeat = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkRemoteSchoolStatus();
+      }
+    }, 15000);
 
     return () => {
       window.removeEventListener('cardschool_subscription_updated', handleSubscriptionChange);

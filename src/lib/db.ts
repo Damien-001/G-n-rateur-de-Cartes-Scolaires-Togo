@@ -39,7 +39,7 @@ export function calculateExtendedExpirationDate(currentExpiresAt: string | undef
   return newDate.toISOString().split('T')[0];
 }
 
-function dbToStudent(row: DbStudent): Student {
+export function dbToStudent(row: DbStudent): Student {
   return {
     id: row.id,
     firstName: row.first_name ?? '',
@@ -79,7 +79,7 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
   return row;
 }
 
-function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
+export function dbToSchoolInfo(row: DbSchoolInfo): SchoolInfo {
   const cardColors = row.card_colors ?? DEFAULT_CARD_COLORS;
   const fallbackBaseMs = row.updated_at ? new Date(row.updated_at).getTime() : Date.now();
   return {

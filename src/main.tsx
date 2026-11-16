@@ -77,10 +77,20 @@ function Root() {
     return true;
   });
 
-  // Tracking universel d'audience des visiteurs
+  // Tracking universel d'audience des visiteurs + Pré-chargement intelligent des bundles (0ms de transition)
   useEffect(() => {
     const routePath = page === 'dashboard' ? '/app' : (page === 'auth' ? '/auth' : (page === 'admin-login' ? '/admin' : '/'));
     recordPageView(routePath);
+
+    // Pré-charger les chunks en tâche de fond pour une transition instantanée
+    if (page === 'landing') {
+      import('./components/AuthPage.tsx').catch(() => {});
+    } else if (page === 'auth' || page === 'admin-login') {
+      import('./App.tsx').catch(() => {});
+      if (page === 'admin-login') {
+        import('./components/AdminDashboardView.tsx').catch(() => {});
+      }
+    }
   }, [page]);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { cfFetch, setAuthToken, getAuthToken } from './cloudflareClient';
-import { getCachedSession, setCachedSession } from './offlineStorage';
-import { saveAdminLog, registerSchoolRecord, createPreassignedLicenseForSchool, AdminSchoolDetail } from './db';
+import { getCachedSession, setCachedSession, setStoredSchoolInfo, setStoredStudents } from './offlineStorage';
+import { saveAdminLog, registerSchoolRecord, createPreassignedLicenseForSchool, AdminSchoolDetail, dbToSchoolInfo, dbToStudent } from './db';
 import { DEFAULT_SCHOOL_INFO, SchoolInfo, computeDefaultTrialExpiresAt } from '../types';
 
 export interface Session {
@@ -112,19 +112,20 @@ export async function register(
       studentCount: 0,
     };
 
-    // 1. Enregistrer dans tous les canaux de persistance
-    await registerSchoolRecord(schoolDetail);
+    // 1. Enregistrer en arrière-plan (0ms d'attente pour afficher le dashboard immédiatement)
+    setStoredSchoolInfo(newSession.userId, initialInfo);
+    registerSchoolRecord(schoolDetail).catch(() => {});
 
-    // 2. Générer automatiquement une clé de licence pré-assignée pour cette école
-    await createPreassignedLicenseForSchool(
+    // 2. Générer automatiquement une clé de licence pré-assignée en arrière-plan
+    createPreassignedLicenseForSchool(
       newSession.userId,
       schoolName.trim().toUpperCase(),
       email.trim().toLowerCase(),
       phone.trim()
     ).catch(err => console.warn('Auto-generation preassigned license error:', err));
 
-    // 3. Journaliser l'inscription dans le registre d'audit
-    await saveAdminLog(
+    // 3. Journaliser l'inscription en arrière-plan
+    saveAdminLog(
       newSession.userId,
       'Nouvelle Inscription',
       `Établissement enregistré (${schoolType}) à ${location}`,
@@ -180,6 +181,19 @@ export async function login(
     };
 
     setCachedSession(session);
+
+    // Pré-hydrater immédiatement le cache local si le Worker a inclus schoolInfo & students dans la réponse de login
+    try {
+      if (res.schoolInfo) {
+        const mappedSchool = dbToSchoolInfo(res.schoolInfo);
+        setStoredSchoolInfo(session.userId, mappedSchool);
+      }
+      if (Array.isArray(res.students)) {
+        const mappedStudents = res.students.map(dbToStudent);
+        setStoredStudents(session.userId, mappedStudents);
+      }
+    } catch { }
+
     return { success: true, session };
   } catch (e: any) {
     if (e?.message?.includes('fetch') || e?.name === 'TypeError') {
