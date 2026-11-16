@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `cartes-togo-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `cartes-togo-runtime-${CACHE_VERSION}`;
 const FONT_CACHE = `cartes-togo-fonts-${CACHE_VERSION}`;

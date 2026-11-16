@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, COLOR_PRESETS, CardColors, getSchoolTrialInfo, computeDefaultTrialExpiresAt } from './types';
 import { Session, logout } from './lib/auth';
-import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, smartReconcileStudents, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
+import { fetchStudents, upsertStudent, deleteStudent, deleteStudents, fetchSchoolInfo, saveSchoolInfo, insertStudents, smartReconcileStudents, syncOfflineQueue, saveAdminLog, registerSchoolRecord, isValidUuid, ensureLiveChatBus } from './lib/db';
 import { setStoredSchoolInfo, getStoredSchoolInfo, getStoredStudents, isAppOnline } from './lib/offlineStorage';
 import { recordPageView } from './lib/analytics';
 import { formatDateDisplay } from './lib/utils';
