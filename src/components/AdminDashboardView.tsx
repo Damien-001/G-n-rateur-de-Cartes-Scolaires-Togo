@@ -107,7 +107,7 @@ import {
   getLocalLicenseKeys,
   CHAT_MESSAGES_STORAGE_KEY
 } from '../lib/db';
-import { supabase } from '../lib/supabase';
+
 import { isAppOnline } from '../lib/offlineStorage';
 import { Session } from '../lib/auth';
 import { LicenseKey, TOGO_REGIONS, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, DEFAULT_PRICING_PLANS, getSchoolTrialInfo } from '../types';
@@ -440,43 +440,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
-    // Supabase Realtime Subscription on school_info & admin_logs tables
-    let realtimeSub: any = null;
-    try {
-      realtimeSub = supabase
-        .channel('admin_live_chat_channel')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'school_info' }, (payload) => {
-          const row = payload.new as any;
-          if (row && row.user_id && row.user_id !== 'admin-super-user-id') {
-            playAdminChime();
-            setNewAccountNotification({
-              id: row.user_id,
-              name: row.name || 'Nouvel Établissement',
-              schoolType: (row.card_colors as any)?.schoolType || 'Établissement',
-              location: (row.card_colors as any)?.location || 'Togo',
-              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            });
-            setUnreadNewAccountsCount(prev => prev + 1);
-            fetchAllSchools().then(setSchools).catch(() => { });
-          }
-        })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_logs' }, (payload) => {
-          const row = payload.new as any;
-          if (row && (row.action === 'Nouvelle Inscription' || row.action?.toLowerCase().includes('inscription'))) {
-            playAdminChime();
-            setNewAccountNotification({
-              id: row.school_id || Date.now().toString(),
-              name: row.school_name || 'Nouvel Établissement',
-              schoolType: 'Établissement',
-              location: 'Togo',
-              time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            });
-            setUnreadNewAccountsCount(prev => prev + 1);
-            fetchAllSchools().then(setSchools).catch(() => { });
-          }
-        })
-        .subscribe();
-    } catch { }
+    // Actualisation périodique des écoles et statistiques
+    const fetchSchoolsLive = () => {
+      fetchAllSchools().then(setSchools).catch(() => { });
+      fetchAllStudentsCount().then(setTotalStudents).catch(() => { });
+    };
+    fetchSchoolsLive();
 
     // Polling de secours ultra-rapide (2.5s, charge < 5 Ko grâce au stockage des pièces jointes sur Supabase Storage)
     const interval = setInterval(() => {
@@ -519,7 +488,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       window.removeEventListener('cardschool_chat_message_received', handleNewChatMessage);
       window.removeEventListener('storage', handleDataChanged);
       window.removeEventListener('focus', handleDataChanged);
-      if (realtimeSub) supabase.removeChannel(realtimeSub);
       clearInterval(interval);
     };
   }, []);

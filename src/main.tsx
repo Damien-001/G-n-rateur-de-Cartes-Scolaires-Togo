@@ -40,10 +40,7 @@ if (typeof Node !== 'undefined' && Node.prototype) {
   };
 }
 
-// Debug - disponible dans la console avec window.debugDatabase()
-import './debug-db.ts';
-
-// Nettoyer le hash Supabase d'erreur éventuelle (ex: #error=access_...+expired&sb=1)
+// Clean error hash if present
 if (window.location.hash && window.location.hash.includes('error=')) {
   window.history.replaceState(null, '', window.location.pathname);
 }
