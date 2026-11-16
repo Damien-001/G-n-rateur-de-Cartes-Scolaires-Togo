@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { cfFetch } from './cloudflareClient';
 import { normalizeDateToInput } from './dateUtils';
 import { Student, SchoolInfo, DEFAULT_SCHOOL_INFO, DEFAULT_CARD_COLORS, LicenseKey, ChatMessage, PlatformSettings, DEFAULT_PLATFORM_SETTINGS, LandingPricingPlan, computeDefaultTrialExpiresAt } from '../types';
 import type { DbStudent, DbSchoolInfo } from './supabase';
@@ -121,21 +122,22 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
       setTimeout(() => reject(new Error('Timeout fetchStudents')), 5000)
     );
 
-    const fetchPromise = supabase
-      .from('students')
-      .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+    const fetchPromise = cfFetch(`/api/students?userId=${encodeURIComponent(userId)}`)
+      .then(res => res.data || [])
+      .catch(async () => {
+        // Fallback Supabase si besoin
+        const { data } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: true });
+        return data || [];
+      });
 
-    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (error) {
-      console.warn('fetchStudents error (fallback local):', error.message);
-      return localStudents;
-    }
+    const data: any[] = await Promise.race([fetchPromise, timeoutPromise]);
 
     const endTime = performance.now();
-    console.log(`✅ Supabase: ${data?.length || 0} élèves chargés en ${(endTime - startTime).toFixed(0)}ms`);
+    console.log(`✅ Cloudflare D1: ${data?.length || 0} élèves chargés en ${(endTime - startTime).toFixed(0)}ms`);
 
     const serverStudents = (data as DbStudent[]).map(dbToStudent);
 
@@ -380,27 +382,23 @@ export async function smartReconcileStudents(
           await supabase.from('students').upsert(updateRowsWithUuid, { onConflict: 'id' });
         }
       }
-      // 2. Insérer les nouveaux élèves (sans ID ou avec ID local -> Supabase génère l'UUID)
+      // 2. Insérer les nouveaux élèves (sans ID ou avec ID local -> Cloudflare génère l'UUID)
       if (addedStudents.length > 0) {
-        const insertRows = addedStudents.map(s => {
-          const row = studentToDb(s, userId);
-          if (!row.id || !isValidUuid(row.id)) {
-            delete (row as any).id; // Laisser Supabase générer un UUID valide
-          }
-          return row;
-        });
-        const { data: insertedData, error } = await supabase.from('students').insert(insertRows).select();
-        if (error) {
-          throw error;
-        }
-        if (insertedData) {
-          const syncedAdded = (insertedData as DbStudent[]).map(dbToStudent);
-          // Remplacer les IDs locaux par les vrais UUIDs retournés par Supabase
-          const refreshed = updatedTotalList.map(item => {
-            const match = syncedAdded.find(sa => sa.matricule === item.matricule && sa.lastName === item.lastName);
-            return match || item;
+        try {
+          await cfFetch('/api/students/bulk', {
+            method: 'POST',
+            body: JSON.stringify({ userId, students: addedStudents })
           });
-          setStoredStudents(userId, refreshed);
+        } catch (cfErr) {
+          console.warn('Fallback Cloudflare -> Supabase insert:', cfErr);
+          const insertRows = addedStudents.map(s => {
+            const row = studentToDb(s, userId);
+            if (!row.id || !isValidUuid(row.id)) {
+              delete (row as any).id;
+            }
+            return row;
+          });
+          await supabase.from('students').insert(insertRows);
         }
       }
     } catch (err: any) {
@@ -579,21 +577,21 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
       setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 4000)
     );
 
-    const fetchPromise = supabase
-      .from('school_info')
-      .select('name, logo_url, signature_url, stamp_url, card_colors, updated_at')
-      .eq('user_id', userId)
-      .maybeSingle();
+    const fetchPromise = cfFetch(`/api/school-info?userId=${encodeURIComponent(userId)}`)
+      .then(res => res.data)
+      .catch(async () => {
+        const { data } = await supabase
+          .from('school_info')
+          .select('name, logo_url, signature_url, stamp_url, card_colors, updated_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+        return data;
+      });
 
-    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (error) {
-      console.warn('fetchSchoolInfo error (fallback local):', error.message);
-      return localSchool;
-    }
+    const data: any = await Promise.race([fetchPromise, timeoutPromise]);
 
     const endTime = performance.now();
-    console.log(`✅ Supabase: Infos école chargées en ${(endTime - startTime).toFixed(0)}ms`);
+    console.log(`✅ Cloudflare D1: Infos école chargées en ${(endTime - startTime).toFixed(0)}ms`);
 
     if (!data) return localSchool;
     const schoolInfo = dbToSchoolInfo(data as DbSchoolInfo);
@@ -660,9 +658,14 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
       updated_at: new Date().toISOString(),
     };
 
-    // Sauvegarde résiliente : vérifie l'existence avant d'insérer ou mettre à jour
-    let saveError: any = null;
+    // Sauvegarde Cloudflare D1 en priorité
     try {
+      await cfFetch('/api/school-info', {
+        method: 'POST',
+        body: JSON.stringify(row),
+      });
+    } catch (cfErr) {
+      console.warn('Fallback Cloudflare saveSchoolInfo -> Supabase:', cfErr);
       const { data: existing } = await supabase
         .from('school_info')
         .select('id')
@@ -670,32 +673,10 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
         .maybeSingle();
 
       if (existing?.id) {
-        const { error: updErr } = await supabase
-          .from('school_info')
-          .update(row)
-          .eq('user_id', userId);
-        saveError = updErr;
+        await supabase.from('school_info').update(row).eq('user_id', userId);
       } else {
-        const { error: insErr } = await supabase
-          .from('school_info')
-          .insert(row);
-        if (insErr) {
-          const { error: upErr } = await supabase
-            .from('school_info')
-            .upsert(row, { onConflict: 'user_id' });
-          saveError = upErr;
-        }
+        await supabase.from('school_info').upsert(row, { onConflict: 'user_id' });
       }
-    } catch (dbErr: any) {
-      saveError = dbErr;
-    }
-
-    if (saveError) {
-      console.warn('saveSchoolInfo error (queued for sync):', saveError.message || saveError);
-      enqueueSyncAction(userId, {
-        type: 'save_school_info',
-        payload: info
-      });
     }
   } catch (e: any) {
     console.warn('saveSchoolInfo fallback local sync:', e.message);
