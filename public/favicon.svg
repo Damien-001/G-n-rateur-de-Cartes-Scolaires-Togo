@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#065f46" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#ca8a04" />
+    </linearGradient>
+    <clipPath id="shieldClip">
+      <path d="M50 40 C65 40 76 44 76 44 L76 64 C76 80 50 91 50 91 C50 91 24 80 24 64 L24 44 C24 44 35 40 50 40 Z" />
+    </clipPath>
+  </defs>
+  <!-- Fond arrondi premium -->
+  <rect width="94" height="94" x="3" y="3" rx="22" fill="url(#bg)" stroke="url(#gold)" stroke-width="3.5" />
+  <!-- Blason aux couleurs du Togo -->
+  <g clip-path="url(#shieldClip)">
+    <rect x="20" y="38" width="60" height="11" fill="#006a4e" />
+    <rect x="20" y="49" width="60" height="11" fill="#ffce00" />
+    <rect x="20" y="60" width="60" height="11" fill="#006a4e" />
+    <rect x="20" y="71" width="60" height="11" fill="#ffce00" />
+    <rect x="20" y="82" width="60" height="12" fill="#006a4e" />
+    <!-- Carré rouge & Étoile blanche du Togo -->
+    <rect x="50" y="38" width="30" height="23" fill="#d21034" />
+    <polygon points="63,41.5 64.9,46.8 70.5,46.8 66,50.1 67.7,55.4 63,52.2 58.3,55.4 60,50.1 55.5,46.8 61.1,46.8" fill="#ffffff" />
+  </g>
+  <!-- Contour doré du blason -->
+  <path d="M50 40 C65 40 76 44 76 44 L76 64 C76 80 50 91 50 91 C50 91 24 80 24 64 L24 44 C24 44 35 40 50 40 Z" fill="none" stroke="url(#gold)" stroke-width="3" stroke-linejoin="round" />
+  <!-- Toque académique (Mortarboard) -->
+  <polygon points="50,12 85,25 50,36 15,25" fill="#047857" stroke="url(#gold)" stroke-width="2.8" stroke-linejoin="round" />
+  <path d="M33,31 L33,40 C33,40 42,36 50,40 C58,36 67,40 67,40 L67,31" fill="#064e3b" stroke="url(#gold)" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- Pompon doré -->
+  <path d="M76,22 L76,41" stroke="url(#gold)" stroke-width="2.8" stroke-linecap="round" />
+  <circle cx="76" cy="42" r="2.8" fill="#facc15" />
+</svg>
