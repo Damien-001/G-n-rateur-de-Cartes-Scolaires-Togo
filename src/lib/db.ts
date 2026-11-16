@@ -1087,39 +1087,30 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     }
   } catch { }
 
-  // 1. Charger depuis Supabase school_info (Vrais comptes réels de la base active)
+  // 1. Charger depuis Cloudflare D1
   try {
-    const { data: schoolsData, error: schoolsError } = await supabase
-      .from('school_info')
-      .select('*')
-      .order('updated_at', { ascending: false });
-
-    if (!schoolsError && schoolsData) {
-      for (const row of (schoolsData as DbSchoolInfo[])) {
+    const res = await cfFetch('/api/admin/overview').catch(() => null);
+    if (res?.schools) {
+      for (const row of res.schools) {
         if (isSystemId(row.user_id)) continue;
         if (row.name && (row.name.startsWith('SYSTEM_') || row.name === 'SYSTEM_PLATFORM_SETTINGS' || row.name === 'SYSTEM_LICENSE_KEYS_REGISTRY')) continue;
 
-        // Si l'école est bien vivante et présente dans la base active, la dé-blacklister au cas où elle y figurait
         if (deletedBlacklist.has(row.user_id)) {
           removeDeletedSchoolBlacklist(row.user_id);
           deletedBlacklist.delete(row.user_id);
         }
 
         const baseInfo = dbToSchoolInfo(row);
-        const dbCount = studentCountMap.get(row.user_id) || 0;
-        const localStudents = getStoredStudents(row.user_id);
-        const studentCount = Math.max(dbCount, localStudents.length);
-
         schoolsMap.set(row.user_id, {
           ...baseInfo,
           userId: row.user_id,
           updatedAt: row.updated_at,
-          studentCount
+          studentCount: row.student_count || 0
         });
       }
     }
   } catch (e: any) {
-    console.warn('fetchAllSchools Supabase school_info error:', e.message);
+    console.warn('fetchAllSchools Cloudflare D1 error:', e.message);
   }
 
   // 2. Scanner le Registre persistant de l'application
@@ -1270,35 +1261,15 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
 export async function fetchAllStudentsCount(): Promise<number> {
   let totalDb = 0;
   try {
-    const { count, error } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true });
-
-    if (!error && count !== null) {
-      totalDb = count;
+    const res = await cfFetch('/api/admin/overview').catch(() => null);
+    if (res && res.totalStudents !== undefined) {
+      totalDb = res.totalStudents;
     }
   } catch (e: any) {
     console.error('fetchAllStudentsCount error:', e.message);
   }
 
-  // Count local storage students as offline fallback
-  let localTotal = 0;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('cartes_togo_students_')) {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          try {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) localTotal += list.length;
-          } catch { }
-        }
-      }
-    }
-  } catch { }
-
-  return Math.max(totalDb, localTotal);
+  return totalDb;
 }
 
 /** Delete an entire school, its students, chats, logs and license keys by super-admin */
@@ -1423,22 +1394,14 @@ export async function syncAndCleanOrphanSchoolsWithDatabase(): Promise<{
   let purgedLocalCount = 0;
 
   try {
-    // 1. Récupérer les identifiants d'écoles réellement présents dans la nouvelle base Supabase
-    const { data: dbSchools, error } = await supabase
-      .from('school_info')
-      .select('user_id');
-
-    if (error) {
-      console.warn('syncAndCleanOrphanSchoolsWithDatabase Supabase query error:', error.message);
-      return { activeInDbCount: 0, purgedLocalCount: 0 };
-    }
+    // 1. Récupérer les identifiants d'écoles réellement présents dans Cloudflare D1
+    const res = await cfFetch('/api/admin/overview').catch(() => null);
+    const schools = res?.schools || [];
 
     const validDbUserIds = new Set<string>();
-    if (dbSchools) {
-      for (const row of dbSchools) {
-        if (row.user_id && isValidUuid(row.user_id)) {
-          validDbUserIds.add(row.user_id);
-        }
+    for (const row of schools) {
+      if (row.user_id && isValidUuid(row.user_id)) {
+        validDbUserIds.add(row.user_id);
       }
     }
     activeInDbCount = validDbUserIds.size;
