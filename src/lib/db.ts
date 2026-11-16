@@ -367,33 +367,19 @@ export async function smartReconcileStudents(
   // Synchronisation distante avec Supabase
   if (isValidUuid(userId) && isAppOnline()) {
     try {
-      // 1. Mettre à jour les élèves modifiés
+      // 1. Mettre à jour les élèves modifiés via Cloudflare D1
       if (updatedStudents.length > 0) {
-        const updateRowsWithUuid = updatedStudents
-          .filter(s => s.id && isValidUuid(s.id))
-          .map(s => studentToDb(s, userId));
-        if (updateRowsWithUuid.length > 0) {
-          await supabase.from('students').upsert(updateRowsWithUuid, { onConflict: 'id' });
-        }
+        await cfFetch('/api/students/bulk', {
+          method: 'POST',
+          body: JSON.stringify({ userId, students: updatedStudents })
+        });
       }
-      // 2. Insérer les nouveaux élèves (sans ID ou avec ID local -> Cloudflare génère l'UUID)
+      // 2. Insérer les nouveaux élèves via Cloudflare D1
       if (addedStudents.length > 0) {
-        try {
-          await cfFetch('/api/students/bulk', {
-            method: 'POST',
-            body: JSON.stringify({ userId, students: addedStudents })
-          });
-        } catch (cfErr) {
-          console.warn('Fallback Cloudflare -> Supabase insert:', cfErr);
-          const insertRows = addedStudents.map(s => {
-            const row = studentToDb(s, userId);
-            if (!row.id || !isValidUuid(row.id)) {
-              delete (row as any).id;
-            }
-            return row;
-          });
-          await supabase.from('students').insert(insertRows);
-        }
+        await cfFetch('/api/students/bulk', {
+          method: 'POST',
+          body: JSON.stringify({ userId, students: addedStudents })
+        });
       }
     } catch (err: any) {
       console.warn('⚠️ Échec synchronisation immédiate Smart Import, mise en attente hors-ligne:', err.message);
@@ -629,25 +615,10 @@ export async function saveSchoolInfo(info: SchoolInfo, userId: string): Promise<
     };
 
     // Sauvegarde Cloudflare D1 en priorité
-    try {
-      await cfFetch('/api/school-info', {
-        method: 'POST',
-        body: JSON.stringify(row),
-      });
-    } catch (cfErr) {
-      console.warn('Fallback Cloudflare saveSchoolInfo -> Supabase:', cfErr);
-      const { data: existing } = await supabase
-        .from('school_info')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (existing?.id) {
-        await supabase.from('school_info').update(row).eq('user_id', userId);
-      } else {
-        await supabase.from('school_info').upsert(row, { onConflict: 'user_id' });
-      }
-    }
+    await cfFetch('/api/school-info', {
+      method: 'POST',
+      body: JSON.stringify(row),
+    });
   } catch (e: any) {
     console.warn('saveSchoolInfo fallback local sync:', e.message);
     enqueueSyncAction(userId, {
@@ -672,34 +643,11 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export async function uploadImage(
   file: File,
-  userId: string,
-  folder: 'logos' | 'signatures' | 'photos'
+  _userId: string,
+  _folder: 'logos' | 'signatures' | 'photos'
 ): Promise<string> {
-  // Si hors-ligne, conversion directe en DataURL base64 pour affichage et export PDF immédiat
-  if (!isAppOnline()) {
-    console.log('⚡ [Hors-ligne] Image stockée en Base64 locale');
-    return await fileToDataUrl(file);
-  }
-
-  try {
-    const ext = file.name.split('.').pop() ?? 'jpg';
-    const path = `${userId}/${folder}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type });
-
-    if (error) {
-      console.warn('Upload image échoué, fallback Base64 local:', error.message);
-      return await fileToDataUrl(file);
-    }
-
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return data.publicUrl;
-  } catch (err) {
-    console.warn('Exception upload image, fallback Base64:', err);
-    return await fileToDataUrl(file);
-  }
+  // Conversion en DataURL Base64 compressée et stockée en base Cloudflare D1
+  return await fileToDataUrl(file);
 }
 
 export async function uploadPlatformAsset(
@@ -754,41 +702,15 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
     try {
       if (action.type === 'upsert_student') {
         const student: Student = action.payload;
-        const isNew = !student.id || student.id.startsWith('local_') || !isValidUuid(student.id);
-
-        if (isNew) {
-          const { data, error } = await supabase
-            .from('students')
-            .insert({
-              user_id: userId,
-              first_name: student.firstName,
-              last_name: student.lastName,
-              matricule: student.matricule,
-              class_name: student.className,
-              school_year: student.schoolYear,
-              birth_date: normalizeDateToInput(student.birthDate) || student.birthDate || null,
-              birth_place: student.birthPlace || null,
-              exam_center: student.examCenter || null,
-              photo_url: student.photoUrl || null,
-              expiration_date: normalizeDateToInput(student.expirationDate) || student.expirationDate || null,
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          const serverSaved = dbToStudent(data as DbStudent);
-          const current = getStoredStudents(userId).map(s => s.id === student.id ? serverSaved : s);
-          setStoredStudents(userId, current);
-        } else {
-          const row = studentToDb(student, userId);
-          const { error } = await supabase.from('students').upsert(row, { onConflict: 'id' });
-          if (error) throw error;
-        }
+        await cfFetch('/api/students', {
+          method: 'POST',
+          body: JSON.stringify({ ...student, userId }),
+        });
       } else if (action.type === 'delete_student') {
-        if (!action.payload.id.startsWith('local_')) {
-          const { error } = await supabase.from('students').delete().eq('id', action.payload.id);
-          if (error) throw error;
-        }
+        await cfFetch('/api/students', {
+          method: 'DELETE',
+          body: JSON.stringify({ id: action.payload.id }),
+        });
       } else if (action.type === 'save_school_info') {
         const info: SchoolInfo = action.payload;
         const row: DbSchoolInfo = {
@@ -810,25 +732,16 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
           } as any,
           updated_at: new Date().toISOString(),
         };
-        const { error } = await supabase.from('school_info').upsert(row, { onConflict: 'user_id' });
-        if (error) throw error;
+        await cfFetch('/api/school-info', {
+          method: 'POST',
+          body: JSON.stringify(row),
+        });
       } else if (action.type === 'insert_students_bulk') {
         const students: Student[] = action.payload;
-        const rows = students.map(s => ({
-          user_id: userId,
-          first_name: s.firstName,
-          last_name: s.lastName,
-          matricule: s.matricule,
-          class_name: s.className,
-          school_year: s.schoolYear,
-          birth_date: s.birthDate || null,
-          birth_place: s.birthPlace || null,
-          exam_center: s.examCenter || null,
-          photo_url: s.photoUrl || null,
-          expiration_date: s.expirationDate || null,
-        }));
-        const { error } = await supabase.from('students').insert(rows);
-        if (error) throw error;
+        await cfFetch('/api/students/bulk', {
+          method: 'POST',
+          body: JSON.stringify({ userId, students }),
+        });
       }
 
       removeSyncAction(userId, action.id);
