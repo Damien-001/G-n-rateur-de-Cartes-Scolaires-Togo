@@ -1576,14 +1576,14 @@ export async function updateSchoolSubscription(
   }
   broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, trialExpiresAt, schoolName: cleanName, timestamp });
 
-  // 4. Synchronisation Supabase et journal en arrière-plan sans bloquer l'UI
+  // 4. Synchronisation Cloudflare D1 et journal en arrière-plan sans bloquer l'UI
   const backgroundSync = async () => {
     try {
-      const { data: currentData } = await supabase
-        .from('school_info')
-        .select('*')
-        .eq('user_id', schoolUserId)
-        .maybeSingle();
+      let currentData: any = null;
+      try {
+        const cfRes = await cfFetch(`/api/school-info?userId=${encodeURIComponent(schoolUserId)}`);
+        currentData = cfRes?.data;
+      } catch { }
 
       const currentColors = currentData?.card_colors ? currentData.card_colors : DEFAULT_CARD_COLORS;
       const updatedRow = {
@@ -1601,11 +1601,15 @@ export async function updateSchoolSubscription(
         updated_at: timestamp
       };
 
-      await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+      await cfFetch('/api/school-info', {
+        method: 'POST',
+        body: JSON.stringify(updatedRow)
+      });
+
       // Re-broadcast after DB commit so any newly connected peer receives the update
       broadcastSchoolStatusLive({ userId: schoolUserId, plan, expiresAt, trialExpiresAt, schoolName: cleanName, timestamp });
     } catch (err) {
-      console.warn('updateSchoolSubscription Supabase error:', err);
+      console.warn('updateSchoolSubscription Cloudflare D1 error:', err);
     }
 
     // Synchroniser avec les clés de licence (si le compte est suspendu ou réactivé)
@@ -1838,14 +1842,14 @@ export async function updateSchoolCustomQuota(
   }
   broadcastSchoolStatusLive({ userId: schoolUserId, customQuota: newQuota, schoolName: cleanName, timestamp });
 
-  // 4. Synchronisation Supabase en arrière-plan sans bloquer
+  // 4. Synchronisation Cloudflare D1 en arrière-plan sans bloquer
   const syncRemote = async () => {
     try {
-      const { data: currentData } = await supabase
-        .from('school_info')
-        .select('*')
-        .eq('user_id', schoolUserId)
-        .maybeSingle();
+      let currentData: any = null;
+      try {
+        const cfRes = await cfFetch(`/api/school-info?userId=${encodeURIComponent(schoolUserId)}`);
+        currentData = cfRes?.data;
+      } catch { }
 
       const currentColors = currentData?.card_colors ?? DEFAULT_CARD_COLORS;
       const updatedRow = {
@@ -1861,7 +1865,10 @@ export async function updateSchoolCustomQuota(
         updated_at: timestamp
       };
 
-      await supabase.from('school_info').upsert(updatedRow, { onConflict: 'user_id' });
+      await cfFetch('/api/school-info', {
+        method: 'POST',
+        body: JSON.stringify(updatedRow)
+      });
       broadcastSchoolStatusLive({ userId: schoolUserId, customQuota: newQuota, schoolName: cleanName, timestamp });
       await saveAdminLog(schoolUserId, 'Quota Mis à Jour', `Nouveau quota attribué : ${newQuota} cartes`, cleanName);
     } catch (e: any) {
