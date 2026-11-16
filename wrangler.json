@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cartes-scolaires-api",
+  "main": "dist-worker/index.js",
+  "compatibility_date": "2026-11-16",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cartes-scolaires-db",
+      "database_id": "b7ee819f-2fc9-4342-bd70-bc92a9e84927"
+    }
+  ]
+}
