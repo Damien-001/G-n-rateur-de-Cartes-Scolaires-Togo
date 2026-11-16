@@ -601,13 +601,13 @@ export default function App({ session, onLogout }: AppProps) {
             fetchedSchool.name || session.fullName || 'Établissement'
           ).catch(() => { });
         } else {
-          const fallbackName = session.schoolName
-            ? session.schoolName.toUpperCase()
-            : (session.fullName ? `COMPLEXE SCOLAIRE ${session.fullName.toUpperCase()}` : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : 'ÉTABLISSEMENT DU TOGO'));
+          // L'école n'a pas encore de configuration enregistrée sur le serveur distant
+          // Préserver les informations de l'école (nom, type, etc.) issues de l'inscription/session
+          const schoolDisplayName = (session.schoolName || session.fullName || 'ÉTABLISSEMENT DU TOGO').trim().toUpperCase();
 
           const initialInfo: SchoolInfo = {
             ...DEFAULT_SCHOOL_INFO,
-            name: fallbackName,
+            name: schoolDisplayName,
             schoolType: session.schoolType || 'Lycée',
             location: session.location || '',
             phone: session.phone || '',

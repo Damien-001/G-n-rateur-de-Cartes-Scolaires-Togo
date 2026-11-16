@@ -184,51 +184,45 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
     return studentToSave;
   }
 
-  // 3. Envoi au serveur Supabase si en ligne
+  // 3. Envoi au serveur Cloudflare D1 si en ligne
   try {
-    const isNew = studentToSave.id.startsWith('local_');
+    const payload = {
+      ...studentToSave,
+      userId,
+      user_id: userId,
+      firstName: studentToSave.firstName,
+      lastName: studentToSave.lastName,
+      first_name: studentToSave.firstName,
+      last_name: studentToSave.lastName,
+      className: studentToSave.className,
+      class_name: studentToSave.className,
+      schoolYear: studentToSave.schoolYear,
+      school_year: studentToSave.schoolYear,
+      birthDate: normalizeDateToInput(studentToSave.birthDate) || studentToSave.birthDate || null,
+      birth_date: normalizeDateToInput(studentToSave.birthDate) || studentToSave.birthDate || null,
+      birthPlace: studentToSave.birthPlace || null,
+      birth_place: studentToSave.birthPlace || null,
+      examCenter: studentToSave.examCenter || null,
+      exam_center: studentToSave.examCenter || null,
+      photoUrl: studentToSave.photoUrl || null,
+      photo_url: studentToSave.photoUrl || null,
+      expirationDate: normalizeDateToInput(studentToSave.expirationDate) || studentToSave.expirationDate || null,
+      expiration_date: normalizeDateToInput(studentToSave.expirationDate) || studentToSave.expirationDate || null,
+    };
 
-    if (isNew) {
-      const { data, error } = await supabase
-        .from('students')
-        .insert({
-          user_id: userId,
-          first_name: studentToSave.firstName,
-          last_name: studentToSave.lastName,
-          matricule: studentToSave.matricule,
-          class_name: studentToSave.className,
-          school_year: studentToSave.schoolYear,
-          birth_date: normalizeDateToInput(studentToSave.birthDate) || studentToSave.birthDate || null,
-          birth_place: studentToSave.birthPlace || null,
-          exam_center: studentToSave.examCenter || null,
-          photo_url: studentToSave.photoUrl || null,
-          expiration_date: normalizeDateToInput(studentToSave.expirationDate) || studentToSave.expirationDate || null,
-        })
-        .select()
-        .single();
+    const res = await cfFetch('/api/students', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
 
-      if (error) throw error;
-      const saved = dbToStudent(data as DbStudent);
-
-      // Mettre à jour l'ID généré par Supabase en local
-      const refreshedList = getStoredStudents(userId).map(s => s.id === studentToSave.id ? saved : s);
+    if (res?.id && res.id !== studentToSave.id) {
+      studentToSave.id = res.id;
+      const refreshedList = getStoredStudents(userId).map(s => s.id === student.id ? studentToSave : s);
       setStoredStudents(userId, refreshedList);
-      return saved;
-    } else {
-      const row = studentToDb(studentToSave, userId);
-      const query = row.id 
-        ? supabase.from('students').upsert(row, { onConflict: 'id' })
-        : supabase.from('students').insert(row);
-      const { data, error } = await query.select().single();
-
-      if (error) throw error;
-      const saved = dbToStudent(data as DbStudent);
-      const refreshedList = getStoredStudents(userId).map(s => s.id === studentToSave.id ? saved : s);
-      setStoredStudents(userId, refreshedList);
-      return saved;
     }
+    return studentToSave;
   } catch (error: any) {
-    console.warn('⚠️ Échec sauvegarde en ligne (ajouté à la file de synchronisation):', error.message);
+    console.warn('⚠️ Échec sauvegarde Cloudflare D1 (ajouté à la file de synchronisation):', error.message);
     enqueueSyncAction(userId, {
       type: 'upsert_student',
       payload: studentToSave
@@ -446,33 +440,13 @@ export async function insertStudents(students: Student[], userId: string): Promi
   }
 
   try {
-    const rows = preparedStudents.map(s => ({
-      user_id: userId,
-      first_name: s.firstName,
-      last_name: s.lastName,
-      matricule: s.matricule,
-      class_name: s.className,
-      school_year: s.schoolYear,
-      birth_date: s.birthDate || null,
-      birth_place: s.birthPlace || null,
-      exam_center: s.examCenter || null,
-      photo_url: s.photoUrl || null,
-      expiration_date: s.expirationDate || null,
-    }));
-
-    const { data, error } = await supabase
-      .from('students')
-      .insert(rows)
-      .select();
-
-    if (error) throw error;
-    const serverResult = (data as DbStudent[]).map(dbToStudent);
-
-    // Rafraîchir le stockage local
-    setStoredStudents(userId, [...serverResult, ...localList]);
-    return serverResult;
+    await cfFetch('/api/students/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ userId, students: preparedStudents })
+    });
+    return preparedStudents;
   } catch (err: any) {
-    console.warn('⚠️ Importation distante échouée, conservation en local & file de sync:', err.message);
+    console.warn('⚠️ Importation Cloudflare échouée, conservation en local & file de sync:', err.message);
     enqueueSyncAction(userId, {
       type: 'insert_students_bulk',
       payload: preparedStudents
@@ -499,14 +473,12 @@ export async function deleteStudent(id: string, userId?: string): Promise<void> 
   }
 
   try {
-    const { error } = await supabase
-      .from('students')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await cfFetch('/api/students', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
   } catch (error: any) {
-    console.warn('⚠️ Suppression distante échouée, mise en file:', error.message);
+    console.warn('⚠️ Suppression Cloudflare échouée, mise en file:', error.message);
     if (userId && isValidUuid(userId)) {
       enqueueSyncAction(userId, {
         type: 'delete_student',
@@ -541,12 +513,10 @@ export async function deleteStudents(ids: string[], userId?: string): Promise<vo
   }
 
   try {
-    const { error } = await supabase
-      .from('students')
-      .delete()
-      .in('id', ids);
-
-    if (error) throw error;
+    await cfFetch('/api/students', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    });
   } catch (err) {
     if (userId) {
       for (const id of ids) {
