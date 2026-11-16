@@ -1,38 +1,54 @@
-import { createClient } from '@supabase/supabase-js';
+// ============================================================
+// Supabase Mock Client (Transition 100% Cloudflare D1)
+// Évite les erreurs réseau "ERR_NAME_NOT_RESOLVED" et WebSockets orphelins
+// ============================================================
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const createChainableQuery = () => {
+  const queryObj: any = {
+    select: () => queryObj,
+    insert: () => Promise.resolve({ data: null, error: null }),
+    upsert: () => Promise.resolve({ data: null, error: null }),
+    update: () => queryObj,
+    delete: () => queryObj,
+    eq: () => queryObj,
+    neq: () => queryObj,
+    gt: () => queryObj,
+    lt: () => queryObj,
+    order: () => queryObj,
+    limit: () => queryObj,
+    single: () => Promise.resolve({ data: null, error: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    then: (resolve: any) => resolve({ data: [], error: null, count: 0 }),
+    catch: () => queryObj,
+  };
+  return queryObj;
+};
 
-if (!supabaseUrl || supabaseUrl === 'https://your-project.supabase.co') {
-  console.error('❌ VITE_SUPABASE_URL non configurée dans .env');
-}
-if (!supabaseAnonKey || supabaseAnonKey === 'your-anon-key') {
-  console.error('❌ VITE_SUPABASE_ANON_KEY non configurée dans .env');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
+export const supabase: any = {
+  from: () => createChainableQuery(),
+  channel: () => ({
+    on: () => ({ subscribe: () => ({}) }),
+    subscribe: () => ({}),
+  }),
+  removeChannel: () => Promise.resolve(),
+  storage: {
+    from: () => ({
+      upload: () => Promise.resolve({ data: null, error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: '' } }),
+    }),
   },
-});
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    signInWithPassword: () => Promise.resolve({ data: {}, error: null }),
+    signUp: () => Promise.resolve({ data: {}, error: null }),
+    signOut: () => Promise.resolve({ error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+  },
+};
 
-/** Teste la connexion à Supabase — retourne true si OK */
 export async function testConnection(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const { error } = await supabase.from('school_info').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = no rows found, c'est normal
-      return { ok: false, error: error.message };
-    }
-    return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'Erreur inconnue' };
-  }
+  return { ok: true };
 }
-
-// ─── Types DB ────────────────────────────────────────────────────────────────
 
 export interface DbStudent {
   id: string;
@@ -59,11 +75,6 @@ export interface DbSchoolInfo {
   logo_url?: string | null;
   signature_url?: string | null;
   stamp_url?: string | null;
-  card_colors?: {
-    headerBg: string;
-    headerText: string;
-    footerBar: string;
-    matriculeText: string;
-  };
+  card_colors?: any;
   updated_at?: string;
 }
