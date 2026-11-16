@@ -99,13 +99,12 @@ export default function App({ session, onLogout }: AppProps) {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>(() => {
     try {
       const cached = session.userId ? getStoredSchoolInfo(session.userId) : null;
-      if (cached) return cached;
+      if (cached && cached.name && cached.name !== 'ÉCOLE NATIONALE DU TOGO') return cached;
     } catch { }
+    const initialName = session.schoolName ? session.schoolName.toUpperCase() : '';
     return {
       ...DEFAULT_SCHOOL_INFO,
-      name: session.schoolName
-        ? session.schoolName.toUpperCase()
-        : (session.isOfflineGuest ? 'ÉCOLE NATIONALE DU TOGO' : ''),
+      name: initialName,
       schoolType: session.schoolType || 'Lycée',
       location: session.location || '',
       phone: session.phone || '',
@@ -581,12 +580,14 @@ export default function App({ session, onLogout }: AppProps) {
           fetchStudents(session.userId)
         ]);
         if (fetchedSchool) {
-          if (!fetchedSchool.name && (session.schoolName || session.fullName)) {
+          // Si le nom reçu de school_info est le placeholder par défaut, utiliser le vrai nom de l'école de la session
+          if ((!fetchedSchool.name || fetchedSchool.name === 'ÉCOLE NATIONALE DU TOGO') && (session.schoolName || session.fullName)) {
             fetchedSchool.name = (session.schoolName || session.fullName).toUpperCase();
             saveSchoolInfo(fetchedSchool, session.userId).catch(() => { });
           }
           skipNextSchoolSaveRef.current = true;
           setSchoolInfo(fetchedSchool);
+          setStoredSchoolInfo(session.userId, fetchedSchool);
           registerSchoolRecord({
             ...fetchedSchool,
             userId: session.userId,
