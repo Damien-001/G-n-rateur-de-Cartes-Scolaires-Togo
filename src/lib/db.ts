@@ -60,7 +60,6 @@ function studentToDb(student: Student, userId: string): Omit<DbStudent, 'created
     user_id: userId,
     first_name: student.firstName || '',
     last_name: student.lastName || '',
-    gender: student.gender || null,
     matricule: student.matricule || '',
     class_name: student.className || '',
     school_year: student.schoolYear || '',
@@ -124,7 +123,7 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
 
     const fetchPromise = supabase
       .from('students')
-      .select('id, first_name, last_name, gender, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
+      .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
@@ -194,7 +193,6 @@ export async function upsertStudent(student: Student, userId: string): Promise<S
           user_id: userId,
           first_name: studentToSave.firstName,
           last_name: studentToSave.lastName,
-          gender: studentToSave.gender || null,
           matricule: studentToSave.matricule,
           class_name: studentToSave.className,
           school_year: studentToSave.schoolYear,
@@ -392,7 +390,10 @@ export async function smartReconcileStudents(
           return row;
         });
         const { data: insertedData, error } = await supabase.from('students').insert(insertRows).select();
-        if (!error && insertedData) {
+        if (error) {
+          throw error;
+        }
+        if (insertedData) {
           const syncedAdded = (insertedData as DbStudent[]).map(dbToStudent);
           // Remplacer les IDs locaux par les vrais UUIDs retournés par Supabase
           const refreshed = updatedTotalList.map(item => {
@@ -451,7 +452,6 @@ export async function insertStudents(students: Student[], userId: string): Promi
       user_id: userId,
       first_name: s.firstName,
       last_name: s.lastName,
-      gender: s.gender || null,
       matricule: s.matricule,
       class_name: s.className,
       school_year: s.schoolYear,
@@ -812,7 +812,6 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
               user_id: userId,
               first_name: student.firstName,
               last_name: student.lastName,
-              gender: student.gender || null,
               matricule: student.matricule,
               class_name: student.className,
               school_year: student.schoolYear,
@@ -868,7 +867,6 @@ export async function syncOfflineQueue(userId: string): Promise<{ synced: number
           user_id: userId,
           first_name: s.firstName,
           last_name: s.lastName,
-          gender: s.gender || null,
           matricule: s.matricule,
           class_name: s.className,
           school_year: s.schoolYear,
