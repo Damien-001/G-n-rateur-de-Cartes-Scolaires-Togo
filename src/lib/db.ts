@@ -108,8 +108,6 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     expirationDate: normalizeDateToInput(s.expirationDate) || s.expirationDate,
   }));
 
-  // Si l'utilisateur est hors-ligne ou que l'ID n'est pas un UUID valide (ex: admin, invité démo),
-  // renvoyer immédiatement les données du cache local sans requêter Supabase
   if (!isAppOnline() || !isValidUuid(userId)) {
     return localStudents;
   }
@@ -117,22 +115,13 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
   try {
     const startTime = performance.now();
 
-    // Timeout de 5 secondes pour basculer rapidement sur le cache local en cas de réseau lent/coupé
+    // Augmenter le timeout à 12 secondes pour les connexions mobiles et requêtes D1
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout fetchStudents')), 5000)
+      setTimeout(() => reject(new Error('Timeout fetchStudents')), 12000)
     );
 
     const fetchPromise = cfFetch(`/api/students?userId=${encodeURIComponent(userId)}`)
-      .then(res => res.data || [])
-      .catch(async () => {
-        // Fallback Supabase si besoin
-        const { data } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, matricule, class_name, school_year, birth_date, birth_place, exam_center, photo_url, expiration_date')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true });
-        return data || [];
-      });
+      .then(res => res.data || []);
 
     const data: any[] = await Promise.race([fetchPromise, timeoutPromise]);
 
@@ -142,8 +131,11 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     const serverStudents = (data as DbStudent[]).map(dbToStudent);
 
     // Sauvegarder dans le cache local pour consultation hors-ligne
-    setStoredStudents(userId, serverStudents);
-    return serverStudents;
+    if (serverStudents.length > 0 || localStudents.length === 0) {
+      setStoredStudents(userId, serverStudents);
+      return serverStudents;
+    }
+    return localStudents;
   } catch (e: any) {
     console.log('⚡ Utilisation du cache local des élèves suite à une erreur réseau:', e.message);
     return localStudents;
@@ -520,8 +512,6 @@ export async function deleteStudents(ids: string[], userId?: string): Promise<vo
 export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null> {
   const localSchool = getStoredSchoolInfo(userId);
 
-  // Si l'utilisateur est hors-ligne ou que l'identifiant n'est pas un UUID valide (ex: admin, invité démo),
-  // renvoyer immédiatement les données du cache local sans appeler Supabase
   if (!isAppOnline() || !isValidUuid(userId)) {
     return localSchool;
   }
@@ -530,19 +520,11 @@ export async function fetchSchoolInfo(userId: string): Promise<SchoolInfo | null
     const startTime = performance.now();
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 4000)
+      setTimeout(() => reject(new Error('Timeout fetchSchoolInfo')), 12000)
     );
 
     const fetchPromise = cfFetch(`/api/school-info?userId=${encodeURIComponent(userId)}`)
-      .then(res => res.data)
-      .catch(async () => {
-        const { data } = await supabase
-          .from('school_info')
-          .select('name, logo_url, signature_url, stamp_url, card_colors, updated_at')
-          .eq('user_id', userId)
-          .maybeSingle();
-        return data;
-      });
+      .then(res => res.data);
 
     const data: any = await Promise.race([fetchPromise, timeoutPromise]);
 
