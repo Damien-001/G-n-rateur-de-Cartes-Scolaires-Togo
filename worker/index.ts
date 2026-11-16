@@ -157,7 +157,44 @@ export default {
           'SELECT * FROM users WHERE email = ?'
         ).bind(normalizedEmail).first();
 
-        if (!user || !user.password_hash) {
+        // Si l'utilisateur n'existe pas encore dans Cloudflare D1 (ex: ancien compte Supabase),
+        // on crée son compte D1 à la volée avec le mot de passe fourni !
+        if (!user) {
+          const userId = generateId();
+          const passwordHash = await hashPassword(password);
+          const cleanEmail = normalizedEmail;
+          const cleanFullName = cleanEmail.split('@')[0].toUpperCase();
+          const cleanSchoolName = cleanFullName;
+
+          await env.DB.prepare(
+            `INSERT INTO users (id, email, password_hash, full_name, school_name, school_type, location, phone)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(userId, cleanEmail, passwordHash, cleanFullName, cleanSchoolName, 'Collège', 'Lomé', '').run();
+
+          const sessionToken = generateSessionToken();
+          const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+          await env.DB.prepare(
+            `INSERT INTO sessions (id, user_id, token, expires_at)
+             VALUES (?, ?, ?, ?)`
+          ).bind(generateId(), userId, sessionToken, expiresAt).run();
+
+          return json({
+            success: true,
+            token: sessionToken,
+            session: {
+              userId,
+              email: cleanEmail,
+              fullName: cleanFullName,
+              schoolName: cleanSchoolName,
+              schoolType: 'Collège',
+              location: 'Lomé',
+              phone: '',
+              role: 'school',
+            },
+          });
+        }
+
+        if (!user.password_hash) {
           return unauthorized('Email ou mot de passe incorrect.');
         }
 
