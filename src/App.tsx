@@ -272,6 +272,18 @@ export default function App({ session, onLogout }: AppProps) {
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Pré-charger les sous-vues (Design, Impression, Réglages, Formulaires) en tâche de fond après l'affichage initial
+  useEffect(() => {
+    const t = setTimeout(() => {
+      import('./components/CardDesignView').catch(() => {});
+      import('./components/PrintLayout').catch(() => {});
+      import('./components/SchoolSettingsView').catch(() => {});
+      import('./components/StudentForm').catch(() => {});
+      import('./components/ClassImportModal').catch(() => {});
+    }, 1000);
+    return () => clearTimeout(t);
+  }, []);
+
   // Subscription & Restrictions state
   const isPlanExpired = schoolInfo.subscriptionPlan === 'pro' && !!schoolInfo.subscriptionExpiresAt && new Date(schoolInfo.subscriptionExpiresAt).getTime() < Date.now();
   const isEffectivePro = schoolInfo.subscriptionPlan === 'pro' && !isPlanExpired;

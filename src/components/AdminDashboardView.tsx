@@ -440,16 +440,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     window.addEventListener('storage', handleDataChanged);
     window.addEventListener('focus', handleDataChanged);
 
-    // Actualisation périodique des écoles et statistiques
-    const fetchSchoolsLive = () => {
-      fetchAllSchools().then(setSchools).catch(() => { });
-      fetchAllStudentsCount().then(setTotalStudents).catch(() => { });
-    };
-    fetchSchoolsLive();
-
-    // Polling de secours ultra-rapide (2.5s, charge < 5 Ko grâce au stockage des pièces jointes sur Supabase Storage)
+    // Polling léger (8s, uniquement si l'onglet est actif)
     const interval = setInterval(() => {
-      if (isAppOnline()) {
+      if (isAppOnline() && document.visibilityState === 'visible') {
         fetchChatMessages().then(msgs => {
           setChatMessages(prev => {
             if (prev.length === msgs.length) {
@@ -475,7 +468,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           });
         }).catch(() => { });
       }
-    }, 2500);
+    }, 8000);
 
     return () => {
       window.removeEventListener('cardschool_school_registered', handleSchoolRegistered);

@@ -446,7 +446,16 @@ export default {
           env.DB.prepare("SELECT count(*) as count FROM school_info WHERE user_id NOT LIKE '00000000-%'").first(),
           env.DB.prepare('SELECT count(*) as count FROM students').first(),
           env.DB.prepare('SELECT * FROM platform_settings WHERE id = "global_config"').first(),
-          env.DB.prepare("SELECT * FROM school_info WHERE user_id NOT LIKE '00000000-%' ORDER BY updated_at DESC").all(),
+          env.DB.prepare(
+            `SELECT s.*,
+                    u.email as manager_email,
+                    u.full_name as manager_name,
+                    (SELECT count(*) FROM students st WHERE st.user_id = s.user_id) as student_count
+             FROM school_info s
+             LEFT JOIN users u ON u.id = s.user_id
+             WHERE s.user_id NOT LIKE '00000000-%'
+             ORDER BY s.updated_at DESC`
+          ).all(),
         ]);
 
         return json({
@@ -456,6 +465,86 @@ export default {
           platformSettings: settings,
           schools: schoolsList?.results || [],
         });
+      }
+
+      // ─── 8. ADMIN : SUPPRESSION D'UNE ÉCOLE ──────────────────────
+      if (url.pathname === '/api/admin/school' && req.method === 'DELETE') {
+        const body: any = await req.json().catch(() => ({}));
+        const targetUserId = url.searchParams.get('userId') || body.userId;
+        if (!targetUserId) return badRequest('userId manquant.');
+
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM students WHERE user_id = ?').bind(targetUserId),
+          env.DB.prepare('DELETE FROM school_info WHERE user_id = ?').bind(targetUserId),
+          env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(targetUserId),
+          env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId),
+        ]);
+
+        return json({ success: true });
+      }
+
+      // ─── 9. PLATFORM SETTINGS : GET & POST ───────────────────────
+      if (url.pathname === '/api/platform-settings') {
+        if (req.method === 'GET') {
+          const [settingsRow, sysRow] = await Promise.all([
+            env.DB.prepare('SELECT * FROM platform_settings WHERE id = "global_config"').first(),
+            env.DB.prepare('SELECT card_colors, updated_at FROM school_info WHERE user_id = "00000000-0000-0000-0000-000000000001"').first(),
+          ]);
+
+          let extraConfig = {};
+          if (sysRow && (sysRow as any).card_colors) {
+            try {
+              extraConfig = typeof (sysRow as any).card_colors === 'string'
+                ? JSON.parse((sysRow as any).card_colors)
+                : (sysRow as any).card_colors;
+            } catch { }
+          }
+
+          return json({
+            success: true,
+            data: settingsRow ? { ...(settingsRow as any), ...extraConfig } : extraConfig,
+          });
+        }
+
+        if (req.method === 'POST' || req.method === 'PUT') {
+          const body: any = await req.json();
+          const sysColorsStr = JSON.stringify(body);
+
+          await env.DB.batch([
+            env.DB.prepare(
+              `INSERT INTO platform_settings (id, tmoney_number, tmoney_holder, flooz_number, flooz_holder, annual_price_cfa, support_email, support_phone, whatsapp_number, updated_at)
+               VALUES ('global_config', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+               ON CONFLICT(id) DO UPDATE SET
+                 tmoney_number = excluded.tmoney_number,
+                 tmoney_holder = excluded.tmoney_holder,
+                 flooz_number = excluded.flooz_number,
+                 flooz_holder = excluded.flooz_holder,
+                 annual_price_cfa = excluded.annual_price_cfa,
+                 support_email = excluded.support_email,
+                 support_phone = excluded.support_phone,
+                 whatsapp_number = excluded.whatsapp_number,
+                 updated_at = datetime('now')`
+            ).bind(
+              body.tmoneyNumber || body.tmoney_number || '+228 91 30 21 38',
+              body.tmoneyHolder || body.tmoney_holder || 'SukuPass Togo',
+              body.floozNumber || body.flooz_number || '+228 99 00 00 00',
+              body.floozHolder || body.flooz_holder || 'SukuPass Togo',
+              body.annualPriceCFA || body.annual_price_cfa || 25000,
+              body.supportEmail || body.support_email || 'contact@sukupass.tg',
+              body.supportPhone || body.support_phone || '+228 91 30 21 38',
+              body.whatsappNumber || body.whatsapp_number || '+228 91 30 21 38'
+            ),
+            env.DB.prepare(
+              `INSERT INTO school_info (id, user_id, name, card_colors, updated_at)
+               VALUES ('sys_platform_settings', '00000000-0000-0000-0000-000000000001', 'SYSTEM_PLATFORM_SETTINGS', ?, datetime('now'))
+               ON CONFLICT(user_id) DO UPDATE SET
+                 card_colors = excluded.card_colors,
+                 updated_at = datetime('now')`
+            ).bind(sysColorsStr),
+          ]);
+
+          return json({ success: true });
+        }
       }
 
       return json({ error: 'Endpoint introuvable' }, 404);

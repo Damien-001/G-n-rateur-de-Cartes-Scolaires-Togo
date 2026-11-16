@@ -921,7 +921,32 @@ export async function registerSchoolRecord(school: AdminSchoolDetail): Promise<v
   }
 }
 
-/** Fetches all school info entries for SaaS administration (Live Supabase + Registre + LocalStorage sans réapparition des supprimés) */
+let cachedAdminOverviewPromise: Promise<any> | null = null;
+let cachedAdminOverviewData: any = null;
+let cachedAdminOverviewTime = 0;
+
+async function getAdminOverviewCached(): Promise<any> {
+  const now = Date.now();
+  if (cachedAdminOverviewData && now - cachedAdminOverviewTime < 2000) {
+    return cachedAdminOverviewData;
+  }
+  if (!cachedAdminOverviewPromise) {
+    cachedAdminOverviewPromise = cfFetch('/api/admin/overview')
+      .then(res => {
+        cachedAdminOverviewData = res;
+        cachedAdminOverviewTime = Date.now();
+        cachedAdminOverviewPromise = null;
+        return res;
+      })
+      .catch(err => {
+        cachedAdminOverviewPromise = null;
+        throw err;
+      });
+  }
+  return cachedAdminOverviewPromise;
+}
+
+/** Fetches all school info entries for SaaS administration (Live Cloudflare D1 + Registre + LocalStorage sans réapparition des supprimés) */
 export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
   const schoolsMap = new Map<string, AdminSchoolDetail>();
   const deletedBlacklist = getDeletedSchoolsBlacklist();
@@ -937,24 +962,9 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
     id.toLowerCase().includes('system') ||
     id.toLowerCase().includes('admin_sys');
 
-  // Pre-fetch all student counts in ONE query instead of N+1 queries
-  const studentCountMap = new Map<string, number>();
+  // 1. Charger depuis Cloudflare D1 (avec déduplication des appels simultanés)
   try {
-    const { data: studentRows } = await supabase
-      .from('students')
-      .select('user_id');
-    if (studentRows) {
-      for (const row of studentRows) {
-        if (row.user_id && !isSystemId(row.user_id)) {
-          studentCountMap.set(row.user_id, (studentCountMap.get(row.user_id) || 0) + 1);
-        }
-      }
-    }
-  } catch { }
-
-  // 1. Charger depuis Cloudflare D1
-  try {
-    const res = await cfFetch('/api/admin/overview').catch(() => null);
+    const res = await getAdminOverviewCached().catch(() => null);
     if (res?.schools) {
       for (const row of res.schools) {
         if (isSystemId(row.user_id)) continue;
@@ -969,6 +979,8 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
         schoolsMap.set(row.user_id, {
           ...baseInfo,
           userId: row.user_id,
+          managerName: row.manager_name || (row.card_colors as any)?.managerName || '',
+          managerEmail: row.manager_email || (row.card_colors as any)?.managerEmail || '',
           updatedAt: row.updated_at,
           studentCount: row.student_count || 0
         });
@@ -1126,7 +1138,7 @@ export async function fetchAllSchools(): Promise<AdminSchoolDetail[]> {
 export async function fetchAllStudentsCount(): Promise<number> {
   let totalDb = 0;
   try {
-    const res = await cfFetch('/api/admin/overview').catch(() => null);
+    const res = await getAdminOverviewCached().catch(() => null);
     if (res && res.totalStudents !== undefined) {
       totalDb = res.totalStudents;
     }
@@ -1141,6 +1153,7 @@ export async function fetchAllStudentsCount(): Promise<number> {
 export async function deleteSchoolByAdmin(userId: string, schoolName?: string): Promise<boolean> {
   // 1. Ajouter à la liste noire pour interdire toute réapparition
   addDeletedSchoolBlacklist(userId);
+  cachedAdminOverviewData = null;
 
   // 2. Retirer du registre persistant
   try {
@@ -1148,16 +1161,14 @@ export async function deleteSchoolByAdmin(userId: string, schoolName?: string): 
     localStorage.setItem(REGISTERED_SCHOOLS_KEY, JSON.stringify(remaining));
   } catch { }
 
-  // 3. Supprimer de Supabase (school_info, students, admin_logs, chat_messages, license_keys) SI UUID valide
+  // 3. Supprimer de Cloudflare D1 SI UUID valide
   if (isValidUuid(userId)) {
     try {
-      await supabase.from('school_info').delete().eq('user_id', userId);
-      await supabase.from('students').delete().eq('user_id', userId);
-      await supabase.from('admin_logs').delete().eq('school_id', userId);
-      await supabase.from('chat_messages').delete().eq('school_id', userId);
-      await supabase.from('license_keys').delete().or(`target_school_id.eq.${userId},used_by_school_id.eq.${userId}`);
+      await cfFetch(`/api/admin/school?userId=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
     } catch (err) {
-      console.warn('deleteSchoolByAdmin Supabase error:', err);
+      console.warn('deleteSchoolByAdmin Cloudflare D1 error:', err);
     }
   }
 
@@ -3192,9 +3203,8 @@ export function getLocalFedaKey(): string {
   return '';
 }
 
-/** Fetch platform settings configured by super-admin (Aggregating Supabase & LocalStorage) */
+/** Fetch platform settings configured by super-admin (Aggregating Cloudflare D1 & LocalStorage) */
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
-  // Read local cache first for video & Fedapay settings fallback
   let localVideoUrl = '';
   let localVideoTitle = '';
   let localVideoPoster = '';
@@ -3203,7 +3213,6 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   let localPricingTitle = '';
   let localPricingSubtitle = '';
   let localPricingEnabled: boolean | undefined = undefined;
-  let localUpdatedAt: string | undefined = undefined;
   try {
     const raw = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (raw) {
@@ -3220,147 +3229,45 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
       localPricingTitle = p.pricingTitle || '';
       localPricingSubtitle = p.pricingSubtitle || '';
       if (p.pricingEnabled !== undefined) localPricingEnabled = Boolean(p.pricingEnabled);
-      localUpdatedAt = p.updatedAt;
     }
   } catch { }
 
-  // 1. Try Supabase custom table platform_settings
-  try {
-    const { data, error } = await supabase
-      .from('platform_settings')
-      .select('*')
-      .eq('id', 'global_config')
-      .maybeSingle();
-
-    if (!error && data) {
-      // Prefer DB key if valid, otherwise fallback to localStorage key
-      const dbKey = sanitizeKey(data.fedapay_public_key);
-      let dbPricingPlans: any[] | undefined;
-      if (data.pricing_plans) {
-        try {
-          dbPricingPlans = typeof data.pricing_plans === 'string' ? JSON.parse(data.pricing_plans) : data.pricing_plans;
-        } catch { }
-      }
-
-      let resolvedPricingPlans = sanitizePricingPlans(dbPricingPlans);
-      if (localPricingPlans && localUpdatedAt && data.updated_at) {
-        if (new Date(localUpdatedAt).getTime() > new Date(data.updated_at).getTime()) {
-          resolvedPricingPlans = sanitizePricingPlans(localPricingPlans);
-        }
-      } else if (!dbPricingPlans || dbPricingPlans.length === 0) {
-        resolvedPricingPlans = sanitizePricingPlans(localPricingPlans || DEFAULT_PLATFORM_SETTINGS.pricingPlans);
-      }
-
-      const merged: PlatformSettings = {
-        ...DEFAULT_PLATFORM_SETTINGS,
-        tmoneyNumber: data.tmoney_number || DEFAULT_PLATFORM_SETTINGS.tmoneyNumber,
-        tmoneyHolder: data.tmoney_holder || DEFAULT_PLATFORM_SETTINGS.tmoneyHolder,
-        floozNumber: data.flooz_number || DEFAULT_PLATFORM_SETTINGS.floozNumber,
-        floozHolder: data.flooz_holder || DEFAULT_PLATFORM_SETTINGS.floozHolder,
-        annualPriceCFA: data.annual_price_cfa || DEFAULT_PLATFORM_SETTINGS.annualPriceCFA,
-        supportEmail: data.support_email || DEFAULT_PLATFORM_SETTINGS.supportEmail,
-        supportPhone: data.support_phone || DEFAULT_PLATFORM_SETTINGS.supportPhone,
-        whatsappNumber: data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
-        officeAddress: data.office_address || DEFAULT_PLATFORM_SETTINGS.officeAddress,
-        paymentGatewayEnabled: data.payment_gateway_enabled !== undefined ? Boolean(data.payment_gateway_enabled) : DEFAULT_PLATFORM_SETTINGS.paymentGatewayEnabled,
-        paymentGatewayName: data.payment_gateway_name || DEFAULT_PLATFORM_SETTINGS.paymentGatewayName,
-        paymentGatewayUrl: data.payment_gateway_url || DEFAULT_PLATFORM_SETTINGS.paymentGatewayUrl,
-        paymentWebhookSecret: data.payment_webhook_secret || DEFAULT_PLATFORM_SETTINGS.paymentWebhookSecret,
-        fedapayEnabled: data.fedapay_enabled !== undefined ? Boolean(data.fedapay_enabled) : DEFAULT_PLATFORM_SETTINGS.fedapayEnabled,
-        fedapayPublicKey: dbKey || localFedaKey,
-        fedapayEnvironment: data.fedapay_environment || DEFAULT_PLATFORM_SETTINGS.fedapayEnvironment,
-        paymentInstructions: data.payment_instructions || DEFAULT_PLATFORM_SETTINGS.paymentInstructions,
-        supportNotice: data.support_notice || DEFAULT_PLATFORM_SETTINGS.supportNotice,
-        // If data.demo_video_url is undefined/null in DB (e.g. column not yet in remote schema), preserve local cache
-        demoVideoUrl: (data.demo_video_url !== undefined && data.demo_video_url !== null)
-          ? data.demo_video_url
-          : (localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl),
-        demoVideoTitle: data.demo_video_title || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
-        demoVideoPoster: data.demo_video_poster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
-        pricingEnabled: data.pricing_enabled !== undefined ? Boolean(data.pricing_enabled) : (localPricingEnabled !== undefined ? localPricingEnabled : DEFAULT_PLATFORM_SETTINGS.pricingEnabled),
-        pricingTitle: data.pricing_title || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
-        pricingSubtitle: data.pricing_subtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-        pricingPlans: resolvedPricingPlans,
-        updatedAt: data.updated_at
-      };
-      localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
-      localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(merged));
-      return merged;
-    }
-  } catch (err) {
-    // Ignore and proceed to next tier
-  }
-
-  // 2. Try Supabase school_info system entry
-  try {
-    const { data: systemRow, error: sysError } = await supabase
-      .from('school_info')
-      .select('*')
-      .eq('user_id', PLATFORM_SETTINGS_SYSTEM_USER_ID)
-      .maybeSingle();
-
-    if (!sysError && systemRow && systemRow.card_colors) {
-      const parsed = typeof systemRow.card_colors === 'string' ? JSON.parse(systemRow.card_colors) : systemRow.card_colors;
-      if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl || parsed.pricingPlans)) {
-        const dbKey = sanitizeKey(parsed.fedapayPublicKey);
+  // 1. Charger depuis Cloudflare D1 (/api/platform-settings)
+  if (isAppOnline()) {
+    try {
+      const res = await cfFetch('/api/platform-settings').catch(() => null);
+      const data = res?.data;
+      if (data && (data.tmoney_number || data.tmoneyNumber || data.support_email || data.supportEmail || data.pricingPlans)) {
+        const dbKey = sanitizeKey(data.fedapayPublicKey || data.fedapay_public_key);
         const merged: PlatformSettings = {
           ...DEFAULT_PLATFORM_SETTINGS,
-          ...parsed,
-          demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
-          demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
-          demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
-          pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
-          pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-          pricingPlans: sanitizePricingPlans(parsed.pricingPlans || localPricingPlans),
+          ...data,
+          tmoneyNumber: data.tmoneyNumber || data.tmoney_number || DEFAULT_PLATFORM_SETTINGS.tmoneyNumber,
+          tmoneyHolder: data.tmoneyHolder || data.tmoney_holder || DEFAULT_PLATFORM_SETTINGS.tmoneyHolder,
+          floozNumber: data.floozNumber || data.flooz_number || DEFAULT_PLATFORM_SETTINGS.floozNumber,
+          floozHolder: data.floozHolder || data.flooz_holder || DEFAULT_PLATFORM_SETTINGS.floozHolder,
+          annualPriceCFA: data.annualPriceCFA || data.annual_price_cfa || DEFAULT_PLATFORM_SETTINGS.annualPriceCFA,
+          supportEmail: data.supportEmail || data.support_email || DEFAULT_PLATFORM_SETTINGS.supportEmail,
+          supportPhone: data.supportPhone || data.support_phone || DEFAULT_PLATFORM_SETTINGS.supportPhone,
+          whatsappNumber: data.whatsappNumber || data.whatsapp_number || DEFAULT_PLATFORM_SETTINGS.whatsappNumber,
+          demoVideoUrl: data.demoVideoUrl || data.demo_video_url || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
+          demoVideoTitle: data.demoVideoTitle || data.demo_video_title || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
+          demoVideoPoster: data.demoVideoPoster || data.demo_video_poster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
+          pricingTitle: data.pricingTitle || data.pricing_title || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
+          pricingSubtitle: data.pricingSubtitle || data.pricing_subtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
+          pricingPlans: sanitizePricingPlans(data.pricingPlans || data.pricing_plans || localPricingPlans),
           fedapayPublicKey: dbKey || localFedaKey,
-          updatedAt: systemRow.updated_at
+          updatedAt: data.updatedAt || data.updated_at,
         };
-        localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
-        localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(merged));
+        const jsonStr = JSON.stringify(merged);
+        localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, jsonStr);
+        localStorage.setItem('cartes_togo_platform_settings', jsonStr);
         return merged;
       }
-    }
-  } catch (err) {
-    // Ignore and proceed to next tier
+    } catch { }
   }
 
-  // 3. Try Supabase admin_logs SYNC_PLATFORM_SETTINGS entry
-  try {
-    const { data: logs, error: logError } = await supabase
-      .from('admin_logs')
-      .select('*')
-      .eq('action', 'SYNC_PLATFORM_SETTINGS')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (!logError && logs && logs.length > 0 && logs[0].details) {
-      try {
-        const parsed = JSON.parse(logs[0].details);
-        if (parsed && (parsed.tmoneyNumber || parsed.floozNumber || parsed.supportEmail || parsed.demoVideoUrl || parsed.pricingPlans)) {
-          const dbKey = sanitizeKey(parsed.fedapayPublicKey);
-          const merged: PlatformSettings = {
-            ...DEFAULT_PLATFORM_SETTINGS,
-            ...parsed,
-            demoVideoUrl: parsed.demoVideoUrl || localVideoUrl || DEFAULT_PLATFORM_SETTINGS.demoVideoUrl,
-            demoVideoTitle: parsed.demoVideoTitle || localVideoTitle || DEFAULT_PLATFORM_SETTINGS.demoVideoTitle,
-            demoVideoPoster: parsed.demoVideoPoster || localVideoPoster || DEFAULT_PLATFORM_SETTINGS.demoVideoPoster,
-            pricingTitle: parsed.pricingTitle || localPricingTitle || DEFAULT_PLATFORM_SETTINGS.pricingTitle,
-            pricingSubtitle: parsed.pricingSubtitle || localPricingSubtitle || DEFAULT_PLATFORM_SETTINGS.pricingSubtitle,
-            pricingPlans: sanitizePricingPlans(parsed.pricingPlans || localPricingPlans),
-            fedapayPublicKey: dbKey || localFedaKey,
-            updatedAt: logs[0].created_at
-          };
-          localStorage.setItem(PLATFORM_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
-          localStorage.setItem('cartes_togo_platform_settings', JSON.stringify(merged));
-          return merged;
-        }
-      } catch { }
-    }
-  } catch (err) {
-    // Ignore and proceed to local storage
-  }
-
-  // 4. Local storage fallback
+  // 2. Local storage fallback
   try {
     const stored = localStorage.getItem(PLATFORM_SETTINGS_STORAGE_KEY) || localStorage.getItem('cartes_togo_platform_settings');
     if (stored) {
@@ -3372,14 +3279,12 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         fedapayPublicKey: sanitizeKey(parsed.fedapayPublicKey)
       };
     }
-  } catch {
-    // ignore
-  }
+  } catch { }
 
   return DEFAULT_PLATFORM_SETTINGS;
 }
 
-/** Save platform settings updated by super-admin (Writes to LocalStorage & all Supabase tiers) */
+/** Save platform settings updated by super-admin (Writes to LocalStorage & Cloudflare D1) */
 export async function savePlatformSettings(newSettings: PlatformSettings): Promise<boolean> {
   const timestamp = new Date().toISOString();
   const sanitizedPlans = sanitizePricingPlans(newSettings.pricingPlans);
@@ -3398,7 +3303,7 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
     console.warn('savePlatformSettings localStorage error:', err);
   }
 
-  // 2. Émission live instantanée (0ms) + Broadcast WebSocket (<50ms) pour actualisation immédiate de la Landing Page et des Écoles
+  // 2. Émission live instantanée (0ms)
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cardschool_platform_settings_updated', {
       detail: settingsToSave
@@ -3406,42 +3311,15 @@ export async function savePlatformSettings(newSettings: PlatformSettings): Promi
   }
   broadcastPlatformSettingsLive(settingsToSave);
 
-  // 3. Synchronisation distante
+  // 3. Synchronisation distante Cloudflare D1
   try {
-    const { error } = await supabase.from('platform_settings').upsert({
-      id: 'global_config',
-      tmoney_number: settingsToSave.tmoneyNumber || '',
-      tmoney_holder: settingsToSave.tmoneyHolder || '',
-      flooz_number: settingsToSave.floozNumber || '',
-      flooz_holder: settingsToSave.floozHolder || '',
-      annual_price_cfa: settingsToSave.annualPriceCFA || 30000,
-      support_email: settingsToSave.supportEmail || '',
-      support_phone: settingsToSave.supportPhone || '',
-      whatsapp_number: settingsToSave.whatsappNumber || '',
-      office_address: settingsToSave.officeAddress || '',
-      payment_gateway_enabled: settingsToSave.paymentGatewayEnabled ?? false,
-      payment_gateway_name: settingsToSave.paymentGatewayName || '',
-      payment_gateway_url: settingsToSave.paymentGatewayUrl || '',
-      payment_webhook_secret: settingsToSave.paymentWebhookSecret || '',
-      payment_instructions: settingsToSave.paymentInstructions || '',
-      support_notice: settingsToSave.supportNotice || '',
-      demo_video_url: settingsToSave.demoVideoUrl || '',
-      demo_video_title: settingsToSave.demoVideoTitle || '',
-      demo_video_poster: settingsToSave.demoVideoPoster || '',
-      pricing_enabled: settingsToSave.pricingEnabled !== undefined ? settingsToSave.pricingEnabled : true,
-      pricing_title: settingsToSave.pricingTitle || '',
-      pricing_subtitle: settingsToSave.pricingSubtitle || '',
-      pricing_plans: sanitizedPlans,
-      updated_at: timestamp
-    }, { onConflict: 'id' });
-
-    if (error) {
-      console.error('savePlatformSettings Supabase platform_settings error:', error);
-    }
-
-    return !error;
+    await cfFetch('/api/platform-settings', {
+      method: 'POST',
+      body: JSON.stringify(settingsToSave),
+    });
+    return true;
   } catch (err) {
-    console.warn('savePlatformSettings Supabase unexpected error:', err);
-    return false;
+    console.warn('savePlatformSettings Cloudflare D1 error:', err);
+    return true;
   }
 }
