@@ -1352,146 +1352,43 @@ export default function App({ session, onLogout }: AppProps) {
 
         {/* Content area - Independently scrollable */}
         <div className="flex-1 min-w-0 md:h-full overflow-y-auto pb-36 md:pb-8">
-          {/* Top Sticky Bar */}
-          <div className="sticky top-0 z-40 bg-white shadow-xs no-print border-b border-slate-200 shrink-0">
-            {/* Main Bar: Title, Badges, Desktop Controls & Actions */}
-            <div className="px-3 sm:px-6 py-2.5 min-h-[64px] flex items-center justify-between gap-3 overflow-x-auto scrollbar-none w-full">
-              {/* Left: Title & Summary Badges */}
-              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                <span className="text-xs sm:text-sm md:text-base text-slate-900 font-black whitespace-nowrap tracking-tight">
+          {/* Top Sticky Bar - 2 Tiers visibles sans aucun défilement horizontal */}
+          <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-xs no-print border-b border-slate-200 shrink-0">
+            {/* Ligne 1 : Titre & Compteurs + Actions d'impression */}
+            <div className="px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
+              {/* Titre & Badges */}
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <span className="text-sm sm:text-base font-black text-slate-900 tracking-tight whitespace-nowrap">
                   Aperçu d'impression
                 </span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[11px] sm:text-xs font-black text-emerald-800 bg-emerald-50 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs whitespace-nowrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs whitespace-nowrap">
                     {studentsToPrint.length} carte{studentsToPrint.length > 1 ? 's' : ''}
                   </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-slate-600 bg-slate-100 px-2 sm:px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs whitespace-nowrap">
                     {totalPagesToPrint} page{totalPagesToPrint > 1 ? 's' : ''} A4
                   </span>
                 </div>
               </div>
 
-              {/* Center: Desktop Interactive Print Options */}
-              <div className="hidden lg:flex items-center gap-3 shrink-0">
-                {/* View Mode Toggle: Cartes vs Planche A4 */}
-                <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/80 shadow-2xs">
-                  <button
-                    type="button"
-                    onClick={() => setPrintViewStyle('cards')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      printViewStyle === 'cards'
-                        ? 'bg-white text-emerald-800 shadow-xs font-black'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>Vue Cartes</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPrintViewStyle('sheet')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      printViewStyle === 'sheet'
-                        ? 'bg-white text-emerald-800 shadow-xs font-black'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Feuille A4</span>
-                  </button>
-                </div>
-
-                {/* Class Filter Dropdown */}
-                <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Classe:</span>
-                  <select
-                    value={printClassFilter}
-                    onChange={(e) => setPrintClassFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer pr-1"
-                  >
-                    <option value="all">Toutes ({students.length})</option>
-                    {allClasses.map(cls => (
-                      <option key={cls} value={cls}>
-                        {cls} ({students.filter(s => s.className === cls).length})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Print Mode Selector */}
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider pl-1.5">Mode:</span>
-                  <button
-                    type="button"
-                    onClick={() => setPrintMode('recto')}
-                    className={`text-xs font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      printMode === 'recto'
-                        ? 'bg-white text-emerald-800 shadow-xs font-black'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    Recto Seul
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPrintMode('recto-verso')}
-                    className={`text-xs font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                      printMode === 'recto-verso'
-                        ? 'bg-white text-emerald-800 shadow-xs font-black'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    Recto/Verso
-                  </button>
-                </div>
-
-                {/* Cards Density Selector (for sheet mode) */}
-                {printViewStyle === 'sheet' && (
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider pl-1.5">Densité:</span>
-                    <button
-                      type="button"
-                      onClick={() => setCardsPerPage(8)}
-                      className={`text-xs font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        cardsPerPage === 8
-                          ? 'bg-white text-emerald-800 shadow-xs font-black'
-                          : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                      8
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCardsPerPage(10)}
-                      className={`text-xs font-bold px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
-                        cardsPerPage === 10
-                          ? 'bg-white text-emerald-800 shadow-xs font-black'
-                          : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                      10
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Actions */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Boutons d'Action (visibles directement) */}
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setAttendanceSheetClass(printClassFilter)}
                   title="Imprimer la feuille d'émargement officielle de retrait des cartes"
-                  className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs whitespace-nowrap"
+                  className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <ClipboardList className="w-4 h-4 text-emerald-700" />
                   <span className="hidden sm:inline">Fiche d'Émargement</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={generateZipImages}
                   disabled={isExportingZip}
                   title="Télécharger un pack ZIP d'images PNG HD de chaque carte pour l'imprimeur"
-                  className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs whitespace-nowrap"
+                  className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   {isExportingZip ? (
                     <>
@@ -1501,24 +1398,26 @@ export default function App({ session, onLogout }: AppProps) {
                   ) : (
                     <>
                       <Archive className="w-4 h-4 text-slate-600" />
-                      <span className="hidden sm:inline">Pack ZIP</span>
+                      <span>Pack ZIP</span>
                     </>
                   )}
                 </button>
+
                 <button
                   type="button"
                   onClick={() => window.print()}
                   title="Imprimer directement ou enregistrer en PDF via le navigateur"
-                  className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs whitespace-nowrap"
+                  className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <Printer className="w-4 h-4 text-slate-600" />
-                  <span className="hidden sm:inline">Imprimer</span>
+                  <span>Imprimer</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={generatePDF}
                   title="Télécharge le PDF officiel A4 prêt pour l'impression"
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3.5 py-2 shrink-0 shadow-sm flex items-center gap-1.5 whitespace-nowrap"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-xs px-4 py-2 shadow-sm flex items-center gap-1.5"
                   disabled={isGeneratingPDF}
                 >
                   {isGeneratingPDF ? (
@@ -1536,102 +1435,139 @@ export default function App({ session, onLogout }: AppProps) {
               </div>
             </div>
 
-            {/* Mobile Print Options Sub-bar */}
-            <div className="flex lg:hidden flex-wrap items-center justify-between gap-2 px-3 sm:px-6 py-2 border-t border-slate-100 bg-slate-50/70 text-xs">
-              {/* Dual View Mode Switcher: Cartes (HD) vs Planche A4 */}
-              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center shrink-0 border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setPrintViewStyle('cards')}
-                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${printViewStyle === 'cards'
-                      ? 'bg-emerald-600 text-white shadow-xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                >
-                  <CreditCard className="w-3 h-3" />
-                  <span>Cartes</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrintViewStyle('sheet')}
-                  className={`text-[11px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer ${printViewStyle === 'sheet'
-                      ? 'bg-emerald-600 text-white shadow-xs font-black'
-                      : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                >
-                  <FileText className="w-3 h-3" />
-                  <span>Planche A4</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-1 min-w-[90px]">
-                <select
-                  value={printClassFilter}
-                  onChange={(e) => setPrintClassFilter(e.target.value)}
-                  className="w-full bg-gray-100 text-[11px] font-bold text-slate-800 rounded-lg px-2 py-1 outline-none cursor-pointer border border-transparent focus:border-emerald-500"
-                >
-                  <option value="all">Toutes ({students.length})</option>
-                  {allClasses.map(cls => (
-                    <option key={cls} value={cls}>
-                      {cls} ({students.filter(s => s.className === cls).length})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                {/* Recto / Verso selector */}
-                <div className="bg-gray-100 p-0.5 rounded-lg flex">
+            {/* Ligne 2 : Filtres, Mode d'Affichage & Réglages d'impression */}
+            <div className="px-4 sm:px-6 py-2 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+              {/* Côté gauche : Vue & Classe */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Switcher Vue Cartes vs Planche A4 */}
+                <div className="bg-white p-0.5 rounded-xl flex items-center border border-slate-200/90 shadow-2xs">
                   <button
-                    onClick={() => setPrintMode('recto')}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${printMode === 'recto' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
-                      }`}
+                    type="button"
+                    onClick={() => setPrintViewStyle('cards')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      printViewStyle === 'cards'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    Recto
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Vue Cartes</span>
                   </button>
                   <button
-                    onClick={() => setPrintMode('recto-verso')}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded transition-all ${printMode === 'recto-verso' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-500'
-                      }`}
+                    type="button"
+                    onClick={() => setPrintViewStyle('sheet')}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      printViewStyle === 'sheet'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    R/V
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Feuille A4</span>
                   </button>
                 </div>
 
-                {/* In sheet mode: Fit screen toggle */}
+                {/* Filtre par classe */}
+                <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-xl border border-slate-200/90 shadow-2xs">
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Classe:</span>
+                  <select
+                    value={printClassFilter}
+                    onChange={(e) => setPrintClassFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer pr-1"
+                  >
+                    <option value="all">Toutes ({students.length})</option>
+                    {allClasses.map(cls => (
+                      <option key={cls} value={cls}>
+                        {cls} ({students.filter(s => s.className === cls).length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Côté droit : Mode (Recto/Verso), Densité & Zoom plein écran */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Sélecteur Mode Recto / Recto-Verso */}
+                <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider pl-2">Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode('recto')}
+                    className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      printMode === 'recto'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Recto Seul
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode('recto-verso')}
+                    className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      printMode === 'recto-verso'
+                        ? 'bg-emerald-600 text-white shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Recto/Verso
+                  </button>
+                </div>
+
+                {/* Densité (8 ou 10 cartes par page en mode feuille A4) */}
+                {printViewStyle === 'sheet' && (
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200/90 shadow-2xs">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider pl-2">Densité:</span>
+                    <button
+                      type="button"
+                      onClick={() => setCardsPerPage(8)}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        cardsPerPage === 8
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      8
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardsPerPage(10)}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        cardsPerPage === 10
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      10
+                    </button>
+                  </div>
+                )}
+
+                {/* Bouton d'Ajustement à l'écran (zoom dynamique pour petit écran / portable) */}
                 {printViewStyle === 'sheet' && (
                   <button
                     type="button"
                     onClick={() => setMobileFitScreen(prev => !prev)}
-                    className={`text-[10px] font-bold px-1.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${mobileFitScreen
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-black'
-                        : 'bg-gray-100 text-gray-600 border border-gray-200'
-                      }`}
-                    title={mobileFitScreen ? "Feuille A4 adaptée à l'écran (Cliquer pour zoom 100%)" : "Mode taille réelle 100%"}
+                    className={`text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs border ${
+                      mobileFitScreen
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-black'
+                        : 'bg-white text-slate-700 border-slate-200/90'
+                    }`}
+                    title={mobileFitScreen ? "Feuille A4 adaptée à la largeur de votre écran (Cliquer pour zoom 100%)" : "Mode taille réelle 100% (Cliquer pour ajuster à l'écran)"}
                   >
                     {mobileFitScreen ? (
                       <>
-                        <Minimize2 className="w-3 h-3 text-emerald-700" />
+                        <Minimize2 className="w-3.5 h-3.5 text-emerald-700" />
                         <span>Ajusté</span>
                       </>
                     ) : (
                       <>
-                        <Maximize2 className="w-3 h-3 text-gray-600" />
+                        <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
                         <span>100%</span>
                       </>
                     )}
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 border border-gray-200 flex items-center gap-1 active:scale-95 cursor-pointer"
-                  title="Imprimer directement via le navigateur"
-                >
-                  <Printer className="w-3 h-3 text-slate-600" />
-                  <span>Imprimer</span>
-                </button>
               </div>
             </div>
           </div>
