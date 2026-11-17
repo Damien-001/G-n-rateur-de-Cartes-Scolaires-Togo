@@ -42,19 +42,43 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
     pageBatches.push(students.slice(i, i + cardsPerPage));
   }
 
-  const getBacksOrder = (pageStudents: Student[]) => {
-    const ordered: (Student | null)[] = [];
-    for (let r = 0; r < cardsPerPage; r += 2) {
-      const left = pageStudents[r] || null;
-      const right = pageStudents[r + 1] || null;
-      // Mirror horizontally for back page (right card back goes to left column on print flip)
-      ordered.push(right);
-      ordered.push(left);
-    }
-    return ordered;
-  };
-
   const rows = cardsPerPage / 2;
+
+  const referenceStudent: Student = students[0] || ({ schoolYear: schoolInfo.academicYear || '2025-2026' } as Student);
+
+  const commonBackPageElement = (
+    <div
+      key="back-common-0"
+      className="a4-page print-page"
+      style={{
+        width: 794,
+        height: 1123,
+        backgroundColor: '#ffffff',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+        margin: '0 auto 32px auto',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        padding: cardsPerPage === 10 ? '16px 22px' : '65px 22px',
+        boxSizing: 'border-box',
+        position: 'relative',
+        pageBreakAfter: 'always',
+      }}
+    >
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: `repeat(${rows}, auto)`,
+        gap: cardsPerPage === 10 ? '16px 22px' : '20px 22px',
+      }}>
+        {Array.from({ length: cardsPerPage }).map((_, i) => (
+          <div key={`common-back-slot-${i}`} style={{ display: 'flex', justifyContent: 'center' }}>
+            <IDCardBack student={referenceStudent} schoolInfo={schoolInfo} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const wrapWithScale = (pageEl: React.ReactElement, key: string) => {
     if (autoScale < 1) {
@@ -89,6 +113,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
 
   return (
     <div className="print-container print-layout-container" style={{ backgroundColor: 'transparent', minHeight: '100vh', padding: autoScale < 1 ? '12px 0 40px 0' : '32px 0' }}>
+      {/* 1. Toutes les planches Recto (élèves) */}
       {pageBatches.map((pageStudents, pageIdx) => {
         const frontPageElement = (
           <div
@@ -127,61 +152,20 @@ export const PrintLayout: React.FC<PrintLayoutProps> = React.memo(({
           </div>
         );
 
-        const frontPage = wrapWithScale(frontPageElement, `front-${pageIdx}`);
-
-        if (printMode === 'recto') {
-          return frontPage;
-        }
-
-        // Recto-Verso Mode: generate the mirrored back page
-        const backStudents = getBacksOrder(pageStudents);
-        const backPageElement = (
-          <div
-            key={`back-${pageIdx}`}
-            className="a4-page print-page"
-            style={{
-              width: 794,
-              height: 1123,
-              backgroundColor: '#ffffff',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05)',
-              margin: '0 auto 32px auto',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              padding: cardsPerPage === 10 ? '16px 22px' : '65px 22px',
-              boxSizing: 'border-box',
-              position: 'relative',
-              pageBreakAfter: 'always',
-            }}
-          >
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: `repeat(${rows}, auto)`,
-              gap: cardsPerPage === 10 ? '16px 22px' : '20px 22px',
-            }}>
-              {backStudents.map((student, i) => (
-                <div key={`back-slot-${i}`} style={{ display: 'flex', justifyContent: 'center' }}>
-                  {student ? (
-                    <IDCardBack student={student} schoolInfo={schoolInfo} />
-                  ) : (
-                    <div style={{ width: 350, height: 205, visibility: 'hidden' }} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-        const backPage = wrapWithScale(backPageElement, `back-${pageIdx}`);
-
-        return (
-          <React.Fragment key={`page-pair-${pageIdx}`}>
-            {frontPage}
-            {backPage}
-          </React.Fragment>
-        );
+        return wrapWithScale(frontPageElement, `front-${pageIdx}`);
       })}
+
+      {/* 2. Page Verso Unique (Commune à tous les élèves en mode Recto-Verso) */}
+      {printMode === 'recto-verso' && students.length > 0 && (
+        <React.Fragment key="single-common-verso-wrapper">
+          <div className="no-print my-6 text-center">
+            <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 text-xs font-bold px-4 py-1.5 rounded-full border border-emerald-200/80 shadow-2xs">
+              📄 Page Verso Unique (Commune à tous les élèves — à imprimer au dos de toutes les planches recto)
+            </span>
+          </div>
+          {wrapWithScale(commonBackPageElement, 'common-back')}
+        </React.Fragment>
+      )}
     </div>
   );
 });
